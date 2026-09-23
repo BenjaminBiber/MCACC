@@ -1,0 +1,25 @@
+# Build output
+bin/
+obj/
+artifacts/
+publish/
+TestResults/
+*.binlog
+
+# IDEs
+.idea/
+.vs/
+.vscode/
+*.user
+*.suo
+*.DotSettings.user
+
+# OS
+.DS_Store
+Thumbs.db
+
+# macOS build scratch
+*.iconset/
+
+# Agent scratch
+.superpowers/
