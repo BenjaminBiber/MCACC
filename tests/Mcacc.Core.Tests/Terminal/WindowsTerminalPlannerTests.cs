@@ -219,4 +219,17 @@ public class WindowsTerminalPlannerTests
         Should.Throw<ArgumentException>(() => WindowsTerminalPlanner.Plan(request, Cmd, WindowsTerminalShell.Auto, AllInstalled));
         Should.Throw<ArgumentException>(() => WindowsTerminalPlanner.Plan(request, Wt, WindowsTerminalShell.Auto, AllInstalled));
     }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("red")]
+    [InlineData("#12345")]
+    [InlineData("#D97757; new-tab")]
+    public void A_tab_color_that_is_not_a_hex_color_is_refused(string color)
+    {
+        var request = LaunchRequests.WindowsProfile() with { TabColor = color };
+
+        Should.Throw<ArgumentException>(() => WindowsTerminalPlanner.Plan(request, Wt, WindowsTerminalShell.Auto, AllInstalled));
+        Should.Throw<ArgumentException>(() => WindowsTerminalPlanner.Plan(request, Wt, WindowsTerminalShell.Cmd, AllInstalled));
+    }
 }

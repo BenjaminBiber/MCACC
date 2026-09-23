@@ -9,7 +9,7 @@ public static class WindowsTerminalPlanner
 {
     /// <param name="shell">Only used when <paramref name="terminal"/> is Windows Terminal.</param>
     /// <param name="installed">Where Windows Terminal finds the shell it runs.</param>
-    /// <exception cref="ArgumentException">Not a Windows terminal, or the account id is not a slug.</exception>
+    /// <exception cref="ArgumentException">Not a Windows terminal, the account id is not a slug, or the tab color is not <c>#RRGGBB</c>.</exception>
     /// <exception cref="InvalidOperationException">The shell Windows Terminal should run is not installed.</exception>
     public static TerminalLaunchPlan Plan(
         ClaudeCodeLaunchRequest req,
@@ -18,6 +18,11 @@ public static class WindowsTerminalPlanner
         IReadOnlyList<TerminalOption> installed)
     {
         TerminalPlanning.RequireSlugAccountId(req);
+        if (!AccountPalette.IsValidColor(req.TabColor))
+        {
+            throw new ArgumentException($"Tab color '{req.TabColor}' is not a #RRGGBB color.", nameof(req));
+        }
+
         return terminal.Id switch
         {
             TerminalIds.WindowsTerminal when shell == WindowsTerminalShell.Cmd =>
