@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Mcacc.Core.Model;
+using Mcacc.Core.Usage;
 
 namespace Mcacc.Core.Config;
 
@@ -16,4 +17,5 @@ namespace Mcacc.Core.Config;
         typeof(CamelCaseEnumConverter<LaunchTarget>),
     ])]
 [JsonSerializable(typeof(AppConfig))]
+[JsonSerializable(typeof(Dictionary<string, UsageSnapshot>), TypeInfoPropertyName = "DictionaryStringUsageSnapshot")]
 public sealed partial class McaccJsonContext : JsonSerializerContext;

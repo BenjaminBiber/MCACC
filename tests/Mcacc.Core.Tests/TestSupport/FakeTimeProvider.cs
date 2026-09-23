@@ -23,7 +23,7 @@ internal sealed class FakeTimeProvider(DateTimeOffset utcNow, TimeZoneInfo local
         return timer;
     }
 
-    private void Advance(TimeSpan by) => Interlocked.Add(ref _utcTicks, by.Ticks);
+    public void Advance(TimeSpan by) => Interlocked.Add(ref _utcTicks, by.Ticks);
 
     private sealed class OneShotTimer(FakeTimeProvider time, TimerCallback callback, object? state) : ITimer
     {
