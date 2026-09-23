@@ -13,8 +13,15 @@ public sealed class ProfileDataDeleter
             throw new InvalidOperationException("The default account's data is never deleted.");
         }
 
+        // Win32 trims trailing dots and spaces, so "privat." would reach "privat" and "..." the profiles root.
+        if (!AccountId.IsValid(account.Id))
+        {
+            throw new InvalidOperationException($"Refusing to delete the data of the invalid account id '{account.Id}'.");
+        }
+
         var profileDir = paths.ProfileDir(account.Id);
-        if (!PathComparer.IsStrictlyUnder(profileDir, paths.ProfilesDir, paths.Style))
+        if (!PathComparer.IsStrictlyUnder(profileDir, paths.ProfilesDir, paths.Style)
+            || !PathComparer.IsStrictlyUnder(Path.GetFullPath(profileDir), Path.GetFullPath(paths.ProfilesDir), paths.Style))
         {
             throw new InvalidOperationException($"Refusing to delete '{profileDir}', which is not inside '{paths.ProfilesDir}'.");
         }

@@ -54,15 +54,22 @@ public sealed class ProfileDataDeleterTests : IDisposable
     [InlineData(".")]
     [InlineData("")]
     [InlineData("../profiles-evil")]
-    public void Id_that_does_not_point_below_the_profiles_directory_is_refused(string id)
+    [InlineData("...")]
+    [InlineData(" ")]
+    [InlineData(". .")]
+    [InlineData("privat.")]
+    [InlineData("privat ")]
+    public void Unsafe_id_is_refused_and_nothing_is_deleted(string id)
     {
         WriteFile(Path.Join(_paths.ProfileDir("privat"), "claude", "CLAUDE.md"));
+        WriteFile(Path.Join(_paths.ProfileDir("firma"), "claude", "CLAUDE.md"));
         WriteFile(Path.Join(_paths.Root, "profiles-evil", "keep.txt"));
 
         Should.Throw<InvalidOperationException>(() => _deleter.Delete(Profile(id), _paths));
 
         File.Exists(_paths.ConfigFile).ShouldBeTrue();
         File.Exists(Path.Join(_paths.ProfileDir("privat"), "claude", "CLAUDE.md")).ShouldBeTrue();
+        File.Exists(Path.Join(_paths.ProfileDir("firma"), "claude", "CLAUDE.md")).ShouldBeTrue();
         File.Exists(Path.Join(_paths.Root, "profiles-evil", "keep.txt")).ShouldBeTrue();
     }
 
