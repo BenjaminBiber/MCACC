@@ -70,6 +70,9 @@ public class SettingsPathRewriterTests
     [InlineData(" x")]
     [InlineData("\tx")]
     [InlineData("\n")]
+    [InlineData(")")]
+    [InlineData(",x")]
+    [InlineData(";x")]
     public void Match_followed_by_a_boundary_is_replaced(string after)
     {
         RewriteWindows("C:/Users/x/.claude" + after).ShouldBe("C:/Users/x/.mcacc/profiles/privat/claude" + after);
@@ -93,6 +96,17 @@ public class SettingsPathRewriterTests
     public void Other_paths_stay_untouched(string json)
     {
         RewriteWindows(json).ShouldBe(json);
+    }
+
+    [Theory]
+    [InlineData("""[ "Read(~/.claude)" ]""", """[ "Read(C:/Users/x/.mcacc/profiles/privat/claude)" ]""")]
+    [InlineData(
+        """[ "Bash(ls C:\\Users\\x\\.claude)" ]""",
+        """[ "Bash(ls C:\\Users\\x\\.mcacc\\profiles\\privat\\claude)" ]""")]
+    [InlineData("PATH=$HOME/.claude;C:/Users/x/.claude,bin", "PATH=C:/Users/x/.mcacc/profiles/privat/claude;C:/Users/x/.mcacc/profiles/privat/claude,bin")]
+    public void References_inside_permission_rules_and_lists_are_replaced(string json, string expected)
+    {
+        RewriteWindows(json).ShouldBe(expected);
     }
 
     [Fact]

@@ -4,8 +4,9 @@ namespace Mcacc.Core.ConfigCopy;
 
 public static class SettingsPathRewriter
 {
-    // A reference ends at the end of the text, a separator, a quote or whitespace, so ".claude.json" is not one.
-    private const string Boundary = """(?=\z|[/\\"'\s])""";
+    // A reference ends at the end of the text, a separator, a quote, whitespace, ")", "," or ";",
+    // so ".claude.json" and ".claude-x" are not references.
+    private const string Boundary = """(?=\z|[/\\"'\s),;])""";
 
     public static string Rewrite(string json, string sourceClaudeDir, string targetClaudeDir, bool sourceIsDefault)
     {
