@@ -299,6 +299,78 @@ public sealed class ConfigCopierTests : IDisposable
         Directory.EnumerateFileSystemEntries(_outside).ShouldBeEmpty();
     }
 
+    private CopyOperation ValidClaudeMd() => new(
+        CopyItem.ClaudeMd,
+        Path.Join(_sourceClaude, "CLAUDE.md"),
+        Path.Join(TargetClaude, "CLAUDE.md"),
+        IsDirectory: false,
+        RewritePaths: false);
+
+    private CopyOperation BogusOperation(string kind) => kind switch
+    {
+        "target outside the profile" => ValidClaudeMd() with { TargetPath = Path.Join(_outside, "CLAUDE.md") },
+        "target in the default account" => ValidClaudeMd() with { TargetPath = Path.Join(_sourceClaude, "CLAUDE.md") },
+        "target escaping with .." => ValidClaudeMd() with
+        {
+            TargetPath = Path.Join(TargetClaude, "..", "..", "..", "..", "outside", "CLAUDE.md"),
+        },
+        "target of another item" => ValidClaudeMd() with { TargetPath = Path.Join(TargetClaude, ".credentials.json") },
+        "source not on the whitelist" => ValidClaudeMd() with { SourcePath = Path.Join(_sourceClaude, ".credentials.json") },
+        "source outside the account" => ValidClaudeMd() with { SourcePath = Path.Join(_outside, "CLAUDE.md") },
+        "desktop source outside the candidates" => new CopyOperation(
+            CopyItem.DesktopMcpConfig,
+            Path.Join(_outside, "claude_desktop_config.json"),
+            Path.Join(TargetDesktop, "claude_desktop_config.json"),
+            IsDirectory: false,
+            RewritePaths: false),
+        "wrong kind" => ValidClaudeMd() with { IsDirectory = true },
+        "rewrite of another item" => ValidClaudeMd() with { RewritePaths = true },
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
+    };
+
+    [Theory]
+    [InlineData("target outside the profile")]
+    [InlineData("target in the default account")]
+    [InlineData("target escaping with ..")]
+    [InlineData("target of another item")]
+    [InlineData("source not on the whitelist")]
+    [InlineData("source outside the account")]
+    [InlineData("desktop source outside the candidates")]
+    [InlineData("wrong kind")]
+    [InlineData("rewrite of another item")]
+    public void Operation_that_does_not_match_its_whitelist_entry_is_refused_before_anything_is_copied(string kind)
+    {
+        WriteFile(Path.Join(_sourceClaude, "CLAUDE.md"));
+        WriteFile(Path.Join(_sourceClaude, ".credentials.json"), "secret");
+        WriteFile(Path.Join(_outside, "CLAUDE.md"));
+        WriteFile(Path.Join(_outside, "claude_desktop_config.json"));
+        var plan = new CopyPlan([ValidClaudeMd(), BogusOperation(kind)]);
+
+        Should.Throw<ArgumentException>(() => _copier.Execute(plan, _source, _target));
+
+        Directory.Exists(TargetClaude).ShouldBeFalse();
+        Directory.Exists(TargetDesktop).ShouldBeFalse();
+        Entries(_outside).ShouldBe(["CLAUDE.md", "claude_desktop_config.json"]);
+    }
+
+    [Fact]
+    public void Desktop_config_may_come_from_any_candidate()
+    {
+        var msix = Path.Join(_temp.Path, "msix", "Claude");
+        var source = _source with { DesktopDataDirs = [msix, _sourceDesktop] };
+        WriteFile(Path.Join(_sourceDesktop, "claude_desktop_config.json"), "{}");
+        var plan = new CopyPlan([
+            new CopyOperation(
+                CopyItem.DesktopMcpConfig,
+                Path.Join(_sourceDesktop, "claude_desktop_config.json"),
+                Path.Join(TargetDesktop, "claude_desktop_config.json"),
+                IsDirectory: false,
+                RewritePaths: false),
+        ]);
+
+        _copier.Execute(plan, source, _target).Copied.ShouldBe([CopyItem.DesktopMcpConfig]);
+    }
+
     [Fact]
     public void Default_account_is_refused_as_target()
     {

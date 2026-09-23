@@ -12,6 +12,15 @@ public sealed class ConfigCopier
             throw new ArgumentException("The default account is never a copy target.", nameof(target));
         }
 
+        // Checked up front, so a bogus plan copies nothing at all.
+        foreach (var operation in plan.Operations)
+        {
+            if (!MatchesWhitelist(operation, source, target))
+            {
+                throw new ArgumentException($"The operation does not match the copy whitelist: {operation}", nameof(plan));
+            }
+        }
+
         var copied = new List<CopyItem>();
         var skipped = new List<SkippedEntry>();
         foreach (var operation in plan.Operations)
@@ -45,6 +54,25 @@ public sealed class ConfigCopier
 
         return new CopyReport(copied, skipped);
     }
+
+    /// <summary>
+    /// The operation must be exactly what the planner derives for its item: the whitelisted path inside the source's
+    /// Claude dir or one of its Desktop candidates, copied to the same path inside the target profile.
+    /// </summary>
+    private static bool MatchesWhitelist(CopyOperation operation, AccountPaths source, AccountPaths target)
+    {
+        var (relativePath, isDirectory, location) = CopyItems.Info(operation.Item);
+        IReadOnlyList<string> sourceDirs = location == CopyLocation.ClaudeDir ? [source.EffectiveClaudeDir] : source.DesktopDataDirs;
+        var targetDir = location == CopyLocation.ClaudeDir ? target.ClaudeConfigDir : target.DesktopUserDataDir;
+        return operation.IsDirectory == isDirectory
+            && (!operation.RewritePaths || operation.Item == CopyItem.SettingsJson)
+            && targetDir is not null
+            && SamePath(operation.TargetPath, Path.Join(targetDir, relativePath))
+            && sourceDirs.Any(dir => SamePath(operation.SourcePath, Path.Join(dir, relativePath)));
+    }
+
+    private static bool SamePath(string a, string b) =>
+        string.Equals(Path.GetFullPath(a), Path.GetFullPath(b), StringComparison.Ordinal);
 
     private static CopySkipReason? SkipReason(FileSystemInfo source, string targetPath)
     {
