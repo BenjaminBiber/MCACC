@@ -43,11 +43,13 @@ Hilfsbefehl zum Anonymisieren von Text-Fixtures (Benutzername durch `USER` erset
 W2/M4, bevor eine Datei committet wird:
 
 ```powershell
-(Get-Content $pfad) -replace [Regex]::Escape($env:USERNAME), 'USER' | Set-Content $pfad
+$datei = "<Pfad zur Datei>"
+(Get-Content $datei) -replace [Regex]::Escape($env:USERNAME), 'USER' | Set-Content $datei
 ```
 
 ```zsh
-sed -i '' "s/$USER/USER/g" "$pfad"
+datei="<Pfad zur Datei>"
+sed -i '' "s/$USER/USER/g" "$datei"
 ```
 
 ---
@@ -214,11 +216,17 @@ Backup zuerst:
 reg export "HKCU\Software\Classes\claude" "$spike\claude-protocol-backup.reg"
 ```
 
-Handler auf das Spike-Profil umbiegen:
+Handler auf das Spike-Profil umbiegen (PS-nativ statt `reg add`, damit PowerShell-5.1-eigene
+Quoting-Bugs bei nativen Aufrufen nicht zuschlagen):
 ```powershell
 $alias = "$env:LOCALAPPDATA\Microsoft\WindowsApps\claude-desktop.exe"
 $newCmd = '"' + $alias + '" "--user-data-dir=' + "$spike\desk top ä" + '" "%1"'
-reg add "HKCU\Software\Classes\claude\shell\open\command" /ve /d $newCmd /f
+Set-ItemProperty -LiteralPath 'HKCU:\Software\Classes\claude\shell\open\command' -Name '(default)' -Value $newCmd
+```
+
+Direkt zurücklesen, um die geschriebene Kommandozeile zu verifizieren:
+```powershell
+(Get-ItemProperty -LiteralPath 'HKCU:\Software\Classes\claude\shell\open\command').'(default)'
 ```
 
 Login erneut versuchen, danach prüfen, ob Claude den Schlüssel beim Start selbst überschrieben
@@ -258,14 +266,17 @@ erhält, lautet (Beispielwert für `$spike`):
 $env:CLAUDE_CONFIG_DIR='C:\Users\<Benutzername>\.mcacc\spike\claude'; claude
 ```
 
-**Prüfen:** Neues Fenster öffnet sich, `$env:CLAUDE_CONFIG_DIR` ist in der neuen Shell gesetzt,
-`claude` startet, die Shell bleibt nach `/exit` offen.
+**Erwartung (wt.exe-Variante):** Neues Fenster öffnet sich, `$env:CLAUDE_CONFIG_DIR` ist in der
+neuen Shell gesetzt, `claude` startet, die Shell bleibt nach `/exit` offen.
 
 **cmd-Variante:** `spike.cmd` erzeugen (CRLF, UTF-8 ohne BOM):
 ```powershell
 $content = @(
   '@chcp 65001 >nul',
   '@echo off',
+  'set "CLAUDECODE="',
+  'set "CLAUDE_CODE_ENTRYPOINT="',
+  'set "CLAUDE_CODE_SSE_PORT="',
   'set "CLAUDE_CONFIG_DIR=%USERPROFILE%\.mcacc\spike\claude"',
   'cd /d "%USERPROFILE%"',
   'title Claude Code - Spike',
@@ -280,6 +291,9 @@ Inhalt von `spike.cmd` zur Referenz:
 ```
 @chcp 65001 >nul
 @echo off
+set "CLAUDECODE="
+set "CLAUDE_CODE_ENTRYPOINT="
+set "CLAUDE_CODE_SSE_PORT="
 set "CLAUDE_CONFIG_DIR=%USERPROFILE%\.mcacc\spike\claude"
 cd /d "%USERPROFILE%"
 title Claude Code - Spike
@@ -411,8 +425,9 @@ Prozess-Environment sichtbar; Code-Tab schreibt nach `$spike/claude`.
 ps -axww -o pid=,ppid=,lstart=,command= | grep -i claude > "$spike/ps-<scenario>.txt"
 ```
 
-Für die Szenarien `default`, `spike`, `both` wiederholen. Vor dem Commit als Fixture: Benutzername
-mit dem Hilfsbefehl oben (`sed`) durch `USER` ersetzen.
+Für die Szenarien `default`, `spike`, `both` wiederholen. Vor dem Commit als Fixture in
+`tests/Mcacc.Core.Tests/Fixtures/`: Benutzername mit dem Hilfsbefehl oben (`sed`) durch `USER`
+ersetzen.
 
 **Erwartung:** Wie W2 — Klärung, ob und wo `--user-data-dir` in der Kommandozeile auftaucht.
 
@@ -524,7 +539,29 @@ CLAUDE_CONFIG_DIR="$spike/claude" /Applications/Claude.app/Contents/MacOS/Claude
 **Ziel:** Erst relevant, sobald Task 14 die ad-hoc-signierte `MCACC.app` erzeugt hat. Dann per
 Finder-Doppelklick starten und prüfen, ob sie ohne Gatekeeper-Blockade öffnet.
 
-**Notieren:** Zu diesem Zeitpunkt noch offen — nach Task 14 nachtragen.
+Per Finder doppelklicken oder äquivalent aus dem Terminal starten:
+```zsh
+open -a "<Pfad zu MCACC.app>"
+```
+
+Signatur verifizieren:
+```zsh
+codesign --verify --deep --strict --verbose=2 "<Pfad zu MCACC.app>"
+```
+
+Gatekeeper-Assessment informativ ansehen (bei Ad-hoc-Signatur ohne Notarization ist ein
+`rejected` hier normal und kein Fehlschlag):
+```zsh
+spctl --assess --type execute -vv "<Pfad zu MCACC.app>"
+```
+
+**Erwartung:** Die App startet per Finder-Doppelklick ohne Gatekeeper-Blockade (kein
+"nicht identifizierter Entwickler"-Dialog, der den Start verhindert); `codesign --verify`
+bestätigt eine gültige (Ad-hoc-)Signatur; `spctl --assess` liefert nur zur Information einen
+Assessment-Status, ist aber für den eigentlichen Start nicht entscheidend.
+
+**Notieren:** Zu diesem Zeitpunkt noch offen — nach Task 14 nachtragen. Ergebnis der drei
+Befehle sowie ob ein Gatekeeper-Dialog erschien und wie er sich wegklicken ließ.
 
 ---
 
