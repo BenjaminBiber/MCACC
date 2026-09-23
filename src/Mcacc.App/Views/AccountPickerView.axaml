@@ -17,14 +17,14 @@
                 Classes="icon"
                 Command="{Binding RefreshCommand}"
                 VerticalAlignment="Top"
-                ToolTip.Tip="Limits aktualisieren">
+                ToolTip.Tip="{Binding RefreshTooltip}">
           <controls:MIcon Kind="Refresh" />
         </Button>
         <Button Grid.Column="2"
                 Classes="icon"
                 Command="{Binding OpenSettingsCommand}"
                 VerticalAlignment="Top"
-                ToolTip.Tip="Einstellungen">
+                ToolTip.Tip="{Binding SettingsTooltip}">
           <controls:MIcon Kind="Settings" />
         </Button>
       </Grid>
@@ -48,18 +48,18 @@
                                  Command="{Binding $parent[ItemsControl].((vm:AccountPickerViewModel)DataContext).SelectCommand}"
                                  CommandParameter="{Binding}">
               <controls:LaunchTile.Overlay>
-                <Button Classes="icon" Width="28" Height="28" ToolTip.Tip="Mehr">
+                <Button Classes="icon" Width="28" Height="28" ToolTip.Tip="{Binding $parent[ItemsControl].((vm:AccountPickerViewModel)DataContext).MoreTooltip}">
                   <controls:MIcon Kind="MoreVert" FontSize="18" />
                   <Button.Flyout>
                     <MenuFlyout>
-                      <MenuItem Header="Bearbeiten"
+                      <MenuItem Header="{Binding $parent[ItemsControl].((vm:AccountPickerViewModel)DataContext).EditText}"
                                 Command="{Binding $parent[ItemsControl].((vm:AccountPickerViewModel)DataContext).EditCommand}"
                                 CommandParameter="{Binding}" />
-                      <MenuItem Header="Entfernen"
+                      <MenuItem Header="{Binding $parent[ItemsControl].((vm:AccountPickerViewModel)DataContext).RemoveText}"
                                 IsVisible="{Binding !IsDefault}"
                                 Command="{Binding $parent[ItemsControl].((vm:AccountPickerViewModel)DataContext).RemoveCommand}"
                                 CommandParameter="{Binding}" />
-                      <MenuItem Header="Ordner öffnen"
+                      <MenuItem Header="{Binding $parent[ItemsControl].((vm:AccountPickerViewModel)DataContext).OpenFolderText}"
                                 Command="{Binding $parent[ItemsControl].((vm:AccountPickerViewModel)DataContext).OpenFolderCommand}"
                                 CommandParameter="{Binding}" />
                     </MenuFlyout>

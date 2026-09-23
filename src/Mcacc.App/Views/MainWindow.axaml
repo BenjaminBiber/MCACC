@@ -28,7 +28,7 @@
           <Button Grid.Column="2"
                   Classes="icon"
                   Command="{Binding DismissErrorCommand}"
-                  ToolTip.Tip="Schließen">
+                  ToolTip.Tip="{Binding DismissErrorText}">
             <controls:MIcon Kind="Close" FontSize="16" />
           </Button>
         </Grid>

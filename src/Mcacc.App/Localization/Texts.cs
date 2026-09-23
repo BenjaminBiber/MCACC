@@ -3,8 +3,6 @@ namespace Mcacc.App.Localization;
 /// <summary>Every string the user sees. Core returns enums and result types, never German text.</summary>
 public static class Texts
 {
-    public const string AppName = "MCACC";
-
     // Account picker
     public const string AccountPickerTitle = "Mit welchem Account?";
     public const string AccountPickerSubtitle = "Wähle das Konto, mit dem Claude starten soll.";
@@ -13,6 +11,7 @@ public static class Texts
     public const string Settings = "Einstellungen";
     public const string NotLoggedIn = "Noch nicht angemeldet";
     public const string RunningBadge = "Läuft";
+    public const string More = "Mehr";
     public const string Edit = "Bearbeiten";
     public const string Remove = "Entfernen";
     public const string OpenFolder = "Ordner öffnen";

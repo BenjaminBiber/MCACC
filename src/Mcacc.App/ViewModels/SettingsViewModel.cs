@@ -43,6 +43,8 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     public string Title => Texts.SettingsTitle;
 
+    public string BackTooltip => Texts.Back;
+
     public string TerminalLabel => Texts.SettingsTerminal;
 
     public string ShellLabel => Texts.SettingsShell;

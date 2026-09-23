@@ -9,7 +9,7 @@
     <StackPanel Margin="24,20" Spacing="16">
 
       <StackPanel Orientation="Horizontal" Spacing="10">
-        <Button Classes="icon" Command="{Binding BackCommand}" ToolTip.Tip="Zurück">
+        <Button Classes="icon" Command="{Binding BackCommand}" ToolTip.Tip="{Binding BackTooltip}">
           <controls:MIcon Kind="ArrowBack" />
         </Button>
         <Border Classes="chip">

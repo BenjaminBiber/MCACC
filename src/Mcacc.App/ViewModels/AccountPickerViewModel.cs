@@ -32,6 +32,18 @@ public sealed partial class AccountPickerViewModel : PageViewModel
 
     public string AddText => Texts.AddAccount;
 
+    public string RefreshTooltip => Texts.RefreshUsage;
+
+    public string SettingsTooltip => Texts.Settings;
+
+    public string MoreTooltip => Texts.More;
+
+    public string EditText => Texts.Edit;
+
+    public string RemoveText => Texts.Remove;
+
+    public string OpenFolderText => Texts.OpenFolder;
+
     public override async Task ActivateAsync(CancellationToken ct)
     {
         Reload();

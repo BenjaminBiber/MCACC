@@ -34,6 +34,8 @@ public sealed partial class TargetPickerViewModel : PageViewModel
 
     public string AccountName => Account.Name;
 
+    public string BackTooltip => Texts.Back;
+
     public string Initials => AccountTileViewModel.InitialsOf(Account.Name);
 
     public IBrush AvatarBrush => new SolidColorBrush(Color.Parse(Account.Color));

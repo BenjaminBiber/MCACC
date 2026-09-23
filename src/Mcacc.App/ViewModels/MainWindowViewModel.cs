@@ -30,6 +30,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase, IShellPresenter
 
     public bool CanGoBack => Navigator.CanGoBack;
 
+    public string DismissErrorText => Localization.Texts.DismissError;
+
     public void ShowError(string message) => ErrorBanner = message;
 
     [RelayCommand]
