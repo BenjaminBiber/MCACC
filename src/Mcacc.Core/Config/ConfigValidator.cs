@@ -1,9 +1,9 @@
-using System.Text.RegularExpressions;
+using Mcacc.Core.Accounts;
 using Mcacc.Core.Model;
 
 namespace Mcacc.Core.Config;
 
-public static partial class ConfigValidator
+public static class ConfigValidator
 {
     // Null checks guard against hand-edited JSON; the model's annotations describe valid configs only.
     public static (AppConfig Config, IReadOnlyList<string> Repairs) Repair(AppConfig config)
@@ -36,7 +36,7 @@ public static partial class ConfigValidator
             {
                 repairs.Add("Dropped an empty account entry.");
             }
-            else if (account.Id is null || !IdPattern().IsMatch(account.Id))
+            else if (!AccountId.IsValid(account.Id))
             {
                 repairs.Add($"Dropped account with invalid id '{account.Id}'.");
             }
@@ -127,7 +127,4 @@ public static partial class ConfigValidator
 
         return settings;
     }
-
-    [GeneratedRegex(@"^[a-z0-9]+(-[a-z0-9]+)*\z")]
-    private static partial Regex IdPattern();
 }
