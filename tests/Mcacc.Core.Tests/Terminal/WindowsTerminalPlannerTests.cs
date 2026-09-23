@@ -103,12 +103,12 @@ public class WindowsTerminalPlannerTests
     [Fact]
     public void Windows_terminal_escapes_semicolons_in_home_and_script_but_the_direct_shell_does_not()
     {
-        var viaWt = Plan(Wt, WindowsTerminalShell.Auto, AllInstalled).Process.Arguments;
-        var direct = Plan(Pwsh, WindowsTerminalShell.Auto, AllInstalled).Process.Arguments;
+        var viaWt = Plan(Wt, WindowsTerminalShell.Auto, AllInstalled).Process.Arguments.ToArray();
+        var direct = Plan(Pwsh, WindowsTerminalShell.Auto, AllInstalled).Process.Arguments.ToArray();
 
-        viaWt[9].ShouldBe(EscapedHome);
-        viaWt[^1].ShouldBe(EscapedProfileScript);
-        direct[^1].ShouldBe(ProfileScript);
+        viaWt[Array.IndexOf(viaWt, "-d") + 1].ShouldBe(EscapedHome);
+        viaWt[Array.IndexOf(viaWt, "-Command") + 1].ShouldBe(EscapedProfileScript);
+        direct[Array.IndexOf(direct, "-Command") + 1].ShouldBe(ProfileScript);
     }
 
     [Fact]
