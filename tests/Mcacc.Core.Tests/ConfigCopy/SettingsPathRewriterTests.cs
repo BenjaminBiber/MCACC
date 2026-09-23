@@ -165,6 +165,12 @@ public class SettingsPathRewriterTests
     }
 
     [Fact]
+    public void Empty_source_is_refused_instead_of_matching_everywhere()
+    {
+        Should.Throw<ArgumentException>(() => SettingsPathRewriter.Rewrite("\"a\" \"b\"", "", WinTarget, false));
+    }
+
+    [Fact]
     public void Json_without_references_is_returned_unchanged()
     {
         const string json = """{ "model": "opus", "theme": "dark" }""";

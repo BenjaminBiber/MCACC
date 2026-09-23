@@ -6,6 +6,9 @@ using Mcacc.Core.Paths;
 
 namespace Mcacc.Core.Accounts;
 
+/// <remarks>
+/// Every change throws <see cref="InvalidOperationException"/> before touching the disk when the config is read-only.
+/// </remarks>
 public sealed class AccountService
 {
     private readonly IConfigStore _store;
@@ -53,6 +56,8 @@ public sealed class AccountService
     }
 
     /// <exception cref="AccountValidationException">The name is invalid.</exception>
+    /// <exception cref="ArgumentException">The color is invalid.</exception>
+    /// <exception cref="InvalidOperationException">The account is unknown.</exception>
     public Account Update(string id, string name, string color)
     {
         EnsureWritable();
@@ -67,6 +72,7 @@ public sealed class AccountService
         return updated;
     }
 
+    /// <exception cref="InvalidOperationException">The account is the default or unknown, or its data cannot be deleted.</exception>
     public void Remove(string id, bool deleteData)
     {
         EnsureWritable();
