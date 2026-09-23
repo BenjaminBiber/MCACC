@@ -4,7 +4,7 @@ namespace Mcacc.Core.Quoting;
 
 public static class TitleSanitizer
 {
-    public const int MaxLength = 60;
+    private const int MaxLength = 60;
 
     private const string Removed = ";&|<>^%\"'";
 
