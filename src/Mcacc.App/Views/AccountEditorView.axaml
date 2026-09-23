@@ -11,7 +11,7 @@
 
     <StackPanel Spacing="4">
       <TextBlock Classes="caption" Text="{Binding NameLabel}" />
-      <TextBox Text="{Binding Name}" Watermark="{Binding NameWatermark}" />
+      <TextBox Text="{Binding Name}" PlaceholderText="{Binding NameWatermark}" />
       <TextBlock Classes="caption danger"
                  Text="{Binding NameError}"
                  IsVisible="{Binding NameError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />

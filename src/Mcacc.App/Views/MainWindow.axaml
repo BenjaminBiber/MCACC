@@ -5,6 +5,7 @@
         x:Class="Mcacc.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="MCACC"
+        Icon="avares://MCACC/Assets/Icon/mcacc-256.png"
         Width="760" Height="540"
         MinWidth="560" MinHeight="440"
         WindowStartupLocation="CenterScreen"

@@ -1,0 +1,164 @@
+# MCACC — Claude Account Switcher
+
+MCACC startet **Claude Desktop** und **Claude Code** mit dem Account, den du auswählst — ohne
+dich jedes Mal ab- und wieder anzumelden.
+
+Jeder Account bekommt ein eigenes Profil: Claude Desktop startet mit `--user-data-dir`, Claude
+Code mit `CLAUDE_CONFIG_DIR`. Beides zeigt auf einen Ordner unter `~/.mcacc/`. Dein heutiges
+Setup bleibt unangetastet und heißt in MCACC **„Standard“**.
+
+![MCACC – Account-Auswahl](docs/screenshots/account-picker.png)
+
+![MCACC – Zielauswahl](docs/screenshots/target-picker.png)
+
+## Voraussetzungen
+
+- Windows 11 oder macOS 14 (Sonoma) und neuer
+- Claude Desktop, falls du es starten willst
+- Claude Code (`claude` im PATH), falls du es starten willst
+- Zum Selberbauen: .NET SDK 10.0.301 oder neuer
+
+## Installation
+
+### Windows
+
+1. `MCACC-<version>-win-x64.zip` entpacken.
+2. `MCACC.exe` starten.
+
+Beim ersten Start meldet sich **SmartScreen**, weil die Datei nicht signiert ist:
+*Weitere Informationen* → *Trotzdem ausführen*.
+
+Selber bauen:
+
+```powershell
+.\scripts\publish-windows.ps1 -Version 0.1.0
+```
+
+### macOS
+
+Auf dem Mac bauen:
+
+```bash
+./scripts/build-macos.sh --arch arm64 --version 0.1.0
+# oder: --arch universal   (arm64 + x64 in einem Bundle)
+```
+
+Das Ergebnis liegt in `artifacts/MCACC.app`. Es ist nur **ad-hoc signiert**, deshalb beim
+ersten Start entweder Rechtsklick → *Öffnen*, oder einmalig:
+
+```bash
+xattr -dr com.apple.quarantine MCACC.app
+```
+
+## Bedienung
+
+1. **Account wählen.** Jede Kachel zeigt Name, Login-E-Mail und die Nutzungslimits
+   (5 Stunden und Woche). Läuft Claude Desktop gerade mit diesem Account, steht dort „Läuft“.
+2. **Ziel wählen.**
+   - **Claude Desktop** startet die App mit dem Profil des Accounts. Läuft sie schon mit einem
+     anderen Account, fragt MCACC nach und startet sie neu.
+   - **Claude Code** öffnet ein Terminal im Home-Ordner mit gesetztem `CLAUDE_CONFIG_DIR` und
+     ruft `claude` auf. Nach `/exit` bleibt die Shell offen, die Variable bleibt gesetzt.
+
+Nach einem erfolgreichen Start schließt sich MCACC (abschaltbar in den Einstellungen).
+
+### Tastatur
+
+| Taste | Wirkung |
+| --- | --- |
+| Pfeiltasten | Kachel wechseln |
+| Enter | Auswählen |
+| 1 – 9 | Den n-ten Account direkt wählen |
+| D / C | Auf der Zielseite: Desktop bzw. Code |
+| Esc / Backspace | Zurück, auf der ersten Seite: schließen |
+| F2 | Den fokussierten Account umbenennen |
+| Entf | Den fokussierten Account entfernen |
+| Strg/Cmd + N | Neuen Account anlegen |
+| Strg/Cmd + , | Einstellungen |
+
+Der zuletzt genutzte Account und das zuletzt genutzte Ziel sind vorab fokussiert — zweimal
+Enter genügt.
+
+### Accounts anlegen
+
+Beim Anlegen kannst du Einstellungen aus einem vorhandenen Account übernehmen: `CLAUDE.md`,
+`settings.json`, Agents, Skills, Commands, Scripts und die MCP-Server von Claude Desktop.
+**Niemals kopiert** werden `.credentials.json`, `.claude.json`, History, Projekte, Sessions und
+Plugins — der neue Account meldet sich also selbst an.
+
+Die Unteroption *Pfade anpassen* schreibt Verweise in der kopierten `settings.json` vom
+Quellordner auf den neuen Ordner um.
+
+### Accounts entfernen
+
+Standardmäßig verschwindet der Account nur aus der Liste, die Daten bleiben liegen. Mit
+*Daten auch löschen* werden die beiden Profilordner endgültig gelöscht; der Dialog zeigt sie
+vorher an. Läuft Claude Desktop noch mit diesem Account, wird das Löschen abgelehnt. Der
+Account „Standard“ lässt sich nicht entfernen, und seine Daten werden nie gelöscht.
+
+### Einstellungen
+
+- **Terminal für Claude Code** — nur tatsächlich installierte werden angeboten.
+- **Shell im Windows Terminal** — PowerShell 7, Windows PowerShell oder Eingabeaufforderung.
+- **Nach dem Start schließen**
+- **Datenordner** mit Knopf zum Öffnen im Explorer bzw. Finder.
+
+## Datenablage
+
+```
+~/.mcacc/                        (Windows: %USERPROFILE%\.mcacc)
+  config.json                    Accounts und Einstellungen (+ .bak)
+  usage-cache.json               zuletzt bekannte Limits, ohne Tokens
+  profiles/<id>/desktop/         --user-data-dir von Claude Desktop
+  profiles/<id>/claude/          CLAUDE_CONFIG_DIR von Claude Code
+  launch/<id>.cmd | .command     bei jedem Start neu erzeugt
+  logs/mcacc-YYYYMMDD.log        7 Tage; Kommandos und Variablennamen, nie Tokens
+```
+
+Mit der Umgebungsvariablen `MCACC_HOME` lässt sich der Ordner umbiegen — praktisch zum
+Ausprobieren, ohne das echte Setup anzufassen.
+
+## Bekannte Einschränkungen
+
+- **Login über Browser-SSO landet unter Windows möglicherweise im Standardprofil.** Der
+  `claude://`-Deeplink ist systemweit auf Claude Desktop *ohne* Profil-Flag registriert. Wenn
+  der Login im falschen Profil landet: in der App per E-Mail anmelden, oder anmelden, solange
+  keine andere Instanz läuft.
+- **Die Nutzungslimits kommen von einem inoffiziellen Endpunkt** (`/api/oauth/usage`), den auch
+  Claude Code benutzt. Er ist ratenbegrenzt und kann sich jederzeit ändern. MCACC liest das
+  Token nur, erneuert es nie und zeigt bei einem Fehler den letzten bekannten Wert mit
+  Zeitstempel. Ist das Token abgelaufen, hilft ein Start von Claude Code.
+- **Platzbedarf:** Jedes Desktop-Profil lädt eigene claude-code-Binaries und VM-Bundles, also
+  mehrere hundert MB pro Account.
+- **macOS fragt beim ersten Lesen der Limits nach Zugriff auf den Schlüsselbund.** Das ist der
+  normale Weg, an das Token von Claude Code zu kommen; ohne Zustimmung bleiben die Limits leer.
+- **Signatur:** Windows zeigt SmartScreen, macOS Gatekeeper — die Binaries sind nicht signiert
+  bzw. nur ad-hoc signiert.
+- Linux wird nicht unterstützt.
+
+## Entwicklung
+
+```bash
+dotnet build MCACC.slnx
+dotnet test MCACC.slnx
+```
+
+- **Nicht aus dem Code-Tab von Claude Desktop heraus testen.** Dort ist das Dateisystem
+  virtualisiert, und das Beenden von Claude Desktop beendet die Session. Eine eigenständige
+  `claude`-Session im Terminal oder der Start aus Rider bzw. dem Explorer ist der richtige Weg.
+- `MCACC.exe --diagnose` schreibt einen Bericht nach `~/.mcacc/logs/diagnose.txt`: gefundene
+  Installation, Terminals, laufende Instanzen mit PIDs und Profilordner, Pfade je Account. Er
+  enthält keine Tokens und von E-Mail-Adressen nur die Domain.
+- `MCACC_SHOTS=<ordner> dotnet test tests/Mcacc.App.Tests` rendert alle Seiten als PNG.
+- Projektaufbau: `Mcacc.Core` (reine Logik, startet nie Prozesse) · `Mcacc.Platform` (die
+  einzige Stelle mit Process, WMI, libc, Keychain und HTTP) · `Mcacc.App` (Avalonia, MVVM).
+- Spezifikation und Plan liegen unter `docs/superpowers/`, die Spike-Fragen in
+  `docs/spike-checklist.md` und deren Ergebnisse in `docs/spike-results.md`.
+
+## Lizenzen der mitgelieferten Schriften
+
+- **Source Serif 4** (Adobe) — SIL Open Font License 1.1, siehe
+  `src/Mcacc.App/Assets/Fonts/OFL.txt`
+- **Material Icons Round** (Google) — Apache License 2.0, siehe
+  `src/Mcacc.App/Assets/Fonts/LICENSE-material-icons.txt`
+- **Inter** — über das Paket `Avalonia.Fonts.Inter`, SIL Open Font License 1.1

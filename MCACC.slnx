@@ -4,6 +4,9 @@
     <Project Path="src/Mcacc.Core/Mcacc.Core.csproj" />
     <Project Path="src/Mcacc.Platform/Mcacc.Platform.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/IconGen/IconGen.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Mcacc.App.Tests/Mcacc.App.Tests.csproj" />
     <Project Path="tests/Mcacc.Core.Tests/Mcacc.Core.Tests.csproj" />
