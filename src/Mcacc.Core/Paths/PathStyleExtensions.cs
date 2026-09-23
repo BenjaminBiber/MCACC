@@ -9,12 +9,10 @@ public static class PathStyleExtensions
 
     public static char Separator(this PathStyle style) => style == PathStyle.Windows ? '\\' : '/';
 
-    internal static char[] Separators(this PathStyle style) =>
-        style == PathStyle.Windows ? WindowsSeparators : PosixSeparators;
-
     public static string Join(this PathStyle style, params string[] parts)
     {
-        var separators = style.Separators();
+        // Windows also accepts '/', so both are trimmed at the joints there.
+        var separators = style == PathStyle.Windows ? WindowsSeparators : PosixSeparators;
         var result = new StringBuilder();
         foreach (var part in parts)
         {
