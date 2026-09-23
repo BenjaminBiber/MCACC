@@ -14,7 +14,7 @@ public sealed class UsageService(
     IUsageHttp http,
     UsageCache cache,
     AccountPathResolver resolver,
-    TimeProvider? time = null)
+    TimeProvider? time = null) : IUsageProvider
 {
     private static readonly TimeSpan MinimumInterval = TimeSpan.FromSeconds(60);
 

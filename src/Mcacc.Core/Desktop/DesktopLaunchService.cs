@@ -13,7 +13,7 @@ public sealed class DesktopLaunchService(
     AccountPathResolver resolver,
     DesktopInstanceMatcher matcher,
     PlatformInfo platform,
-    TimeProvider? time = null)
+    TimeProvider? time = null) : IDesktopLauncher
 {
     private static readonly TimeSpan WindowsQuitGrace = TimeSpan.FromSeconds(4);
     private static readonly TimeSpan MacQuitGrace = TimeSpan.FromSeconds(8);

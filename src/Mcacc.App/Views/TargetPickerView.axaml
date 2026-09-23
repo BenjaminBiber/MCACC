@@ -1,0 +1,53 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Mcacc.App.ViewModels"
+             xmlns:controls="using:Mcacc.App.Controls"
+             x:Class="Mcacc.App.Views.TargetPickerView"
+             x:DataType="vm:TargetPickerViewModel">
+
+  <ScrollViewer>
+    <StackPanel Margin="24,20" Spacing="16">
+
+      <StackPanel Orientation="Horizontal" Spacing="10">
+        <Button Classes="icon" Command="{Binding BackCommand}" ToolTip.Tip="Zurück">
+          <controls:MIcon Kind="ArrowBack" />
+        </Button>
+        <Border Classes="chip">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Panel Width="20" Height="20">
+              <Ellipse Fill="{Binding AvatarBrush}" />
+              <TextBlock Text="{Binding Initials}"
+                         Foreground="White"
+                         FontSize="10"
+                         FontWeight="SemiBold"
+                         TextAlignment="Center"
+                         VerticalAlignment="Center" />
+            </Panel>
+            <TextBlock Text="{Binding AccountName}" FontSize="12" VerticalAlignment="Center" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+
+      <StackPanel Spacing="4">
+        <TextBlock Classes="h1" Text="{Binding Title}" />
+        <TextBlock Classes="caption" Text="{Binding Subtitle}" />
+      </StackPanel>
+
+      <controls:LaunchTile Name="DesktopTile"
+                          Variant="Target"
+                          IconKind="DesktopWindows"
+                          Title="{Binding DesktopTitle}"
+                          Subtitle="{Binding DesktopSubtitle}"
+                          Command="{Binding LaunchDesktopCommand}" />
+
+      <controls:LaunchTile Name="CodeTile"
+                          Variant="Target"
+                          IconKind="Terminal"
+                          Title="{Binding CodeTitle}"
+                          Subtitle="{Binding CodeSubtitle}"
+                          Command="{Binding LaunchCodeCommand}" />
+
+    </StackPanel>
+  </ScrollViewer>
+
+</UserControl>

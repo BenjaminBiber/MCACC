@@ -9,7 +9,7 @@ namespace Mcacc.Core.Accounts;
 /// <remarks>
 /// Every change throws <see cref="InvalidOperationException"/> before touching the disk when the config is read-only.
 /// </remarks>
-public sealed class AccountService
+public sealed class AccountService : IAccountService
 {
     private readonly IConfigStore _store;
     private readonly McaccPaths _paths;

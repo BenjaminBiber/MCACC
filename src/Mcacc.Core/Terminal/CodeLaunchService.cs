@@ -12,7 +12,7 @@ public sealed class CodeLaunchService(
     LaunchFileWriter writer,
     AccountPathResolver resolver,
     McaccPaths paths,
-    PlatformInfo platform)
+    PlatformInfo platform) : ICodeLauncher
 {
     private const string ClaudeCli = "claude";
 

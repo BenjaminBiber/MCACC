@@ -1,0 +1,81 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Mcacc.App.ViewModels"
+             xmlns:model="using:Mcacc.Core.Model"
+             x:Class="Mcacc.App.Views.AccountEditorView"
+             x:DataType="vm:AccountEditorViewModel">
+
+  <StackPanel Spacing="14">
+    <TextBlock Classes="h2" Text="{Binding Title}" />
+
+    <StackPanel Spacing="4">
+      <TextBlock Classes="caption" Text="{Binding NameLabel}" />
+      <TextBox Text="{Binding Name}" Watermark="{Binding NameWatermark}" />
+      <TextBlock Classes="caption danger"
+                 Text="{Binding NameError}"
+                 IsVisible="{Binding NameError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+    </StackPanel>
+
+    <StackPanel Spacing="6">
+      <TextBlock Classes="caption" Text="{Binding ColorLabel}" />
+      <ItemsControl ItemsSource="{Binding Colors}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel Orientation="Horizontal" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="x:String">
+            <Button Width="28"
+                    Height="28"
+                    Margin="0,0,8,0"
+                    Padding="0"
+                    CornerRadius="14"
+                    BorderThickness="2"
+                    Background="{Binding, Converter={x:Static vm:ColorConverters.ToBrush}}"
+                    Command="{Binding $parent[ItemsControl].((vm:AccountEditorViewModel)DataContext).PickColorCommand}"
+                    CommandParameter="{Binding}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+
+    <StackPanel Spacing="6" IsVisible="{Binding IsCreate}">
+      <TextBlock Classes="caption" Text="{Binding CopyFromLabel}" />
+      <ComboBox ItemsSource="{Binding CopySources}"
+                SelectedItem="{Binding CopySource}"
+                HorizontalAlignment="Stretch">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="model:Account">
+            <TextBlock Text="{Binding Name, FallbackValue='Nichts'}" />
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+
+      <StackPanel Spacing="2" IsVisible="{Binding HasCopySource}">
+        <ItemsControl ItemsSource="{Binding CopyItemsToShow}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:CopyItemViewModel">
+              <CheckBox Content="{Binding Label}"
+                        IsChecked="{Binding IsSelected}"
+                        IsEnabled="{Binding IsAvailable}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <CheckBox Content="{Binding RewritePathsText}"
+                  IsChecked="{Binding RewriteSettingsPaths}"
+                  Margin="20,0,0,0" />
+      </StackPanel>
+    </StackPanel>
+
+    <TextBlock Classes="caption danger"
+               Text="{Binding SubmitError}"
+               IsVisible="{Binding SubmitError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+      <Button Classes="ghost" Content="{Binding CancelText}" Command="{Binding RejectCommand}" />
+      <Button Classes="accent" Content="{Binding SubmitText}" Command="{Binding SubmitCommand}" IsDefault="True" />
+    </StackPanel>
+  </StackPanel>
+
+</UserControl>

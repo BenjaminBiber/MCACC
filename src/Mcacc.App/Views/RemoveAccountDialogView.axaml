@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Mcacc.App.ViewModels"
+             x:Class="Mcacc.App.Views.RemoveAccountDialogView"
+             x:DataType="vm:RemoveAccountDialogViewModel">
+
+  <StackPanel Spacing="14">
+    <TextBlock Classes="h2" Text="{Binding Title}" />
+    <TextBlock Classes="body" Text="{Binding Text}" />
+
+    <CheckBox Content="{Binding DeleteDataText}" IsChecked="{Binding DeleteData}" />
+
+    <StackPanel Spacing="4" IsVisible="{Binding DeleteData}">
+      <ItemsControl ItemsSource="{Binding Folders}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="x:String">
+            <TextBlock Classes="mono" Text="{Binding}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <TextBlock Classes="caption danger" Text="{Binding DeleteWarning}" />
+    </StackPanel>
+
+    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+      <Button Classes="ghost" Content="{Binding CancelText}" Command="{Binding RejectCommand}" />
+      <Button Content="{Binding ConfirmText}"
+              Command="{Binding ConfirmCommand}"
+              IsDefault="True"
+              Classes.accent="{Binding !DeleteData}"
+              Classes.danger="{Binding DeleteData}" />
+    </StackPanel>
+  </StackPanel>
+
+</UserControl>

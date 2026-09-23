@@ -1,0 +1,62 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Mcacc.App.ViewModels"
+             xmlns:controls="using:Mcacc.App.Controls"
+             x:Class="Mcacc.App.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+
+  <ScrollViewer>
+    <StackPanel Margin="24,20" Spacing="18">
+
+      <StackPanel Orientation="Horizontal" Spacing="10">
+        <Button Classes="icon" Command="{Binding BackCommand}" ToolTip.Tip="Zurück">
+          <controls:MIcon Kind="ArrowBack" />
+        </Button>
+        <TextBlock Classes="h1" Text="{Binding Title}" VerticalAlignment="Center" />
+      </StackPanel>
+
+      <StackPanel Spacing="6">
+        <TextBlock Classes="body" Text="{Binding TerminalLabel}" />
+        <ComboBox ItemsSource="{Binding Terminals}"
+                  SelectedItem="{Binding SelectedTerminal}"
+                  HorizontalAlignment="Left"
+                  MinWidth="300">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:TerminalChoice">
+              <TextBlock Text="{Binding Label}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+      </StackPanel>
+
+      <StackPanel Spacing="6" IsVisible="{Binding IsShellVisible}">
+        <TextBlock Classes="body" Text="{Binding ShellLabel}" />
+        <ComboBox ItemsSource="{Binding Shells}"
+                  SelectedItem="{Binding SelectedShell}"
+                  HorizontalAlignment="Left"
+                  MinWidth="300">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:ShellChoice">
+              <TextBlock Text="{Binding Label}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+      </StackPanel>
+
+      <ToggleSwitch Content="{Binding CloseAfterLaunchText}" IsChecked="{Binding CloseAfterLaunch}" />
+
+      <StackPanel Spacing="6">
+        <TextBlock Classes="body" Text="{Binding DataFolderLabel}" />
+        <TextBlock Classes="mono" Text="{Binding DataFolder}" />
+        <Button Classes="ghost"
+                Content="{Binding RevealText}"
+                Command="{Binding RevealDataFolderCommand}"
+                HorizontalAlignment="Left" />
+      </StackPanel>
+
+      <TextBlock Classes="caption muted" Text="{Binding VersionText}" />
+
+    </StackPanel>
+  </ScrollViewer>
+
+</UserControl>

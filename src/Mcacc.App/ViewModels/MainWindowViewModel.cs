@@ -6,7 +6,7 @@ using Mcacc.App.Services;
 namespace Mcacc.App.ViewModels;
 
 /// <summary>The window shell: the current page, the dialog overlay, the busy overlay and the error banner.</summary>
-public sealed partial class MainWindowViewModel : ViewModelBase
+public sealed partial class MainWindowViewModel : ViewModelBase, IShellPresenter
 {
     public MainWindowViewModel(Navigator navigator)
     {

@@ -1,7 +1,31 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Mcacc.App.ViewModels"
+             xmlns:views="using:Mcacc.App.Views"
              x:Class="Mcacc.App.App"
              RequestedThemeVariant="Default">
+
+  <!-- Explicit templates instead of a reflection view locator, so a missing view is a compile error. -->
+  <Application.DataTemplates>
+    <DataTemplate DataType="vm:AccountPickerViewModel">
+      <views:AccountPickerView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:TargetPickerViewModel">
+      <views:TargetPickerView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:SettingsViewModel">
+      <views:SettingsView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:AccountEditorViewModel">
+      <views:AccountEditorView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:ConfirmDialogViewModel">
+      <views:ConfirmDialogView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:RemoveAccountDialogViewModel">
+      <views:RemoveAccountDialogView />
+    </DataTemplate>
+  </Application.DataTemplates>
 
   <Application.Styles>
     <FluentTheme>

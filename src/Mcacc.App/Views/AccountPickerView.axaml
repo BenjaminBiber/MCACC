@@ -1,0 +1,98 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Mcacc.App.ViewModels"
+             xmlns:controls="using:Mcacc.App.Controls"
+             x:Class="Mcacc.App.Views.AccountPickerView"
+             x:DataType="vm:AccountPickerViewModel">
+
+  <ScrollViewer>
+    <StackPanel Margin="24,20" Spacing="16">
+
+      <Grid ColumnDefinitions="*,Auto,Auto">
+        <StackPanel Grid.Column="0" Spacing="4">
+          <TextBlock Classes="h1" Text="{Binding Title}" />
+          <TextBlock Classes="caption" Text="{Binding Subtitle}" />
+        </StackPanel>
+        <Button Grid.Column="1"
+                Classes="icon"
+                Command="{Binding RefreshCommand}"
+                VerticalAlignment="Top"
+                ToolTip.Tip="Limits aktualisieren">
+          <controls:MIcon Kind="Refresh" />
+        </Button>
+        <Button Grid.Column="2"
+                Classes="icon"
+                Command="{Binding OpenSettingsCommand}"
+                VerticalAlignment="Top"
+                ToolTip.Tip="Einstellungen">
+          <controls:MIcon Kind="Settings" />
+        </Button>
+      </Grid>
+
+      <ItemsControl ItemsSource="{Binding Tiles}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel Orientation="Horizontal" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:AccountTileViewModel">
+            <controls:LaunchTile Variant="Account"
+                                 Width="332"
+                                 Margin="0,0,12,12"
+                                 Title="{Binding Name}"
+                                 Subtitle="{Binding Subtitle}"
+                                 Badge="{Binding Badge}"
+                                 AvatarText="{Binding Initials}"
+                                 AvatarBrush="{Binding AvatarBrush}"
+                                 Command="{Binding $parent[ItemsControl].((vm:AccountPickerViewModel)DataContext).SelectCommand}"
+                                 CommandParameter="{Binding}">
+              <controls:LaunchTile.Overlay>
+                <Button Classes="icon" Width="28" Height="28" ToolTip.Tip="Mehr">
+                  <controls:MIcon Kind="MoreVert" FontSize="18" />
+                  <Button.Flyout>
+                    <MenuFlyout>
+                      <MenuItem Header="Bearbeiten"
+                                Command="{Binding $parent[ItemsControl].((vm:AccountPickerViewModel)DataContext).EditCommand}"
+                                CommandParameter="{Binding}" />
+                      <MenuItem Header="Entfernen"
+                                IsVisible="{Binding !IsDefault}"
+                                Command="{Binding $parent[ItemsControl].((vm:AccountPickerViewModel)DataContext).RemoveCommand}"
+                                CommandParameter="{Binding}" />
+                      <MenuItem Header="Ordner öffnen"
+                                Command="{Binding $parent[ItemsControl].((vm:AccountPickerViewModel)DataContext).OpenFolderCommand}"
+                                CommandParameter="{Binding}" />
+                    </MenuFlyout>
+                  </Button.Flyout>
+                </Button>
+              </controls:LaunchTile.Overlay>
+              <controls:LaunchTile.Footer>
+                <StackPanel Spacing="6" Margin="0,4,0,0">
+                  <controls:UsageBar Label="{Binding FiveHour.Label}"
+                                     Value="{Binding FiveHour.Value}"
+                                     ResetText="{Binding FiveHour.ResetText}" />
+                  <controls:UsageBar Label="{Binding SevenDay.Label}"
+                                     Value="{Binding SevenDay.Value}"
+                                     ResetText="{Binding SevenDay.ResetText}" />
+                  <TextBlock Classes="caption muted"
+                             FontSize="11"
+                             Text="{Binding UsageHint}"
+                             IsVisible="{Binding UsageHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                </StackPanel>
+              </controls:LaunchTile.Footer>
+            </controls:LaunchTile>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <controls:LaunchTile Variant="Add"
+                           Width="332"
+                           HorizontalAlignment="Left"
+                           IconKind="Add"
+                           Title="{Binding AddText}"
+                           Command="{Binding AddCommand}" />
+
+    </StackPanel>
+  </ScrollViewer>
+
+</UserControl>
