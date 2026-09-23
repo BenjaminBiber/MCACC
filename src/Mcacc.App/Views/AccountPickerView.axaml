@@ -32,7 +32,7 @@
       <ItemsControl ItemsSource="{Binding Tiles}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
-            <WrapPanel Orientation="Horizontal" />
+            <WrapPanel Orientation="Horizontal" XYFocus.NavigationModes="Enabled" />
           </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>

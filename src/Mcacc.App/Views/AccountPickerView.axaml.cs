@@ -20,9 +20,32 @@ public partial class AccountPickerView : UserControl
             return;
         }
 
-        var tile = this.GetVisualDescendants()
-            .OfType<LaunchTile>()
-            .FirstOrDefault(candidate => ReferenceEquals(candidate.DataContext, model.PreferredTile));
-        tile?.Focus(NavigationMethod.Directional);
+        TileOf(model.PreferredTile)?.Focus(NavigationMethod.Directional);
     }
+
+    /// <summary>F2 and Del act on the focused tile, which only the view knows.</summary>
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+        if (e.Handled || DataContext is not AccountPickerViewModel model)
+        {
+            return;
+        }
+
+        if (e.Key is Key.F2 or Key.Delete && model.OnKeyDown(e.Key, e.KeyModifiers, FocusedTile(model)))
+        {
+            e.Handled = true;
+        }
+    }
+
+    private AccountTileViewModel? FocusedTile(AccountPickerViewModel model) =>
+        this.GetVisualDescendants()
+            .OfType<LaunchTile>()
+            .FirstOrDefault(tile => tile.IsFocused)
+            ?.DataContext as AccountTileViewModel;
+
+    private LaunchTile? TileOf(AccountTileViewModel tile) =>
+        this.GetVisualDescendants()
+            .OfType<LaunchTile>()
+            .FirstOrDefault(candidate => ReferenceEquals(candidate.DataContext, tile));
 }

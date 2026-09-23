@@ -140,7 +140,8 @@ public sealed partial class AccountPickerViewModel : PageViewModel
     [RelayCommand]
     public void OpenSettings() => _services.Navigator.NavigateTo(new SettingsViewModel(_services));
 
-    public override bool OnKeyDown(Key key, KeyModifiers modifiers)
+    /// <param name="focused">The tile the view has focused, for the keys that act on one.</param>
+    public bool OnKeyDown(Key key, KeyModifiers modifiers, AccountTileViewModel? focused)
     {
         var command = modifiers.HasFlag(KeyModifiers.Control) || modifiers.HasFlag(KeyModifiers.Meta);
         switch (key)
@@ -151,6 +152,15 @@ public sealed partial class AccountPickerViewModel : PageViewModel
             case Key.OemComma when command:
                 OpenSettingsCommand.Execute(null);
                 return true;
+            case Key.F2 when focused is not null:
+                EditCommand.Execute(focused);
+                return true;
+            case Key.Delete when focused is { IsDefault: false }:
+                RemoveCommand.Execute(focused);
+                return true;
+            case Key.Escape:
+                _services.Lifetime.Shutdown();
+                return true;
             case >= Key.D1 and <= Key.D9 when !command:
                 Select(Tiles.ElementAtOrDefault(key - Key.D1));
                 return true;
@@ -158,6 +168,8 @@ public sealed partial class AccountPickerViewModel : PageViewModel
                 return false;
         }
     }
+
+    public override bool OnKeyDown(Key key, KeyModifiers modifiers) => OnKeyDown(key, modifiers, focused: null);
 
     private void Reload()
     {

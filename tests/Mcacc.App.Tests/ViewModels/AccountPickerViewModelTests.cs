@@ -177,6 +177,59 @@ public sealed class AccountPickerViewModelTests : IDisposable
     }
 
     [Fact]
+    public void Escape_closes_the_app()
+    {
+        Picker().OnKeyDown(Key.Escape, KeyModifiers.None).ShouldBeTrue();
+
+        _services.Lifetime.Shutdowns.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task F2_edits_the_focused_account()
+    {
+        _services.Dialogs.Answer<AccountEditorViewModel>(editor =>
+        {
+            editor.Name = "Privat neu";
+            editor.SubmitCommand.Execute(null);
+            return editor.Completion.Result;
+        });
+        var picker = Picker();
+
+        picker.OnKeyDown(Key.F2, KeyModifiers.None, picker.Tiles[1]).ShouldBeTrue();
+        await Task.Yield();
+
+        _services.Accounts.Updated.ShouldBe([("privat", "Privat neu", Privat.Color)]);
+    }
+
+    [Fact]
+    public async Task Delete_removes_the_focused_account()
+    {
+        _services.Dialogs.Answer<RemoveAccountDialogViewModel>(_ => new RemoveAccountResult(DeleteData: false));
+        var picker = Picker();
+
+        picker.OnKeyDown(Key.Delete, KeyModifiers.None, picker.Tiles[1]).ShouldBeTrue();
+        await Task.Yield();
+
+        _services.Accounts.Removed.ShouldBe([("privat", false)]);
+    }
+
+    [Fact]
+    public void Delete_leaves_the_default_account_alone()
+    {
+        var picker = Picker();
+
+        picker.OnKeyDown(Key.Delete, KeyModifiers.None, picker.Tiles[0]).ShouldBeFalse();
+
+        _services.Dialogs.Shown.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void F2_without_a_focused_tile_does_nothing()
+    {
+        Picker().OnKeyDown(Key.F2, KeyModifiers.None, focused: null).ShouldBeFalse();
+    }
+
+    [Fact]
     public void Ctrl_comma_opens_the_settings()
     {
         Picker().OnKeyDown(Key.OemComma, KeyModifiers.Control).ShouldBeTrue();
