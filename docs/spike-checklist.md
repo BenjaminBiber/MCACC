@@ -309,6 +309,10 @@ wt.exe -w new new-tab -d "$spike" cmd.exe /k spike.cmd
 **Erwartung:** Beide Varianten öffnen einen Tab mit gesetzter Variable, `claude` startet, die
 Shell bleibt danach offen.
 
+**Strg+C in der cmd-Variante:** In `claude` einmal Strg+C drücken, dann mit doppeltem Strg+C bzw.
+`/exit` beenden. Notieren, ob cmd danach „Batchvorgang abbrechen (J/N)?“ fragt und ob der Prompt
+nach der Antwort sichtbar bleibt.
+
 **`%VAR%`-Expansion:** Prüfen, ob Windows Terminal `%…%` im `-d`-Ordner oder in der Kommandozeile
 selbst expandiert. MCACC übergibt Pfade mit `%` unverändert an `wt` (nur `;` wird als `\;`
 maskiert).

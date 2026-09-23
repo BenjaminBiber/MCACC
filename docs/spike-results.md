@@ -62,6 +62,8 @@ macOS-Version: _____
 
 **`%VAR%`-Expansion:** `-d`-Ordner ☐ expandiert ☐ wörtlich · `-Command`-Skript ☐ expandiert ☐ wörtlich
 
+**Strg+C (cmd-Variante):** Rückfrage „Batchvorgang abbrechen“ ☐ ja ☐ nein · Prompt danach sichtbar ☐ ja ☐ nein
+
 **Entscheidung:**
 
 ### W8 — CLI-Konfigurationsordner
