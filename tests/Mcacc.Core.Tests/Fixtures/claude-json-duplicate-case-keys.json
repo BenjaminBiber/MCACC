@@ -1,0 +1,27 @@
+{
+  "numStartups": 412,
+  "installMethod": "winget",
+  "projects": {
+    "C:/Users/max/RiderProjects/Azura": {
+      "allowedTools": [],
+      "history": [{ "display": "was macht der planner", "pastedContents": {} }]
+    },
+    "C:/Users/max/RiderProjects/AZURA": {
+      "allowedTools": ["Bash(git status)"],
+      "history": []
+    },
+    "C:/Users/max/RiderProjects/azura": {
+      "allowedTools": [],
+      "history": []
+    }
+  },
+  "oauthAccount": {
+    "accountUuid": "00000000-0000-0000-0000-000000000001",
+    "emailAddress": "max.muster@example.com",
+    "organizationUuid": "00000000-0000-0000-0000-000000000002",
+    "organizationName": "Example GmbH",
+    "displayName": "Benjamin Biber",
+    "organizationRole": "admin"
+  },
+  "hasCompletedOnboarding": true
+}
