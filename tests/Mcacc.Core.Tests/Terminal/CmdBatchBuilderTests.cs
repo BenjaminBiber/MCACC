@@ -22,7 +22,7 @@ public class CmdBatchBuilderTests
             @"set ""CLAUDE_CONFIG_DIR=C:\Users\Jö O'Neil’s 100%%;$x\.mcacc\profiles\privat\claude""",
             @"cd /d ""C:\Users\Jö O'Neil’s 100%%;$x""",
             "title Claude Code · Privat",
-            "claude",
+            "call claude",
             "@echo on"));
     }
 

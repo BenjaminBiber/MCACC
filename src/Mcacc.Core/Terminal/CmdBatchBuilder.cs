@@ -17,7 +17,8 @@ public static class CmdBatchBuilder
             $"set \"{EnvironmentScrub.ClaudeConfigDirVariable}={configDir}\"",
             $"cd /d \"{BatchEscaping.ForSetValue(req.HomeDir)}\"",
             $"title {req.Title}",
-            "claude",
+            // call, so an npm claude.cmd shim returns here instead of ending this batch file.
+            "call claude",
             // cmd /k keeps the window open; without this its prompt would stay hidden.
             "@echo on",
         ];
