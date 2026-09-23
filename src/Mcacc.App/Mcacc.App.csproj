@@ -5,6 +5,8 @@
     <AssemblyName>MCACC</AssemblyName>
     <RootNamespace>Mcacc.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- LibraryImport for AttachConsole, so the diagnose switch can print to the shell that started this windowed app. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>

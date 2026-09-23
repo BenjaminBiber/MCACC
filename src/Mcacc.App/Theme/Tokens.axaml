@@ -1,0 +1,83 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!--
+    Both the colors and the brushes live inside the theme dictionaries. A single brush outside them could only
+    ever hold one variant's color, which would make the light and dark palettes indistinguishable.
+  -->
+  <ResourceDictionary.ThemeDictionaries>
+
+    <ResourceDictionary x:Key="Light">
+      <Color x:Key="Mcacc.BgColor">#FAF9F5</Color>
+      <Color x:Key="Mcacc.SurfaceColor">#FFFFFF</Color>
+      <Color x:Key="Mcacc.SurfaceHoverColor">#F5F4EE</Color>
+      <Color x:Key="Mcacc.BorderColor">#E8E6DC</Color>
+      <Color x:Key="Mcacc.BorderStrongColor">#D1CFC5</Color>
+      <Color x:Key="Mcacc.TextColor">#141413</Color>
+      <Color x:Key="Mcacc.TextSecondaryColor">#5E5D59</Color>
+      <Color x:Key="Mcacc.TextTertiaryColor">#87867F</Color>
+      <Color x:Key="Mcacc.AccentColor">#D97757</Color>
+      <Color x:Key="Mcacc.AccentFillColor">#C96442</Color>
+      <Color x:Key="Mcacc.AccentSubtleColor">#F5E1D8</Color>
+      <Color x:Key="Mcacc.DangerColor">#B53333</Color>
+      <Color x:Key="Mcacc.ScrimColor">#66000000</Color>
+
+      <SolidColorBrush x:Key="Mcacc.Bg" Color="#FAF9F5" />
+      <SolidColorBrush x:Key="Mcacc.Surface" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="Mcacc.SurfaceHover" Color="#F5F4EE" />
+      <SolidColorBrush x:Key="Mcacc.Border" Color="#E8E6DC" />
+      <SolidColorBrush x:Key="Mcacc.BorderStrong" Color="#D1CFC5" />
+      <SolidColorBrush x:Key="Mcacc.Text" Color="#141413" />
+      <SolidColorBrush x:Key="Mcacc.TextSecondary" Color="#5E5D59" />
+      <SolidColorBrush x:Key="Mcacc.TextTertiary" Color="#87867F" />
+      <SolidColorBrush x:Key="Mcacc.Accent" Color="#D97757" />
+      <SolidColorBrush x:Key="Mcacc.AccentFill" Color="#C96442" />
+      <SolidColorBrush x:Key="Mcacc.AccentSubtle" Color="#F5E1D8" />
+      <SolidColorBrush x:Key="Mcacc.Danger" Color="#B53333" />
+      <SolidColorBrush x:Key="Mcacc.Scrim" Color="#66000000" />
+    </ResourceDictionary>
+
+    <ResourceDictionary x:Key="Dark">
+      <Color x:Key="Mcacc.BgColor">#262624</Color>
+      <Color x:Key="Mcacc.SurfaceColor">#30302E</Color>
+      <Color x:Key="Mcacc.SurfaceHoverColor">#3A3A37</Color>
+      <Color x:Key="Mcacc.BorderColor">#3E3E38</Color>
+      <Color x:Key="Mcacc.BorderStrongColor">#4A4945</Color>
+      <Color x:Key="Mcacc.TextColor">#FAF9F5</Color>
+      <Color x:Key="Mcacc.TextSecondaryColor">#C2C0B6</Color>
+      <Color x:Key="Mcacc.TextTertiaryColor">#9C9A92</Color>
+      <Color x:Key="Mcacc.AccentColor">#D97757</Color>
+      <Color x:Key="Mcacc.AccentFillColor">#D97757</Color>
+      <Color x:Key="Mcacc.AccentSubtleColor">#4A3129</Color>
+      <Color x:Key="Mcacc.DangerColor">#E5716F</Color>
+      <Color x:Key="Mcacc.ScrimColor">#99000000</Color>
+
+      <SolidColorBrush x:Key="Mcacc.Bg" Color="#262624" />
+      <SolidColorBrush x:Key="Mcacc.Surface" Color="#30302E" />
+      <SolidColorBrush x:Key="Mcacc.SurfaceHover" Color="#3A3A37" />
+      <SolidColorBrush x:Key="Mcacc.Border" Color="#3E3E38" />
+      <SolidColorBrush x:Key="Mcacc.BorderStrong" Color="#4A4945" />
+      <SolidColorBrush x:Key="Mcacc.Text" Color="#FAF9F5" />
+      <SolidColorBrush x:Key="Mcacc.TextSecondary" Color="#C2C0B6" />
+      <SolidColorBrush x:Key="Mcacc.TextTertiary" Color="#9C9A92" />
+      <SolidColorBrush x:Key="Mcacc.Accent" Color="#D97757" />
+      <SolidColorBrush x:Key="Mcacc.AccentFill" Color="#D97757" />
+      <SolidColorBrush x:Key="Mcacc.AccentSubtle" Color="#4A3129" />
+      <SolidColorBrush x:Key="Mcacc.Danger" Color="#E5716F" />
+      <SolidColorBrush x:Key="Mcacc.Scrim" Color="#99000000" />
+    </ResourceDictionary>
+
+  </ResourceDictionary.ThemeDictionaries>
+
+  <x:Double x:Key="Mcacc.TileRadius">14</x:Double>
+  <CornerRadius x:Key="Mcacc.TileCornerRadius">14</CornerRadius>
+  <CornerRadius x:Key="Mcacc.ControlCornerRadius">8</CornerRadius>
+
+  <!-- Fonts live here, not in Typography.axaml: a style file's own resources are not visible to the other files. -->
+  <FontFamily x:Key="Mcacc.SerifDisplay">fonts:Mcacc#Source Serif 4 Display</FontFamily>
+  <FontFamily x:Key="Mcacc.Serif">fonts:Mcacc#Source Serif 4</FontFamily>
+  <FontFamily x:Key="Mcacc.Icons">fonts:Mcacc#Material Icons Round</FontFamily>
+  <FontFamily x:Key="Mcacc.Ui">fonts:Inter#Inter</FontFamily>
+  <FontFamily x:Key="ContentControlThemeFontFamily">fonts:Inter#Inter</FontFamily>
+
+</ResourceDictionary>

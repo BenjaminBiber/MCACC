@@ -1,0 +1,39 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:controls="using:Mcacc.App.Controls">
+
+  <ControlTheme x:Key="{x:Type controls:UsageBar}" TargetType="controls:UsageBar">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <StackPanel Spacing="3">
+          <TextBlock Text="{TemplateBinding Text}"
+                     FontSize="11"
+                     Foreground="{DynamicResource Mcacc.TextTertiary}"
+                     TextWrapping="NoWrap" />
+          <Border Height="4"
+                  CornerRadius="2"
+                  Background="{DynamicResource Mcacc.SurfaceHover}"
+                  BorderBrush="{DynamicResource Mcacc.Border}"
+                  BorderThickness="1">
+            <!-- The fill width follows the fraction of the track, which the Grid's star column expresses. -->
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="{TemplateBinding Fraction, Converter={x:Static controls:FractionConverter.Star}}" />
+                <ColumnDefinition Width="{TemplateBinding Fraction, Converter={x:Static controls:FractionConverter.Rest}}" />
+              </Grid.ColumnDefinitions>
+              <Border Name="PART_Fill"
+                      Grid.Column="0"
+                      CornerRadius="2"
+                      Background="{DynamicResource Mcacc.Accent}" />
+            </Grid>
+          </Border>
+        </StackPanel>
+      </ControlTemplate>
+    </Setter>
+
+    <Style Selector="^[IsWarning=True] /template/ Border#PART_Fill">
+      <Setter Property="Background" Value="{DynamicResource Mcacc.Danger}" />
+    </Style>
+  </ControlTheme>
+
+</ResourceDictionary>

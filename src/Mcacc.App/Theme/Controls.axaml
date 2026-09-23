@@ -1,0 +1,136 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <Style Selector="Button">
+    <Setter Property="CornerRadius" Value="{DynamicResource Mcacc.ControlCornerRadius}" />
+    <Setter Property="FontFamily" Value="{DynamicResource Mcacc.Ui}" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="Padding" Value="14,8" />
+  </Style>
+
+  <Style Selector="Button.accent">
+    <Setter Property="Background" Value="{DynamicResource Mcacc.AccentFill}" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Mcacc.Accent}" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Mcacc.AccentFill}" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="^:disabled /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Mcacc.BorderStrong}" />
+      <Setter Property="Foreground" Value="{DynamicResource Mcacc.TextTertiary}" />
+    </Style>
+  </Style>
+
+  <Style Selector="Button.danger">
+    <Setter Property="Background" Value="{DynamicResource Mcacc.Danger}" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Mcacc.Danger}" />
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="Opacity" Value="0.88" />
+    </Style>
+    <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Mcacc.Danger}" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+  </Style>
+
+  <Style Selector="Button.ghost">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Mcacc.Text}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Mcacc.Border}" />
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Mcacc.SurfaceHover}" />
+      <Setter Property="Foreground" Value="{DynamicResource Mcacc.Text}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Mcacc.BorderStrong}" />
+    </Style>
+    <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Mcacc.SurfaceHover}" />
+      <Setter Property="Foreground" Value="{DynamicResource Mcacc.Text}" />
+    </Style>
+  </Style>
+
+  <Style Selector="Button.icon">
+    <Setter Property="Width" Value="32" />
+    <Setter Property="Height" Value="32" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource Mcacc.Accent}" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Mcacc.SurfaceHover}" />
+      <Setter Property="Foreground" Value="{DynamicResource Mcacc.Accent}" />
+    </Style>
+    <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Mcacc.SurfaceHover}" />
+      <Setter Property="Foreground" Value="{DynamicResource Mcacc.Accent}" />
+    </Style>
+  </Style>
+
+  <Style Selector=":is(Button):focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="BorderBrush" Value="{DynamicResource Mcacc.Accent}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+
+  <Style Selector="TextBox">
+    <Setter Property="CornerRadius" Value="{DynamicResource Mcacc.ControlCornerRadius}" />
+    <Setter Property="FontFamily" Value="{DynamicResource Mcacc.Ui}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Mcacc.BorderStrong}" />
+    <Setter Property="Background" Value="{DynamicResource Mcacc.Surface}" />
+    <Setter Property="Foreground" Value="{DynamicResource Mcacc.Text}" />
+    <Setter Property="Padding" Value="10,8" />
+  </Style>
+
+  <Style Selector="ComboBox">
+    <Setter Property="CornerRadius" Value="{DynamicResource Mcacc.ControlCornerRadius}" />
+    <Setter Property="FontFamily" Value="{DynamicResource Mcacc.Ui}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Mcacc.BorderStrong}" />
+    <Setter Property="Background" Value="{DynamicResource Mcacc.Surface}" />
+    <Setter Property="Foreground" Value="{DynamicResource Mcacc.Text}" />
+  </Style>
+
+  <Style Selector="CheckBox">
+    <Setter Property="FontFamily" Value="{DynamicResource Mcacc.Ui}" />
+    <Setter Property="Foreground" Value="{DynamicResource Mcacc.Text}" />
+  </Style>
+
+  <Style Selector="ToggleSwitch">
+    <Setter Property="FontFamily" Value="{DynamicResource Mcacc.Ui}" />
+    <Setter Property="Foreground" Value="{DynamicResource Mcacc.Text}" />
+  </Style>
+
+  <Style Selector="Border.card">
+    <Setter Property="Background" Value="{DynamicResource Mcacc.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Mcacc.Border}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Mcacc.TileCornerRadius}" />
+    <Setter Property="Padding" Value="16" />
+  </Style>
+
+  <Style Selector="Border.banner">
+    <Setter Property="Background" Value="{DynamicResource Mcacc.AccentSubtle}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Mcacc.Accent}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Mcacc.ControlCornerRadius}" />
+    <Setter Property="Padding" Value="12,8" />
+  </Style>
+
+  <Style Selector="Border.chip">
+    <Setter Property="Background" Value="{DynamicResource Mcacc.SurfaceHover}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Mcacc.Border}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="Padding" Value="8,4" />
+  </Style>
+
+</Styles>

@@ -1,0 +1,50 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+
+  <Style Selector="TextBlock">
+    <Setter Property="FontFamily" Value="{DynamicResource Mcacc.Ui}" />
+    <Setter Property="Foreground" Value="{DynamicResource Mcacc.Text}" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+
+  <Style Selector="TextBlock.h1">
+    <Setter Property="FontFamily" Value="{DynamicResource Mcacc.SerifDisplay}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontSize" Value="30" />
+    <Setter Property="LetterSpacing" Value="-0.5" />
+    <Setter Property="Foreground" Value="{DynamicResource Mcacc.Text}" />
+  </Style>
+
+  <Style Selector="TextBlock.h2">
+    <Setter Property="FontFamily" Value="{DynamicResource Mcacc.Serif}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontSize" Value="20" />
+    <Setter Property="Foreground" Value="{DynamicResource Mcacc.Text}" />
+  </Style>
+
+  <Style Selector="TextBlock.body">
+    <Setter Property="FontSize" Value="14" />
+  </Style>
+
+  <Style Selector="TextBlock.caption">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource Mcacc.TextSecondary}" />
+  </Style>
+
+  <Style Selector="TextBlock.muted">
+    <Setter Property="Foreground" Value="{DynamicResource Mcacc.TextTertiary}" />
+  </Style>
+
+  <Style Selector="TextBlock.mono">
+    <Setter Property="FontFamily" Value="Consolas, Menlo, monospace" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource Mcacc.TextTertiary}" />
+  </Style>
+
+  <Style Selector="TextBlock.danger">
+    <Setter Property="Foreground" Value="{DynamicResource Mcacc.Danger}" />
+  </Style>
+
+</Styles>

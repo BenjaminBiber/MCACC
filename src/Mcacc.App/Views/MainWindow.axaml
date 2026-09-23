@@ -1,13 +1,67 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Mcacc.App.ViewModels"
+        xmlns:controls="using:Mcacc.App.Controls"
         x:Class="Mcacc.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
         Title="MCACC"
         Width="760" Height="540"
         MinWidth="560" MinHeight="440"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource Mcacc.Bg}">
 
-  <TextBlock Text="MCACC"
-             HorizontalAlignment="Center"
-             VerticalAlignment="Center" />
+  <Panel>
+
+    <DockPanel LastChildFill="True">
+
+      <Border DockPanel.Dock="Top"
+              Classes="banner"
+              Margin="20,16,20,0"
+              IsVisible="{Binding ErrorBanner, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+          <controls:MIcon Grid.Column="0" Kind="Info" FontSize="18" Foreground="{DynamicResource Mcacc.Accent}" />
+          <TextBlock Grid.Column="1"
+                     Text="{Binding ErrorBanner}"
+                     VerticalAlignment="Center"
+                     FontSize="13" />
+          <Button Grid.Column="2"
+                  Classes="icon"
+                  Command="{Binding DismissErrorCommand}"
+                  ToolTip.Tip="Schließen">
+            <controls:MIcon Kind="Close" FontSize="16" />
+          </Button>
+        </Grid>
+      </Border>
+
+      <TransitioningContentControl Content="{Binding Navigator.CurrentPage}">
+        <TransitioningContentControl.PageTransition>
+          <CrossFade Duration="0:0:0.15" />
+        </TransitioningContentControl.PageTransition>
+      </TransitioningContentControl>
+
+    </DockPanel>
+
+    <!-- Dialog overlay: a scrim over the whole window with one centered card. -->
+    <Panel Name="PART_DialogLayer"
+           Background="{DynamicResource Mcacc.Scrim}"
+           IsVisible="{Binding Dialog, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <Border Classes="card"
+              MaxWidth="440"
+              Margin="24"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center">
+        <ContentControl Content="{Binding Dialog}" />
+      </Border>
+    </Panel>
+
+    <Panel Name="PART_BusyLayer"
+           Background="{DynamicResource Mcacc.Scrim}"
+           IsVisible="{Binding IsBusy}">
+      <Border Classes="card" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="24,18">
+        <TextBlock Text="{Binding BusyText}" FontSize="14" />
+      </Border>
+    </Panel>
+
+  </Panel>
 
 </Window>

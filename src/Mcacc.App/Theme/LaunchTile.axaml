@@ -1,0 +1,165 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:controls="using:Mcacc.App.Controls">
+
+  <ControlTheme x:Key="{x:Type controls:LaunchTile}" TargetType="controls:LaunchTile">
+    <Setter Property="Background" Value="{DynamicResource Mcacc.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Mcacc.Border}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Mcacc.TileCornerRadius}" />
+    <Setter Property="Padding" Value="16" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Top" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_Border"
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
+                CornerRadius="{TemplateBinding CornerRadius}"
+                Padding="{TemplateBinding Padding}">
+          <Panel>
+            <!-- Account and Add tiles stack their rows; the Target tile puts its icon beside the text. -->
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="8">
+
+              <Ellipse Name="PART_Avatar"
+                       Grid.Row="0" Grid.Column="0"
+                       Width="40" Height="40"
+                       VerticalAlignment="Top"
+                       Fill="{TemplateBinding AvatarBrush}"
+                       IsVisible="False" />
+
+              <TextBlock Name="PART_Initials"
+                         Grid.Row="0" Grid.Column="0"
+                         Width="40" Height="40"
+                         VerticalAlignment="Top"
+                         Text="{TemplateBinding AvatarText}"
+                         Foreground="White"
+                         FontSize="16"
+                         FontWeight="SemiBold"
+                         TextAlignment="Center"
+                         Padding="0,9,0,0"
+                         IsVisible="False" />
+
+              <Border Name="PART_IconBox"
+                      Grid.Row="0" Grid.Column="0"
+                      Width="42" Height="42"
+                      VerticalAlignment="Top"
+                      Background="{DynamicResource Mcacc.AccentSubtle}"
+                      CornerRadius="10"
+                      IsVisible="False">
+                <controls:MIcon Kind="{TemplateBinding IconKind}"
+                                FontSize="22"
+                                Foreground="{DynamicResource Mcacc.Accent}" />
+              </Border>
+
+              <StackPanel Grid.Row="0" Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="{TemplateBinding Title}"
+                             FontSize="15"
+                             FontWeight="SemiBold"
+                             VerticalAlignment="Center"
+                             Foreground="{DynamicResource Mcacc.Text}" />
+                  <Border Classes="chip"
+                          Padding="6,1"
+                          VerticalAlignment="Center"
+                          IsVisible="{TemplateBinding Badge, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <TextBlock Text="{TemplateBinding Badge}"
+                               FontSize="11"
+                               Foreground="{DynamicResource Mcacc.Accent}" />
+                  </Border>
+                </StackPanel>
+                <TextBlock Text="{TemplateBinding Subtitle}"
+                           FontSize="12"
+                           Foreground="{DynamicResource Mcacc.TextSecondary}"
+                           IsVisible="{TemplateBinding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              </StackPanel>
+
+              <ContentPresenter Name="PART_Footer"
+                                Grid.Row="1" Grid.Column="1"
+                                Content="{TemplateBinding Footer}"
+                                IsVisible="{TemplateBinding Footer, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </Grid>
+
+            <!-- Border has no dash property, so the Add tile draws its dashed outline as a shape. -->
+            <Rectangle Name="PART_Dash"
+                       RadiusX="{DynamicResource Mcacc.TileRadius}"
+                       RadiusY="{DynamicResource Mcacc.TileRadius}"
+                       Stroke="{DynamicResource Mcacc.BorderStrong}"
+                       StrokeThickness="1"
+                       StrokeDashArray="4,3"
+                       Margin="-16"
+                       IsVisible="False" />
+
+            <ContentPresenter Name="PART_Overlay"
+                              HorizontalAlignment="Right"
+                              VerticalAlignment="Top"
+                              Content="{TemplateBinding Overlay}" />
+          </Panel>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+
+    <Style Selector="^[Variant=Account] /template/ Ellipse#PART_Avatar">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^[Variant=Account] /template/ TextBlock#PART_Initials">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^[Variant=Target] /template/ Border#PART_IconBox">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+
+    <Style Selector="^[Variant=Add]">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Mcacc.BorderStrong}" />
+      <Setter Property="Foreground" Value="{DynamicResource Mcacc.TextSecondary}" />
+    </Style>
+    <Style Selector="^[Variant=Add] /template/ Border#PART_Border">
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="^[Variant=Add] /template/ Rectangle#PART_Dash">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^[Variant=Add] /template/ Border#PART_IconBox">
+      <Setter Property="IsVisible" Value="True" />
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="^[Variant=Add]:pointerover /template/ Rectangle#PART_Dash">
+      <Setter Property="Stroke" Value="{DynamicResource Mcacc.Accent}" />
+    </Style>
+
+    <Style Selector="^:pointerover">
+      <Setter Property="BorderBrush" Value="{DynamicResource Mcacc.Accent}" />
+      <Setter Property="RenderTransform" Value="translateY(-2px)" />
+    </Style>
+
+    <Style Selector="^:pressed">
+      <Setter Property="RenderTransform" Value="scale(0.98)" />
+    </Style>
+
+    <Style Selector="^:focus-visible /template/ Border#PART_Border">
+      <Setter Property="BorderBrush" Value="{DynamicResource Mcacc.Accent}" />
+      <Setter Property="BorderThickness" Value="2" />
+    </Style>
+
+    <Style Selector="^[IsHighlighted=True]">
+      <Setter Property="BorderBrush" Value="{DynamicResource Mcacc.Accent}" />
+    </Style>
+
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="0.5" />
+      <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+  </ControlTheme>
+
+</ResourceDictionary>
