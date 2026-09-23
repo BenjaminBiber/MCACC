@@ -45,12 +45,15 @@
     <Panel Name="PART_DialogLayer"
            Background="{DynamicResource Mcacc.Scrim}"
            IsVisible="{Binding Dialog, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <!-- A tall dialog scrolls inside the card instead of pushing its buttons out of the window. -->
       <Border Classes="card"
               MaxWidth="440"
               Margin="24"
               HorizontalAlignment="Center"
               VerticalAlignment="Center">
-        <ContentControl Content="{Binding Dialog}" />
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <ContentControl Content="{Binding Dialog}" />
+        </ScrollViewer>
       </Border>
     </Panel>
 

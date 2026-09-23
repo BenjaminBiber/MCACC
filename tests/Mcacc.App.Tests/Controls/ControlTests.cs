@@ -1,6 +1,9 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
+
 using Avalonia.Headless.XUnit;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using Mcacc.App.Controls;
@@ -142,6 +145,52 @@ public class ControlTests
     {
         new UsageBar { Label = "5h", Value = 140 }.Fraction.ShouldBe(1);
     }
+
+    [AvaloniaFact]
+    public void A_usage_bar_below_the_threshold_fills_in_the_accent_color()
+    {
+        var bar = new UsageBar { Label = "5h", Value = 42 };
+
+        var window = Show(bar);
+
+        FillBrush(bar).ShouldBe(Brush("Mcacc.Accent"));
+    }
+
+    [AvaloniaFact]
+    public void A_usage_bar_at_the_threshold_fills_in_the_danger_color()
+    {
+        var bar = new UsageBar { Label = "5h", Value = 94 };
+
+        var window = Show(bar);
+
+        FillBrush(bar).ShouldBe(Brush("Mcacc.Danger"));
+    }
+
+    [AvaloniaFact]
+    public void A_focused_tile_shows_the_accent_ring_instead_of_the_default_adorner()
+    {
+        var tile = new LaunchTile { Title = "Privat", Variant = LaunchTileVariant.Account };
+        var window = Show(tile);
+        // Without the transition the style value is readable right away instead of 120 ms later.
+        tile.Transitions = null;
+
+        tile.Focus(NavigationMethod.Tab);
+        window.UpdateLayout();
+
+        tile.IsFocused.ShouldBeTrue();
+
+        tile.BorderBrush.ShouldBe(Brush("Mcacc.Accent"));
+        tile.BorderThickness.Top.ShouldBe(2);
+        tile.FocusAdorner.ShouldBeNull();
+    }
+
+    private static IBrush? FillBrush(UsageBar bar) => bar.GetVisualDescendants()
+        .OfType<Border>()
+        .Single(border => border.Name == "PART_Fill")
+        .Background;
+
+    private static IBrush Brush(string key) =>
+        (IBrush)Application.Current!.FindResource(Application.Current!.ActualThemeVariant, key)!;
 
     [AvaloniaFact]
     public void An_icon_without_a_kind_draws_nothing()

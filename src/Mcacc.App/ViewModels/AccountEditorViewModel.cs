@@ -20,9 +20,11 @@ public sealed partial class AccountEditorViewModel : DialogViewModel<Account>
         _services = services;
         _edited = edited;
         Name = edited?.Name ?? "";
-        SelectedColor = edited?.Color
-                        ?? AccountPalette.NextFreeColor(services.Accounts.Config.Accounts.Select(a => a.Color));
-        Colors = AccountPalette.Colors;
+        var color = edited?.Color
+                    ?? AccountPalette.NextFreeColor(services.Accounts.Config.Accounts.Select(a => a.Color));
+        // The swatches exist before the property is set, because setting it marks the selected one.
+        Swatches = [.. AccountPalette.Colors.Select(c => new ColorSwatchViewModel(c, c == color))];
+        SelectedColor = color;
         CopySources = edited is null
             ? [null, .. services.Accounts.Config.Accounts]
             : [];
@@ -50,7 +52,7 @@ public sealed partial class AccountEditorViewModel : DialogViewModel<Account>
 
     public string CancelText => Texts.Cancel;
 
-    public IReadOnlyList<string> Colors { get; }
+    public IReadOnlyList<ColorSwatchViewModel> Swatches { get; }
 
     /// <summary>Null stands for "Nichts"; it is only ever offered while creating.</summary>
     public IReadOnlyList<Account?> CopySources { get; }
@@ -127,6 +129,14 @@ public sealed partial class AccountEditorViewModel : DialogViewModel<Account>
     [RelayCommand]
     public void Reject() => Cancel();
 
+    partial void OnSelectedColorChanged(string value)
+    {
+        foreach (var swatch in Swatches)
+        {
+            swatch.IsSelected = swatch.Color == value;
+        }
+    }
+
     partial void OnCopySourceChanged(Account? value)
     {
         OnPropertyChanged(nameof(HasCopySource));
@@ -200,4 +210,13 @@ public sealed partial class CopyItemViewModel : ViewModelBase
         CopyItem.DesktopMcpConfig => Texts.CopyDesktopMcp,
         _ => throw new ArgumentOutOfRangeException(nameof(item), item, null),
     };
+}
+
+/// <summary>One color swatch of the palette; the selected one carries a check mark.</summary>
+public sealed partial class ColorSwatchViewModel(string color, bool isSelected) : ViewModelBase
+{
+    public string Color { get; } = color;
+
+    [ObservableProperty]
+    public partial bool IsSelected { get; set; } = isSelected;
 }

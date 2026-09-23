@@ -10,5 +10,5 @@ namespace Mcacc.App.Tests;
 public static class TestAppBuilder
 {
     public static AppBuilder BuildAvaloniaApp() => Mcacc.App.Program.BuildAvaloniaApp()
-        .UseHeadless(new AvaloniaHeadlessPlatformOptions());
+        .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false });
 }

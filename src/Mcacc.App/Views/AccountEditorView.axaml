@@ -1,11 +1,12 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Mcacc.App.ViewModels"
+             xmlns:controls="using:Mcacc.App.Controls"
              xmlns:model="using:Mcacc.Core.Model"
              x:Class="Mcacc.App.Views.AccountEditorView"
              x:DataType="vm:AccountEditorViewModel">
 
-  <StackPanel Spacing="14">
+  <StackPanel Spacing="12">
     <TextBlock Classes="h2" Text="{Binding Title}" />
 
     <StackPanel Spacing="4">
@@ -18,23 +19,29 @@
 
     <StackPanel Spacing="6">
       <TextBlock Classes="caption" Text="{Binding ColorLabel}" />
-      <ItemsControl ItemsSource="{Binding Colors}">
+      <ItemsControl ItemsSource="{Binding Swatches}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
             <WrapPanel Orientation="Horizontal" />
           </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
-          <DataTemplate x:DataType="x:String">
+          <DataTemplate x:DataType="vm:ColorSwatchViewModel">
             <Button Width="28"
                     Height="28"
                     Margin="0,0,8,0"
                     Padding="0"
                     CornerRadius="14"
-                    BorderThickness="2"
-                    Background="{Binding, Converter={x:Static vm:ColorConverters.ToBrush}}"
+                    BorderThickness="0"
+                    Background="{Binding Color, Converter={x:Static vm:ColorConverters.ToBrush}}"
                     Command="{Binding $parent[ItemsControl].((vm:AccountEditorViewModel)DataContext).PickColorCommand}"
-                    CommandParameter="{Binding}" />
+                    CommandParameter="{Binding Color}"
+                    ToolTip.Tip="{Binding Color}">
+              <controls:MIcon Kind="Check"
+                              FontSize="16"
+                              Foreground="White"
+                              IsVisible="{Binding IsSelected}" />
+            </Button>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
@@ -53,15 +60,19 @@
       </ComboBox>
 
       <StackPanel Spacing="2" IsVisible="{Binding HasCopySource}">
-        <ItemsControl ItemsSource="{Binding CopyItemsToShow}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:CopyItemViewModel">
-              <CheckBox Content="{Binding Label}"
-                        IsChecked="{Binding IsSelected}"
-                        IsEnabled="{Binding IsAvailable}" />
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
+        <!-- Bounded, so the dialog's buttons stay visible however many items the source offers. -->
+        <ScrollViewer MaxHeight="112" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <ItemsControl ItemsSource="{Binding CopyItemsToShow}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:CopyItemViewModel">
+                <CheckBox Content="{Binding Label}"
+                          IsChecked="{Binding IsSelected}"
+                          IsEnabled="{Binding IsAvailable}"
+                          MinHeight="24" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
         <CheckBox Content="{Binding RewritePathsText}"
                   IsChecked="{Binding RewriteSettingsPaths}"
                   Margin="20,0,0,0" />

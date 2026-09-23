@@ -43,7 +43,10 @@
         </ComboBox>
       </StackPanel>
 
-      <ToggleSwitch Content="{Binding CloseAfterLaunchText}" IsChecked="{Binding CloseAfterLaunch}" />
+      <!-- The label sits beside the knob; the Fluent default would print an English On/Off there. -->
+      <ToggleSwitch IsChecked="{Binding CloseAfterLaunch}"
+                    OnContent="{Binding CloseAfterLaunchText}"
+                    OffContent="{Binding CloseAfterLaunchText}" />
 
       <StackPanel Spacing="6">
         <TextBlock Classes="body" Text="{Binding DataFolderLabel}" />

@@ -12,6 +12,8 @@
     <Setter Property="VerticalContentAlignment" Value="Top" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+    <!-- The tile draws its own focus ring, so Fluent must not put its adorner on top. -->
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
     <Setter Property="Transitions">
       <Transitions>
         <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" />
@@ -121,11 +123,9 @@
 
     <Style Selector="^[Variant=Add]">
       <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderBrush" Value="{DynamicResource Mcacc.BorderStrong}" />
-      <Setter Property="Foreground" Value="{DynamicResource Mcacc.TextSecondary}" />
-    </Style>
-    <Style Selector="^[Variant=Add] /template/ Border#PART_Border">
+      <!-- The dashed rectangle is the outline; the border itself stays invisible. -->
       <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource Mcacc.TextSecondary}" />
     </Style>
     <Style Selector="^[Variant=Add] /template/ Rectangle#PART_Dash">
       <Setter Property="IsVisible" Value="True" />
@@ -147,7 +147,7 @@
       <Setter Property="RenderTransform" Value="scale(0.98)" />
     </Style>
 
-    <Style Selector="^:focus-visible /template/ Border#PART_Border">
+    <Style Selector="^:focus-visible">
       <Setter Property="BorderBrush" Value="{DynamicResource Mcacc.Accent}" />
       <Setter Property="BorderThickness" Value="2" />
     </Style>
