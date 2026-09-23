@@ -84,7 +84,13 @@ public sealed class AccountService
         return updated;
     }
 
-    /// <exception cref="InvalidOperationException">The account is the default or unknown, or its data cannot be deleted.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// The account is the default or unknown, or the deleter refuses its profile path.
+    /// </exception>
+    /// <exception cref="IOException">
+    /// Deleting the data failed (also <see cref="UnauthorizedAccessException"/>). The account stays listed and the
+    /// config is not saved; some profile files may already be gone.
+    /// </exception>
     public void Remove(string id, bool deleteData)
     {
         EnsureWritable();
