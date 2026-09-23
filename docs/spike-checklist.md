@@ -280,7 +280,7 @@ $content = @(
   'set "CLAUDE_CONFIG_DIR=%USERPROFILE%\.mcacc\spike\claude"',
   'cd /d "%USERPROFILE%"',
   'title Claude Code - Spike',
-  'claude',
+  'call claude',
   '@echo on'
 ) -join "`r`n"
 $content += "`r`n"
@@ -297,7 +297,7 @@ set "CLAUDE_CODE_SSE_PORT="
 set "CLAUDE_CONFIG_DIR=%USERPROFILE%\.mcacc\spike\claude"
 cd /d "%USERPROFILE%"
 title Claude Code - Spike
-claude
+call claude
 @echo on
 ```
 
