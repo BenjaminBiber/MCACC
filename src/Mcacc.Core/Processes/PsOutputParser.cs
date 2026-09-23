@@ -72,8 +72,18 @@ public static class PsOutputParser
         return position;
     }
 
-    private static DateTimeOffset? ParseStartTime(string text) =>
-        DateTime.TryParseExact(text, StartTimeFormat, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var local)
+    /// <summary>Reads one <c>ps -o lstart=</c> value, e.g. <c>Tue Sep  2 10:55:18 2026</c>; padding does not matter.</summary>
+    /// <returns>Null when the text is not a start time in the C locale format.</returns>
+    public static DateTimeOffset? ParseStartTime(string text)
+    {
+        var normalized = string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        return DateTime.TryParseExact(
+            normalized,
+            StartTimeFormat,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeLocal,
+            out var local)
             ? new DateTimeOffset(local)
             : null;
+    }
 }

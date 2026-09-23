@@ -3,6 +3,7 @@ using Mcacc.Core.ClaudeCode;
 using Mcacc.Core.Desktop;
 using Mcacc.Core.Paths;
 using Mcacc.Platform.Common;
+using Mcacc.Platform.MacOS;
 using Mcacc.Platform.Windows;
 
 namespace Mcacc.Platform;
@@ -29,9 +30,26 @@ public sealed record PlatformServices(
         var paths = McaccPaths.FromEnvironment(info, Environment.GetEnvironmentVariable);
         var runner = new SystemProcessRunner();
         var executables = new PathExecutableLocator(info);
-        if (!OperatingSystem.IsWindows())
+        if (OperatingSystem.IsWindows())
         {
-            throw new PlatformNotSupportedException($"MCACC does not support {info.Os} yet.");
+            return new PlatformServices(
+                info,
+                paths,
+                DesktopProcessRules.ForOs(info.Os),
+                runner,
+                new WmiProcessSnapshotProvider(),
+                new WindowsDesktopInstallationLocator(info),
+                new WindowsDesktopInstanceTerminator(),
+                new WindowsTerminalCatalog(info, executables),
+                executables,
+                new WindowsShellIntegration(runner),
+                new FileCredentialSource(),
+                new UsageHttpClient());
+        }
+
+        if (!OperatingSystem.IsMacOS())
+        {
+            throw new PlatformNotSupportedException($"MCACC supports Windows and macOS, not {info.Os}.");
         }
 
         return new PlatformServices(
@@ -39,13 +57,13 @@ public sealed record PlatformServices(
             paths,
             DesktopProcessRules.ForOs(info.Os),
             runner,
-            new WmiProcessSnapshotProvider(),
-            new WindowsDesktopInstallationLocator(info),
-            new WindowsDesktopInstanceTerminator(),
-            new WindowsTerminalCatalog(info, executables),
+            new PsProcessSnapshotProvider(runner),
+            new MacDesktopInstallationLocator(info, runner),
+            new MacDesktopInstanceTerminator(runner),
+            new MacTerminalCatalog(info, runner),
             executables,
-            new WindowsShellIntegration(runner),
-            new FileCredentialSource(),
+            new MacShellIntegration(runner),
+            new MacKeychainCredentialSource(runner),
             new UsageHttpClient());
     }
 
