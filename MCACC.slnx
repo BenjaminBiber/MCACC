@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Mcacc.App/Mcacc.App.csproj" />
+    <Project Path="src/Mcacc.Core/Mcacc.Core.csproj" />
+    <Project Path="src/Mcacc.Platform/Mcacc.Platform.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Mcacc.App.Tests/Mcacc.App.Tests.csproj" />
+    <Project Path="tests/Mcacc.Core.Tests/Mcacc.Core.Tests.csproj" />
+    <Project Path="tests/Mcacc.Platform.Tests/Mcacc.Platform.Tests.csproj" />
+  </Folder>
+</Solution>
