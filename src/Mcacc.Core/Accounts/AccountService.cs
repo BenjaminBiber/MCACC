@@ -35,6 +35,9 @@ public sealed class AccountService
 
     /// <exception cref="AccountValidationException">The name is invalid.</exception>
     /// <exception cref="ArgumentException">The color is invalid or the copy source is unknown.</exception>
+    /// <exception cref="IOException">
+    /// Creating, copying or saving failed (also <see cref="UnauthorizedAccessException"/>); the new profile is removed again.
+    /// </exception>
     public CreateAccountResult Create(string name, string color, CopyRequest? copy)
     {
         EnsureWritable();
@@ -47,12 +50,21 @@ public sealed class AccountService
 
         var id = SlugGenerator.Generate(validName, slug => Find(slug) is not null || Path.Exists(_paths.ProfileDir(slug)));
         var account = new Account(id, validName, color, IsDefault: false);
-        Directory.CreateDirectory(_paths.DesktopDataDir(id));
-        Directory.CreateDirectory(_paths.ClaudeConfigDir(id));
-        var report = copy is not null && copySource is not null ? CopyConfig(copySource, account, copy) : null;
+        try
+        {
+            Directory.CreateDirectory(_paths.DesktopDataDir(id));
+            Directory.CreateDirectory(_paths.ClaudeConfigDir(id));
+            var report = copy is not null && copySource is not null ? CopyConfig(copySource, account, copy) : null;
 
-        Save(Config with { Accounts = [.. Config.Accounts, account] });
-        return new CreateAccountResult(account, report);
+            Save(Config with { Accounts = [.. Config.Accounts, account] });
+            return new CreateAccountResult(account, report);
+        }
+        catch
+        {
+            // The slug's path did not exist before, so everything under it was created by this call.
+            RemoveNewProfile(account);
+            throw;
+        }
     }
 
     /// <exception cref="AccountValidationException">The name is invalid.</exception>
@@ -96,6 +108,18 @@ public sealed class AccountService
     {
         EnsureWritable();
         Save(Config with { Settings = change(Config.Settings) });
+    }
+
+    private void RemoveNewProfile(Account account)
+    {
+        try
+        {
+            _deleter.Delete(account, _paths);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // The original failure matters more; a leftover directory only gives the next slug a suffix.
+        }
     }
 
     private CopyReport CopyConfig(Account source, Account target, CopyRequest request)

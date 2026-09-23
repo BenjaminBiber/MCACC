@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using Mcacc.Core.Accounts;
 using Mcacc.Core.ConfigCopy;
 using Mcacc.Core.Model;
@@ -191,6 +192,82 @@ public sealed class AccountServiceTests : IDisposable
 
         store.Saved.ShouldBeEmpty();
         Directory.Exists(_paths.ProfilesDir).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Create_removes_the_new_profile_when_saving_fails()
+    {
+        var store = Store(Privat);
+        store.OnSave = _ => throw new IOException("disk full");
+        var service = Service(store);
+
+        Should.Throw<IOException>(() => service.Create("Firma", "#7D9B76", copy: null)).Message.ShouldBe("disk full");
+
+        Path.Exists(_paths.ProfileDir("firma")).ShouldBeFalse();
+        Directory.Exists(_paths.ProfileDir("privat")).ShouldBeFalse();
+        service.Config.ShouldBeSameAs(store.LoadResult.Config);
+    }
+
+    [Fact]
+    public void Create_removes_the_new_profile_when_copying_fails()
+    {
+        var source = Path.Join(_defaultClaudeDir, "CLAUDE.md");
+        WriteFile(source);
+        var store = Store();
+        var service = Service(store);
+
+        Exception? failure;
+        using (Unreadable(source))
+        {
+            failure = Record.Exception(() =>
+                service.Create("Privat", "#6A9BCC", CopyFrom(Account.DefaultId, false, CopyItem.ClaudeMd)));
+        }
+
+        (failure is IOException or UnauthorizedAccessException).ShouldBeTrue(failure?.ToString());
+        Path.Exists(_paths.ProfileDir("privat")).ShouldBeFalse();
+        store.Saved.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Create_rethrows_the_original_failure_when_the_rollback_fails_too()
+    {
+        var store = Store();
+        FileStream? lockedInsideProfile = null;
+        store.OnSave = _ =>
+        {
+            // An open handle blocks deleting the profile on Windows; elsewhere the rollback just succeeds.
+            lockedInsideProfile = new FileStream(
+                Path.Join(_paths.ClaudeConfigDir("privat"), "busy.log"), FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            throw new IOException("disk full");
+        };
+        var service = Service(store);
+
+        try
+        {
+            Should.Throw<IOException>(() => service.Create("Privat", "#6A9BCC", copy: null)).Message.ShouldBe("disk full");
+        }
+        finally
+        {
+            lockedInsideProfile?.Dispose();
+        }
+    }
+
+    private static IDisposable Unreadable(string path)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        }
+
+        var restore = new UnixModeRestore(path, File.GetUnixFileMode(path));
+        File.SetUnixFileMode(path, UnixFileMode.None);
+        return restore;
+    }
+
+    [UnsupportedOSPlatform("windows")]
+    private sealed class UnixModeRestore(string path, UnixFileMode mode) : IDisposable
+    {
+        public void Dispose() => File.SetUnixFileMode(path, mode);
     }
 
     [Fact]
