@@ -309,9 +309,23 @@ wt.exe -w new new-tab -d "$spike" cmd.exe /k spike.cmd
 **Erwartung:** Beide Varianten öffnen einen Tab mit gesetzter Variable, `claude` startet, die
 Shell bleibt danach offen.
 
+**`%VAR%`-Expansion:** Prüfen, ob Windows Terminal `%…%` im `-d`-Ordner oder in der Kommandozeile
+selbst expandiert. MCACC übergibt Pfade mit `%` unverändert an `wt` (nur `;` wird als `\;`
+maskiert).
+```powershell
+$pct = "$spike\pct %USERNAME% test"
+New-Item -ItemType Directory -Force -Path $pct | Out-Null
+wt.exe -w new new-tab -d "$pct" powershell.exe -NoLogo -NoExit -Command "(Get-Location).Path\; Write-Output '%USERNAME%'"
+```
+
+**Erwartung:** Der neue Tab startet im Ordner `…\pct %USERNAME% test` und gibt diesen Pfad sowie
+`%USERNAME%` wörtlich aus. Steht dort stattdessen der echte Benutzername, oder meldet `wt`, dass
+der Ordner nicht existiert, dann expandiert Windows Terminal die Variable.
+
 **Notieren:** Ob beide Varianten wie erwartet funktionieren, insbesondere ob die
 Escaping-Konstruktion aus der ersten Variante tatsächlich `claude` startet statt einen Fehler zu
-werfen.
+werfen. Außerdem, ob `%USERNAME%` im `-d`-Ordner und im `-Command`-Skript expandiert wurde
+(angezeigter Pfad und Ausgabe).
 
 ### W8 — CLI-Konfigurationsordner
 

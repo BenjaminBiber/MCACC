@@ -60,6 +60,8 @@ macOS-Version: _____
 
 **Befund:**
 
+**`%VAR%`-Expansion:** `-d`-Ordner ☐ expandiert ☐ wörtlich · `-Command`-Skript ☐ expandiert ☐ wörtlich
+
 **Entscheidung:**
 
 ### W8 — CLI-Konfigurationsordner
