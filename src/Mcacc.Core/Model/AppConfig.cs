@@ -8,5 +8,6 @@ public sealed record AppConfig(int Version, IReadOnlyList<Account> Accounts, App
     public const int CurrentVersion = 1;
 
     [JsonExtensionData]
-    public Dictionary<string, JsonElement>? Extra { get; init; }
+    [JsonInclude]
+    public Dictionary<string, JsonElement>? Extra { get; internal set; }
 }
