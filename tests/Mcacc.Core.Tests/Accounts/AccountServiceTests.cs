@@ -135,6 +135,16 @@ public sealed class AccountServiceTests : IDisposable
     }
 
     [Fact]
+    public void Create_skips_slugs_occupied_by_a_file()
+    {
+        WriteFile(_paths.ProfileDir("firma"), "not a directory");
+        var service = Service(Store());
+
+        service.Create("Firma", "#7D9B76", copy: null).Account.Id.ShouldBe("firma-2");
+        File.ReadAllText(_paths.ProfileDir("firma")).ShouldBe("not a directory");
+    }
+
+    [Fact]
     public void Create_copies_and_rewrites_config_of_the_default_account()
     {
         WriteFile(Path.Join(_defaultClaudeDir, "CLAUDE.md"), "# memory");

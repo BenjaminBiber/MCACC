@@ -45,7 +45,7 @@ public sealed class AccountService
             : Find(copy.SourceAccountId)
               ?? throw new ArgumentException($"Unknown copy source account '{copy.SourceAccountId}'.", nameof(copy));
 
-        var id = SlugGenerator.Generate(validName, slug => Find(slug) is not null || Directory.Exists(_paths.ProfileDir(slug)));
+        var id = SlugGenerator.Generate(validName, slug => Find(slug) is not null || Path.Exists(_paths.ProfileDir(slug)));
         var account = new Account(id, validName, color, IsDefault: false);
         Directory.CreateDirectory(_paths.DesktopDataDir(id));
         Directory.CreateDirectory(_paths.ClaudeConfigDir(id));
