@@ -1,7 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
-
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Media;
@@ -289,5 +289,135 @@ public class ControlTests
         Show(grid);
 
         grid.Children[0].Bounds.Width.ShouldBe(200);
+    }
+
+    private static void Rendered(Window window)
+    {
+        window.UpdateLayout();
+        using var frame = window.CaptureRenderedFrame();
+        frame.ShouldNotBeNull();
+    }
+
+    private static LineChart TwoPointLine() => new()
+    {
+        Width = 360,
+        Height = 160,
+        XMin = 0,
+        XMax = 1,
+        Threshold = 90,
+        StartLabel = "vor 24 h",
+        EndLabel = "jetzt",
+        Series =
+        [
+            new LineSeries("5h", ChartColor.Series1, [new ChartPoint(0, 20, "a"), new ChartPoint(1, 95, "b")]),
+            new LineSeries("Woche", ChartColor.Series2, [new ChartPoint(0, 5, "a"), new ChartPoint(1, 7, "b")]),
+        ],
+    };
+
+    [AvaloniaFact]
+    public void Every_chart_renders_with_data_and_empty()
+    {
+        Rendered(Show(TwoPointLine()));
+        Rendered(Show(new LineChart { Width = 360, Height = 160, EmptyText = "leer" }));
+        Rendered(Show(new StackedBarChart
+        {
+            Width = 360,
+            Height = 160,
+            AxisFormatter = value => $"{value:0} k",
+            Bars = [new BarStack("1.9.", [new BarSegment(3, ChartColor.Series1), new BarSegment(2, ChartColor.Series2)])],
+        }));
+        Rendered(Show(new StackedBarChart { Width = 360, Height = 160, EmptyText = "leer" }));
+        Rendered(Show(new DonutChart
+        {
+            Width = 120,
+            Height = 120,
+            CenterText = "12 M",
+            CenterCaption = "Tokens",
+            Slices = [new ChartSlice("Input", 1, ChartColor.Series1), new ChartSlice("Output", 3, ChartColor.Series2)],
+        }));
+        Rendered(Show(new DonutChart { Width = 120, Height = 120, Slices = [new ChartSlice("Input", 5, ChartColor.Series1)] }));
+        Rendered(Show(new DonutChart { Width = 120, Height = 120, EmptyText = "leer" }));
+        Rendered(Show(new BarList { Width = 360, Items = [new BarListItem("Mcacc", 5, "5 k", ChartColor.Accent)] }));
+        Rendered(Show(new ChartSwatch { Color = ChartColor.Series3 }));
+    }
+
+    [AvaloniaFact]
+    public void A_line_chart_tells_the_point_nearest_to_the_pointer()
+    {
+        var chart = TwoPointLine();
+        Show(chart);
+
+        chart.TooltipAt(new Point(LineChart.AxisWidth + 2, 50)).ShouldBe("a");
+        chart.TooltipAt(new Point(chart.Bounds.Width - LineChart.RightPadding - 2, 50)).ShouldBe("b");
+        chart.TooltipAt(new Point(chart.Bounds.Width / 2, 50)).ShouldBeNull();
+    }
+
+    [AvaloniaFact]
+    public void Moving_the_pointer_over_a_chart_sets_its_tooltip()
+    {
+        var chart = TwoPointLine();
+        var window = Show(chart);
+
+        var point = chart.TranslatePoint(new Point(chart.Bounds.Width - LineChart.RightPadding - 2, 50), window)!.Value;
+        window.MouseMove(point);
+
+        ToolTip.GetTip(chart).ShouldBe("b");
+    }
+
+    [AvaloniaFact]
+    public void A_bar_chart_tells_the_bar_under_the_pointer()
+    {
+        var chart = new StackedBarChart
+        {
+            Width = 360,
+            Height = 160,
+            Bars =
+            [
+                new BarStack("1.9.", [new BarSegment(1, ChartColor.Series1)], "erster"),
+                new BarStack("2.9.", [new BarSegment(2, ChartColor.Series1)], "zweiter"),
+            ],
+        };
+        Show(chart);
+
+        chart.TooltipAt(new Point(StackedBarChart.AxisWidth + 1, 40)).ShouldBe("erster");
+        chart.TooltipAt(new Point(chart.Bounds.Width - 1, 40)).ShouldBe("zweiter");
+        chart.TooltipAt(new Point(1, 40)).ShouldBeNull();
+    }
+
+    [AvaloniaFact]
+    public void A_donut_tells_the_slice_under_the_pointer()
+    {
+        var chart = new DonutChart
+        {
+            Width = 120,
+            Height = 120,
+            Slices = [new ChartSlice("a", 1, ChartColor.Series1, "rechts"), new ChartSlice("b", 1, ChartColor.Series2, "links")],
+        };
+        Show(chart);
+
+        // The first slice starts at the top and runs clockwise over the right half.
+        chart.TooltipAt(new Point(61, 9)).ShouldBe("rechts");
+        chart.TooltipAt(new Point(59, 9)).ShouldBe("links");
+        chart.TooltipAt(new Point(60, 60)).ShouldBeNull();
+    }
+
+    [AvaloniaFact]
+    public void A_bar_list_is_one_row_per_item_high_and_tells_the_row_under_the_pointer()
+    {
+        var list = new BarList
+        {
+            Width = 360,
+            Items =
+            [
+                new BarListItem("A", 3, "3", ChartColor.Accent, "eins"),
+                new BarListItem("B", 2, "2", ChartColor.Accent, "zwei"),
+                new BarListItem("C", 1, "1", ChartColor.Accent, "drei"),
+            ],
+        };
+        var window = Show(new StackPanel { Children = { list } });
+        window.UpdateLayout();
+
+        list.Bounds.Height.ShouldBe(3 * BarList.RowHeight);
+        list.TooltipAt(new Point(10, BarList.RowHeight + 5)).ShouldBe("zwei");
     }
 }
