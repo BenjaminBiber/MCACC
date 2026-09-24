@@ -61,6 +61,9 @@ Design: Claude-Theme, minimalistisch, Akzent Claude-Orange `#D97757`, Hell/Dunke
 ~/.mcacc/                         (Windows: %USERPROFILE%\.mcacc)
   config.json (+ .bak, .corrupt-<ts>)
   usage-cache.json                letzte bekannte Limits je Account (ohne Tokens)
+  usage-history/<slug>.jsonl      Limit-Verlauf, 90 Tage (siehe 2026-09-24-usage-tracker-design.md)
+  profile-cache.json              letztes /profile je Account (ohne Tokens)
+  stats/<slug>.json               inkrementeller Index der Claude-Code-Logs
   profiles/<slug>/desktop/        --user-data-dir
   profiles/<slug>/claude/         CLAUDE_CONFIG_DIR
   launch/<slug>.cmd | .command    bei jedem Start neu generiert
@@ -120,7 +123,7 @@ src/Mcacc.App/         Avalonia 12 (compiled bindings → x:DataType überall)
   Localization/Texts.cs (alle deutschen Strings)
   Services/  INavigator, IDialogService (In-Window-Overlay), IAppLifetime
   ViewModels/ MainWindow, AccountPicker, AccountTile, TargetPicker, Settings, AccountEditor, CopyItem, ConfirmDialog, RemoveAccountDialog
-  Views/     MainWindow, AccountPickerView, TargetPickerView, SettingsView, AccountEditorView, ConfirmDialogView, RemoveAccountDialogView
+  Views/     MainWindow, AccountPickerView, TargetPickerView, AccountInfoView, SettingsView, AccountEditorView, ConfirmDialogView, RemoveAccountDialogView
 tests/Mcacc.Core.Tests/   xUnit v3, reine Logik + Fixtures (echte WMI-/ps-Snapshots anonymisiert)
 tests/Mcacc.App.Tests/    ViewModel-Flows mit Fakes + Avalonia.Headless-Smoke
 scripts/publish-windows.ps1 · scripts/build-macos.sh · build/macos/Info.plist.template
@@ -204,7 +207,7 @@ Die Variable wird immer **innerhalb** des Shell-Kommandos gesetzt, nicht vererbt
 **Account-Auswahl**
 - Serif-Headline „Mit welchem Account?“.
 - Kacheln mit Initialen-Avatar in der Account-Farbe, Name, E-Mail, dem Badge „Läuft“ und den UsageBars.
-- Ein „⋮“-Menü bzw. Rechtsklick bietet Bearbeiten, Entfernen und Ordner öffnen.
+- Ein „⋮“-Menü bzw. Rechtsklick bietet Info & Statistik, Bearbeiten, Entfernen und Ordner öffnen. Die Info-Page beschreibt `2026-09-24-usage-tracker-design.md`.
 - Eine gestrichelte Kachel „Account hinzufügen“.
 - Zahnrad für die Einstellungen und ein Aktualisieren-Icon.
 
