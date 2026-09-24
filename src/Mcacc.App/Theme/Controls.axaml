@@ -143,8 +143,9 @@
     <Setter Property="FontSize" Value="12" />
     <Setter Property="MinHeight" Value="0" />
 
+    <!-- The chip around the buttons is SurfaceHover already, so the hover steps back to Surface to show at all. -->
     <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource Mcacc.SurfaceHover}" />
+      <Setter Property="Background" Value="{DynamicResource Mcacc.Surface}" />
       <Setter Property="Foreground" Value="{DynamicResource Mcacc.Text}" />
     </Style>
 
