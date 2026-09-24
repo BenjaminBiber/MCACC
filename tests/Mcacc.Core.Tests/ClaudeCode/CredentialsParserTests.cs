@@ -53,4 +53,28 @@ public class CredentialsParserTests
 
         credentials.ToString().ShouldNotContain("SECRET");
     }
+
+    [Fact]
+    public void Reads_the_plan_and_the_scopes()
+    {
+        var credentials = CredentialsParser.Parse(FixtureFiles.ReadAllText("credentials-ok.json"))!;
+
+        credentials.SubscriptionType.ShouldBe("max");
+        credentials.Scopes.ShouldBe(["user:inference", "user:profile"]);
+    }
+
+    [Fact]
+    public void An_empty_scope_list_stays_null()
+    {
+        CredentialsParser.Parse("""{ "claudeAiOauth": { "accessToken": "t", "scopes": [] } }""")!.Scopes.ShouldBeNull();
+    }
+
+    [Fact]
+    public void The_plan_shows_in_the_string_but_the_token_does_not()
+    {
+        var text = new OAuthCredentials("sk-ant-oat01-SECRET", null, "max").ToString();
+
+        text.ShouldContain("max");
+        text.ShouldNotContain("SECRET");
+    }
 }

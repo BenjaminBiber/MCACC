@@ -34,7 +34,11 @@ public sealed class ClaudeJsonLoginReaderTests : IDisposable
             "max.muster@example.com",
             "Example GmbH",
             "Benjamin Biber",
-            "00000000-0000-0000-0000-000000000001"));
+            "00000000-0000-0000-0000-000000000001",
+            OrganizationRole: "admin",
+            NumStartups: 412,
+            InstallMethod: "winget",
+            ProjectCount: 3));
     }
 
     [Fact]

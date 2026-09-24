@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Text.Json;
 
 namespace Mcacc.Core.ClaudeCode;
@@ -50,12 +51,24 @@ public static class ClaudeJsonLoginReader
                 email,
                 Text(account, "organizationName"),
                 Text(account, "displayName"),
-                Text(account, "accountUuid"));
+                Text(account, "accountUuid"),
+                Text(account, "organizationRole"),
+                Number(root, "numStartups"),
+                Text(root, "installMethod"),
+                root.TryGetProperty("projects", out var projects) && projects.ValueKind == JsonValueKind.Object
+                    ? projects.EnumerateObject().Count()
+                    : null);
     }
 
     private static string? Text(JsonElement owner, string name) =>
         owner.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
         && value.GetString() is { } text && !string.IsNullOrWhiteSpace(text)
             ? text
+            : null;
+
+    private static int? Number(JsonElement owner, string name) =>
+        owner.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number
+        && value.TryGetInt32(out var number)
+            ? number
             : null;
 }

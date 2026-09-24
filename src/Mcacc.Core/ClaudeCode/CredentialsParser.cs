@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Linq;
 
 namespace Mcacc.Core.ClaudeCode;
 
@@ -24,7 +25,7 @@ public static class CredentialsParser
                 return null;
             }
 
-            return new OAuthCredentials(accessToken, ExpiresAt(oauth));
+            return new OAuthCredentials(accessToken, ExpiresAt(oauth), SubscriptionType(oauth), Scopes(oauth));
         }
         catch (JsonException)
         {
@@ -50,5 +51,26 @@ public static class CredentialsParser
         {
             return null;
         }
+    }
+
+    private static string? SubscriptionType(JsonElement oauth) =>
+        oauth.TryGetProperty("subscriptionType", out var value) && value.ValueKind == JsonValueKind.String
+        && value.GetString() is { } text && !string.IsNullOrWhiteSpace(text)
+            ? text
+            : null;
+
+    private static List<string>? Scopes(JsonElement oauth)
+    {
+        if (!oauth.TryGetProperty("scopes", out var value) || value.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        var scopes = value.EnumerateArray()
+            .Where(scope => scope.ValueKind == JsonValueKind.String)
+            .Select(scope => scope.GetString()!)
+            .Where(scope => !string.IsNullOrWhiteSpace(scope))
+            .ToList();
+        return scopes.Count > 0 ? scopes : null;
     }
 }
