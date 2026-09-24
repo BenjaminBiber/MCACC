@@ -148,6 +148,12 @@ internal sealed class FakeUsageProvider : IUsageProvider
 
     public Exception? ThrowOnRefresh { get; set; }
 
+    public Dictionary<string, AccountProfile> Profiles { get; } = [];
+
+    public Dictionary<string, List<UsageHistoryPoint>> History { get; } = [];
+
+    public List<string> Forgotten { get; } = [];
+
     public AccountUsage GetCached(Account account) =>
         Cached.GetValueOrDefault(account.Id, new AccountUsage(UsageState.NotLoggedIn, null));
 
@@ -161,6 +167,13 @@ internal sealed class FakeUsageProvider : IUsageProvider
 
         return Task.FromResult(Fresh.GetValueOrDefault(account.Id, GetCached(account)));
     }
+
+    public AccountProfile? GetProfile(Account account) => Profiles.GetValueOrDefault(account.Id);
+
+    public IReadOnlyList<UsageHistoryPoint> GetHistory(Account account, DateTimeOffset since) =>
+        History.TryGetValue(account.Id, out var points) ? points.Where(point => point.At >= since).ToList() : [];
+
+    public void Forget(Account account) => Forgotten.Add(account.Id);
 }
 
 internal sealed class FakeLoginReader : ILoginInfoReader

@@ -11,12 +11,15 @@ namespace Mcacc.Core.Usage;
 /// Reads the usage limits of an account with its Claude Code token. The token is never refreshed and never stored;
 /// an expired one simply leaves the last cached value standing. A token of another account than the one
 /// <c>.claude.json</c> names shows no limits at all, so a tile never carries someone else's numbers.
+/// Every fresh value also goes into the history, and a verified profile into the profile cache.
 /// </summary>
 public sealed class UsageService(
     ICredentialSource credentials,
     ILoginInfoReader login,
     IUsageHttp http,
     UsageCache cache,
+    ProfileCache profiles,
+    UsageHistoryStore history,
     AccountPathResolver resolver,
     TimeProvider? time = null) : IUsageProvider
 {
@@ -27,11 +30,40 @@ public sealed class UsageService(
     private readonly Dictionary<string, Attempt> _attempts = [];
     private readonly Dictionary<string, CheckedToken> _owners = [];
     private Dictionary<string, UsageSnapshot>? _snapshots;
+    private Dictionary<string, AccountProfile>? _profiles;
 
     public AccountUsage GetCached(Account account) =>
         Cached(account.Id) is { } snapshot
             ? new AccountUsage(UsageState.Ok, snapshot)
             : new AccountUsage(UsageState.NotLoggedIn, null);
+
+    public AccountProfile? GetProfile(Account account)
+    {
+        lock (_gate)
+        {
+            return Profiles().GetValueOrDefault(account.Id);
+        }
+    }
+
+    public IReadOnlyList<UsageHistoryPoint> GetHistory(Account account, DateTimeOffset since) =>
+        history.Read(account.Id, since);
+
+    public void Forget(Account account)
+    {
+        lock (_gate)
+        {
+            _attempts.Remove(account.Id);
+            _owners.Remove(account.Id);
+            var known = Profiles();
+            if (known.Remove(account.Id))
+            {
+                profiles.Save(known);
+            }
+        }
+
+        ForgetLimits(account.Id);
+        history.Delete(account.Id);
+    }
 
     /// <summary>Asks the endpoint at most once per minute and account; in between it repeats the last result.</summary>
     public async Task<AccountUsage> RefreshAsync(Account account, CancellationToken ct)
@@ -74,17 +106,21 @@ public sealed class UsageService(
         // Without a login in .claude.json there is nothing to compare with, and the tile says so anyway.
         if (login.Read(paths) is { } expected)
         {
-            var check = await OwnerAsync(account.Id, found.AccessToken, ct).ConfigureAwait(false);
-            if (check.Owner is not { } owner)
+            var check = await ProfileAsync(account.Id, found.AccessToken, ct).ConfigureAwait(false);
+            if (check.Profile is not { } profile)
             {
                 return new AccountUsage(check.State, cached);
             }
 
+            var owner = profile.ToOwner();
             if (!IsSameAccount(expected, owner))
             {
-                Forget(account.Id);
+                // The history and the profile stay: they describe this account, not the stray token.
+                ForgetLimits(account.Id);
                 return new AccountUsage(UsageState.WrongAccount, null, owner.Email);
             }
+
+            StoreProfile(account.Id, profile);
         }
 
         var (state, body) = await GetAsync(() => http.GetUsageAsync(found.AccessToken, ct), ct).ConfigureAwait(false);
@@ -103,8 +139,8 @@ public sealed class UsageService(
     }
 
     /// <summary>Asks the profile endpoint once per token; only an answer that names the owner is remembered.</summary>
-    /// <returns>The owner with <see cref="UsageState.Ok"/>, otherwise no owner and the state of the failure.</returns>
-    private async Task<(UsageState State, TokenOwner? Owner)> OwnerAsync(
+    /// <returns>The profile with <see cref="UsageState.Ok"/>, otherwise no profile and the state of the failure.</returns>
+    private async Task<(UsageState State, AccountProfile? Profile)> ProfileAsync(
         string accountId,
         string accessToken,
         CancellationToken ct)
@@ -114,7 +150,7 @@ public sealed class UsageService(
         {
             if (_owners.TryGetValue(accountId, out var known) && known.TokenHash == tokenHash)
             {
-                return (UsageState.Ok, known.Owner);
+                return (UsageState.Ok, known.Profile);
             }
         }
 
@@ -124,17 +160,17 @@ public sealed class UsageService(
             return (state, null);
         }
 
-        if (body is null || ProfileParser.Parse(body)?.ToOwner() is not { } owner)
+        if (body is null || ProfileParser.Parse(body) is not { } profile)
         {
             return (UsageState.Error, null);
         }
 
         lock (_gate)
         {
-            _owners[accountId] = new CheckedToken(tokenHash, owner);
+            _owners[accountId] = new CheckedToken(tokenHash, profile);
         }
 
-        return (UsageState.Ok, owner);
+        return (UsageState.Ok, profile);
     }
 
     /// <summary>A request that does not reach the endpoint counts as an error; a canceled one still throws.</summary>
@@ -188,9 +224,27 @@ public sealed class UsageService(
             snapshots[id] = snapshot;
             cache.Save(snapshots);
         }
+
+        history.Append(id, UsageHistoryPoint.From(snapshot));
     }
 
-    private void Forget(string id)
+    /// <summary>Writes the file only when the profile changed, since every refresh of a known token passes here.</summary>
+    private void StoreProfile(string id, AccountProfile profile)
+    {
+        lock (_gate)
+        {
+            var known = Profiles();
+            if (Equals(known.GetValueOrDefault(id), profile))
+            {
+                return;
+            }
+
+            known[id] = profile;
+            profiles.Save(known);
+        }
+    }
+
+    private void ForgetLimits(string id)
     {
         lock (_gate)
         {
@@ -205,7 +259,10 @@ public sealed class UsageService(
     /// <summary>Call under <see cref="_gate"/>: the cache file is read once and written from here on.</summary>
     private Dictionary<string, UsageSnapshot> Snapshots() => _snapshots ??= new Dictionary<string, UsageSnapshot>(cache.Load());
 
+    /// <summary>Call under <see cref="_gate"/>, like <see cref="Snapshots"/>.</summary>
+    private Dictionary<string, AccountProfile> Profiles() => _profiles ??= new Dictionary<string, AccountProfile>(profiles.Load());
+
     private sealed record Attempt(DateTimeOffset At, AccountUsage Result);
 
-    private sealed record CheckedToken(string TokenHash, TokenOwner Owner);
+    private sealed record CheckedToken(string TokenHash, AccountProfile Profile);
 }

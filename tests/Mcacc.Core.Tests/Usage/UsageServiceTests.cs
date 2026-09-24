@@ -59,8 +59,12 @@ public sealed class UsageServiceTests : IDisposable
 
     private UsageCache Cache => new(Paths);
 
+    private ProfileCache Profiles => new(Paths);
+
+    private UsageHistoryStore History => new(Paths, _time);
+
     private UsageService Service() =>
-        new(_credentials, _login, _http, Cache, new AccountPathResolver(Paths, Platform), _time);
+        new(_credentials, _login, _http, Cache, Profiles, History, new AccountPathResolver(Paths, Platform), _time);
 
     private void SeedCache(params string[] ids) =>
         Cache.Save(ids.ToDictionary(id => id, _ => Old));
@@ -385,6 +389,93 @@ public sealed class UsageServiceTests : IDisposable
         await Should.ThrowAsync<OperationCanceledException>(() => Service().RefreshAsync(Privat, cts.Token));
 
         File.Exists(Paths.UsageCacheFile).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task A_fresh_snapshot_is_appended_to_the_history()
+    {
+        await Service().RefreshAsync(Privat, Ct);
+
+        History.Read("privat", DateTimeOffset.MinValue).ShouldBe([UsageHistoryPoint.From(Fresh(Now))]);
+    }
+
+    [Fact]
+    public async Task A_failed_request_adds_nothing_to_the_history()
+    {
+        _http.Response = new UsageHttpResponse(500, null);
+
+        await Service().RefreshAsync(Privat, Ct);
+
+        History.Read("privat", DateTimeOffset.MinValue).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task The_profile_of_the_own_token_is_cached()
+    {
+        _login.Info = OwnLogin;
+
+        await Service().RefreshAsync(Privat, Ct);
+
+        Service().GetProfile(Privat).ShouldBe(ProfileParser.Parse(FixtureFiles.ReadAllText("profile-ok.json")));
+    }
+
+    [Fact]
+    public void Without_a_cached_profile_there_is_none()
+    {
+        Service().GetProfile(Privat).ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task A_token_of_another_account_keeps_the_history_and_the_profile()
+    {
+        var own = ProfileParser.Parse(FixtureFiles.ReadAllText("profile-ok.json"))!;
+        Profiles.Save(new Dictionary<string, AccountProfile> { ["privat"] = own });
+        History.Append("privat", UsageHistoryPoint.From(Old));
+        _login.Info = OwnLogin;
+        _http.ProfileResponse = new UsageHttpResponse(200, OtherProfile);
+
+        (await Service().RefreshAsync(Privat, Ct)).State.ShouldBe(UsageState.WrongAccount);
+
+        Service().GetProfile(Privat).ShouldBe(own);
+        History.Read("privat", DateTimeOffset.MinValue).ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public async Task Forget_drops_the_limits_the_profile_and_the_history()
+    {
+        _login.Info = OwnLogin;
+        var service = Service();
+        await service.RefreshAsync(Privat, Ct);
+
+        service.Forget(Privat);
+
+        service.GetCached(Privat).State.ShouldBe(UsageState.NotLoggedIn);
+        service.GetProfile(Privat).ShouldBeNull();
+        Cache.Load().ShouldBeEmpty();
+        Profiles.Load().ShouldBeEmpty();
+        History.Read("privat", DateTimeOffset.MinValue).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task After_forget_the_next_refresh_asks_again()
+    {
+        var service = Service();
+        await service.RefreshAsync(Privat, Ct);
+
+        service.Forget(Privat);
+        await service.RefreshAsync(Privat, Ct);
+
+        _http.Requests.Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task GetHistory_returns_the_points_since_the_given_time()
+    {
+        History.Append("privat", UsageHistoryPoint.From(Old));
+
+        await Service().RefreshAsync(Privat, Ct);
+
+        Service().GetHistory(Privat, Now - TimeSpan.FromHours(1)).ShouldBe([UsageHistoryPoint.From(Fresh(Now))]);
     }
 
     private sealed class FakeCredentialSource : ICredentialSource
