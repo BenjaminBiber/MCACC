@@ -497,6 +497,29 @@ public sealed class UsageServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task A_wrong_account_forget_does_not_erase_a_recreated_accounts_snapshot()
+    {
+        _login.Info = OwnLogin;
+        var ownProfileResponse = _http.ProfileResponse;
+        _http.ProfileResponse = new UsageHttpResponse(200, OtherProfile);
+        var service = Service();
+        _http.OnProfileRequest = _ =>
+        {
+            // Simulate the account being removed and re-added under the same slug while this
+            // wrong-account request is still in flight: the re-created account gets a fresh snapshot.
+            _http.OnProfileRequest = null;
+            service.Forget(Privat);
+            _http.ProfileResponse = ownProfileResponse;
+            service.RefreshAsync(Privat, Ct).GetAwaiter().GetResult();
+        };
+
+        var usage = await service.RefreshAsync(Privat, Ct);
+
+        usage.State.ShouldBe(UsageState.WrongAccount);
+        Cache.Load()["privat"].ShouldBe(Fresh(Now));
+    }
+
+    [Fact]
     public async Task An_account_created_again_under_a_forgotten_id_refreshes_normally()
     {
         _login.Info = OwnLogin;
@@ -527,6 +550,23 @@ public sealed class UsageServiceTests : IDisposable
         Cache.Load().ShouldBeEmpty();
         File.Exists(Paths.UsageHistoryFile("privat")).ShouldBeFalse();
         _log.Warnings.ShouldHaveSingleItem().Exception.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task A_failed_profile_save_is_retried_on_the_next_refresh()
+    {
+        _login.Info = OwnLogin;
+        BlockWrites(Paths.ProfileCacheFile);
+        var service = Service();
+        await service.RefreshAsync(Privat, Ct);
+        service.GetProfile(Privat).ShouldBeNull();
+        _time.Advance(TimeSpan.FromSeconds(60));
+        Directory.Delete(Paths.ProfileCacheFile + ".tmp");
+
+        await service.RefreshAsync(Privat, Ct);
+
+        Profiles.Load()["privat"].ShouldBe(ProfileParser.Parse(FixtureFiles.ReadAllText("profile-ok.json")));
+        _log.Warnings.ShouldHaveSingleItem();
     }
 
     [Fact]

@@ -135,7 +135,7 @@ public sealed class UsageService(
             if (!IsSameAccount(expected, owner))
             {
                 // The history and the profile stay: they describe this account, not the stray token.
-                ForgetLimits(account.Id);
+                ForgetLimits(account.Id, generation);
                 return new AccountUsage(UsageState.WrongAccount, null, owner.Email);
             }
 
@@ -261,35 +261,49 @@ public sealed class UsageService(
 
     /// <summary>
     /// Writes the file only when the profile changed, since every refresh of a known token passes here. A failed
-    /// write is logged: the profile must never cost the refresh its limits, and the memory keeps it for the page.
+    /// write is logged and undone in memory, so the next refresh sees the profile as changed again and retries;
+    /// the profile must never cost the refresh its limits either way.
     /// </summary>
     private void StoreProfile(string id, int generation, AccountProfile profile)
     {
         lock (_gate)
         {
             var known = Profiles();
-            if (!IsCurrent(id, generation) || Equals(known.GetValueOrDefault(id), profile))
+            var previous = known.GetValueOrDefault(id);
+            if (!IsCurrent(id, generation) || Equals(previous, profile))
             {
                 return;
             }
 
             known[id] = profile;
-            BestEffort($"Storing the profile of '{id}' failed.", () => profiles.Save(known));
+            if (!BestEffort($"Storing the profile of '{id}' failed.", () => profiles.Save(known)))
+            {
+                if (previous is null)
+                {
+                    known.Remove(id);
+                }
+                else
+                {
+                    known[id] = previous;
+                }
+            }
         }
     }
 
     /// <summary>Call under <see cref="_gate"/>: false once the account was forgotten after the refresh began.</summary>
     private bool IsCurrent(string id, int generation) => _generations.GetValueOrDefault(id) == generation;
 
-    private void BestEffort(string failure, Action write)
+    private bool BestEffort(string failure, Action write)
     {
         try
         {
             write();
+            return true;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
             _log.Warn(failure, e);
+            return false;
         }
     }
 
@@ -297,6 +311,24 @@ public sealed class UsageService(
     {
         lock (_gate)
         {
+            var snapshots = Snapshots();
+            if (snapshots.Remove(id))
+            {
+                cache.Save(snapshots);
+            }
+        }
+    }
+
+    /// <summary>Guarded twin of <see cref="ForgetLimits(string)"/>: skipped once the account was forgotten meanwhile.</summary>
+    private void ForgetLimits(string id, int generation)
+    {
+        lock (_gate)
+        {
+            if (!IsCurrent(id, generation))
+            {
+                return;
+            }
+
             var snapshots = Snapshots();
             if (snapshots.Remove(id))
             {
