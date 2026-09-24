@@ -34,8 +34,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase, IShellPresenter
 
     public void ShowError(string message) => ErrorBanner = message;
 
+    public void ClearError() => ErrorBanner = null;
+
     [RelayCommand]
-    public void DismissError() => ErrorBanner = null;
+    public void DismissError() => ClearError();
 
     /// <summary>Esc closes a dialog, otherwise the current page decides.</summary>
     public bool OnKeyDown(Key key, KeyModifiers modifiers)

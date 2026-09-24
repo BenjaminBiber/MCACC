@@ -27,6 +27,7 @@ internal sealed class TestServices : IDisposable
         Services = new AppServices(
             Accounts,
             Desktop,
+            Redirect,
             Code,
             Usage,
             Login,
@@ -55,6 +56,8 @@ internal sealed class TestServices : IDisposable
     public FakeAccountService Accounts { get; }
 
     public FakeDesktopLauncher Desktop { get; } = new();
+
+    public FakeLoginRedirector Redirect { get; } = new();
 
     public FakeCodeLauncher Code { get; } = new();
 

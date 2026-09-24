@@ -23,6 +23,10 @@ public static class Texts
 
     public static string UsageAsOf(DateTimeOffset fetchedAt) => $"Stand {fetchedAt.ToLocalTime():HH:mm}";
 
+    public static string UsageWrongAccount(string? tokenEmail) => tokenEmail is null
+        ? "Claude Code ist hier mit einem anderen Account angemeldet – im Profil neu anmelden"
+        : $"Claude Code ist hier mit {tokenEmail} angemeldet – im Profil neu anmelden";
+
     public static string UsageReset(DateTimeOffset resetsAt)
     {
         var local = resetsAt.ToLocalTime();
@@ -63,6 +67,11 @@ public static class Texts
     public const string ErrorDesktopStartFailed = "Claude Desktop konnte nicht gestartet werden.";
     public const string ErrorNoTerminal = "Kein unterstütztes Terminal gefunden.";
     public const string ErrorTerminalStartFailed = "Das Terminal konnte nicht gestartet werden.";
+    public const string HintLoginWatch =
+        "Claude Desktop läuft. Meldest du dich über den Browser an, leitet MCACC die Anmeldung auf dieses Profil "
+        + "um und schließt sich danach von selbst.";
+    public const string ErrorLoginRedirectFailed =
+        "Die Anmeldung konnte nicht auf dieses Profil umgeleitet werden. Bitte in Claude Desktop erneut anmelden.";
     public const string HintClaudeCliMissing =
         "Hinweis: „claude“ wurde nicht im PATH gefunden. Installiere Claude Code, falls das Terminal einen Fehler zeigt.";
     public const string ErrorRunningWithThisAccount =

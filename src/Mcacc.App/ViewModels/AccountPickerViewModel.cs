@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using Avalonia.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -6,6 +7,7 @@ using Mcacc.App.Localization;
 using Mcacc.App.Services;
 using Mcacc.Core.Desktop;
 using Mcacc.Core.Model;
+using Mcacc.Core.Usage;
 
 namespace Mcacc.App.ViewModels;
 
@@ -17,10 +19,18 @@ public sealed partial class AccountPickerViewModel : PageViewModel
     public AccountPickerViewModel(AppServices services)
     {
         _services = services;
+        AddTile = new AddAccountTileViewModel(Texts.AddAccount, AddCommand);
+        Entries = [AddTile];
+        Tiles.CollectionChanged += MirrorTiles;
         Reload();
     }
 
     public ObservableCollection<AccountTileViewModel> Tiles { get; } = [];
+
+    public AddAccountTileViewModel AddTile { get; }
+
+    /// <summary>What the grid shows: the tiles, then the add tile, so it sits in the same columns.</summary>
+    public ObservableCollection<ViewModelBase> Entries { get; }
 
     /// <summary>The tile the page focuses first: the account used last.</summary>
     [ObservableProperty]
@@ -29,8 +39,6 @@ public sealed partial class AccountPickerViewModel : PageViewModel
     public string Title => Texts.AccountPickerTitle;
 
     public string Subtitle => Texts.AccountPickerSubtitle;
-
-    public string AddText => Texts.AddAccount;
 
     public string RefreshTooltip => Texts.RefreshUsage;
 
@@ -215,6 +223,40 @@ public sealed partial class AccountPickerViewModel : PageViewModel
         PreferredTile = Tiles.FirstOrDefault(tile => tile.Id == lastId) ?? Tiles.FirstOrDefault();
     }
 
+    /// <summary>
+    /// Applies each change of <see cref="Tiles"/> to <see cref="Entries"/> at the same index, since the add tile stays last;
+    /// a rebuild would recreate every tile and drop the keyboard focus.
+    /// </summary>
+    private void MirrorTiles(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        switch (e.Action)
+        {
+            case NotifyCollectionChangedAction.Add:
+                for (var i = 0; i < e.NewItems!.Count; i++)
+                {
+                    Entries.Insert(e.NewStartingIndex + i, (AccountTileViewModel)e.NewItems[i]!);
+                }
+
+                break;
+            case NotifyCollectionChangedAction.Remove:
+                for (var i = 0; i < e.OldItems!.Count; i++)
+                {
+                    Entries.RemoveAt(e.OldStartingIndex);
+                }
+
+                break;
+            default:
+                Entries.Clear();
+                foreach (var tile in Tiles)
+                {
+                    Entries.Add(tile);
+                }
+
+                Entries.Add(AddTile);
+                break;
+        }
+    }
+
     /// <summary>Errors are logged only: a failing refresh must not interrupt the picker.</summary>
     private async Task RefreshUsageAsync(CancellationToken ct)
     {
@@ -234,6 +276,11 @@ public sealed partial class AccountPickerViewModel : PageViewModel
 
         for (var i = 0; i < tiles.Count; i++)
         {
+            if (results[i].State == UsageState.WrongAccount)
+            {
+                _services.Log.Warn($"The Claude Code token of '{tiles[i].Id}' belongs to another account.");
+            }
+
             tiles[i].SetUsage(results[i]);
         }
     }

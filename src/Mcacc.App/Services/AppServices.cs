@@ -12,6 +12,7 @@ namespace Mcacc.App.Services;
 public sealed record AppServices(
     IAccountService Accounts,
     IDesktopLauncher Desktop,
+    IDesktopLoginRedirector Redirect,
     ICodeLauncher Code,
     IUsageProvider Usage,
     ILoginInfoReader Login,
@@ -29,8 +30,11 @@ public sealed record AppServices(
     IShellPresenter Shell,
     string Version);
 
-/// <summary>What a page may ask of the window: show an error, and nothing else.</summary>
+/// <summary>What a page may ask of the window: show a message in the banner, and nothing else.</summary>
 public interface IShellPresenter
 {
     void ShowError(string message);
+
+    /// <summary>Takes the banner down again, for a message that only holds while something is under way.</summary>
+    void ClearError();
 }

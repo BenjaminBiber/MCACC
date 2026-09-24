@@ -29,6 +29,16 @@ public sealed class AccountPickerViewModelTests : IDisposable
     }
 
     [Fact]
+    public void The_entries_are_the_tiles_followed_by_the_add_tile()
+    {
+        var picker = Picker();
+
+        picker.Entries.ShouldBe([picker.Tiles[0], picker.Tiles[1], picker.AddTile]);
+        picker.AddTile.Title.ShouldBe(Texts.AddAccount);
+        picker.AddTile.Command.ShouldBeSameAs(picker.AddCommand);
+    }
+
+    [Fact]
     public void A_tile_shows_the_login_email_or_the_hint()
     {
         _services.SetLogin(Privat, "privat@example.com");
@@ -97,6 +107,30 @@ public sealed class AccountPickerViewModelTests : IDisposable
         await picker.ActivateAsync(Ct);
 
         picker.Tiles.Single(t => t.Id == "privat").UsageHint.ShouldBe(Texts.UsageAsOf(fetchedAt));
+    }
+
+    [Fact]
+    public async Task A_token_of_another_account_shows_its_email_and_no_limits()
+    {
+        var snapshot = new UsageSnapshot(new UsageWindow(42, null), new UsageWindow(7, null), DateTimeOffset.UnixEpoch);
+        _services.Usage.Cached["privat"] = new AccountUsage(UsageState.Ok, snapshot);
+        _services.Usage.Fresh["privat"] = new AccountUsage(UsageState.WrongAccount, null, "privat@example.com");
+        var picker = Picker();
+
+        await picker.ActivateAsync(Ct);
+
+        var tile = picker.Tiles.Single(t => t.Id == "privat");
+        tile.UsageHint.ShouldBe(Texts.UsageWrongAccount("privat@example.com"));
+        tile.UsageHint.ShouldNotBeNull().ShouldContain("privat@example.com");
+        tile.FiveHour.Value.ShouldBeNull();
+        tile.SevenDay.Value.ShouldBeNull();
+    }
+
+    [Fact]
+    public void The_wrong_account_hint_reads_without_an_email()
+    {
+        Texts.UsageWrongAccount(null).ShouldNotContain("{");
+        Texts.UsageWrongAccount(null).ShouldNotBe(Texts.UsageWrongAccount("privat@example.com"));
     }
 
     [Fact]
@@ -292,6 +326,7 @@ public sealed class AccountPickerViewModelTests : IDisposable
 
         _services.Accounts.Removed.ShouldBe([("privat", false)]);
         picker.Tiles.Select(tile => tile.Id).ShouldBe(["standard"]);
+        picker.Entries.ShouldBe([picker.Tiles[0], picker.AddTile]);
     }
 
     [Fact]
@@ -367,6 +402,7 @@ public sealed class AccountPickerViewModelTests : IDisposable
         await picker.AddCommand.ExecuteAsync(null);
 
         picker.Tiles.Select(tile => tile.Name).ShouldBe(["Standard", "Privat", "Arbeit"]);
+        picker.Entries.ShouldBe([.. picker.Tiles, picker.AddTile]);
     }
 
     [Fact]

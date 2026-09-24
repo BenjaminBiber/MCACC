@@ -30,6 +30,7 @@ public static class CompositionRoot
             new ProfileDataDeleter());
         LogLoad(log, accounts);
 
+        var login = new ClaudeJsonLoginInfoReader();
         var navigator = new Navigator();
         var shell = new MainWindowViewModel(navigator);
         var dialogs = new DialogService(shell);
@@ -48,6 +49,14 @@ public static class CompositionRoot
                 resolver,
                 new DesktopInstanceMatcher(resolver, platform.Info.PathStyle),
                 platform.Info),
+            new DesktopLoginRedirector(
+                platform.InstallationLocator,
+                platform.CreateDetector(),
+                platform.Terminator,
+                platform.Runner,
+                resolver,
+                platform.Info,
+                log),
             new CodeLaunchService(
                 platform.Terminals,
                 platform.Executables,
@@ -56,8 +65,8 @@ public static class CompositionRoot
                 resolver,
                 platform.Paths,
                 platform.Info),
-            new UsageService(platform.Credentials, platform.UsageHttp, new UsageCache(platform.Paths), resolver),
-            new ClaudeJsonLoginInfoReader(),
+            new UsageService(platform.Credentials, login, platform.UsageHttp, new UsageCache(platform.Paths), resolver),
+            login,
             platform.CreateDetector(),
             new DesktopInstanceMatcher(resolver, platform.Info.PathStyle),
             platform.Terminals,

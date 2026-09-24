@@ -51,6 +51,7 @@ Design: Claude-Theme, minimalistisch, Akzent Claude-Orange `#D97757`, Hell/Dunke
    - Liefert `five_hour` / `seven_day` mit `utilization` (0–100) und `resets_at`.
    - Ist ratenbegrenzt (429).
    - Token-Quelle: Windows `<claudeDir>/.credentials.json` → `claudeAiOauth.accessToken` / `expiresAt` (ms); macOS Schlüsselbund „Claude Code-credentials[-<hash>]“.
+   - Besitzer-Prüfung: `GET https://api.anthropic.com/api/oauth/profile` mit denselben Headern liefert `account.uuid` / `account.email`. Verglichen wird mit `oauthAccount.accountUuid` (sonst `emailAddress`) aus `.claude.json`.
 8. **Installierte Terminals hier:** `pwsh` ist nicht installiert, Windows Terminal 1.24 ist vorhanden, `claude` liegt im WinGet-Pfad.
 9. **Icons:** `Material.Icons.Avalonia` bringt Pictogrammers-MDI, nicht Googles Set. Gemäß Benjamins Vorgabe („Google Material Icons“) wird stattdessen der Google-Font **Material Icons Round** (OTF, Apache-2.0) eingebettet und über ein kleines `MIcon`-Control mit Codepoints genutzt.
 
@@ -175,6 +176,7 @@ Die Variable wird immer **innerhalb** des Shell-Kommandos gesetzt, nicht vererbt
   - Ist es abgelaufen, geht kein Request raus, und die Kachel zeigt „Abgelaufen – Claude Code starten zum Aktualisieren“.
   - Bei 401, 429 oder einem Netzfehler zeigt die Kachel den Cache-Wert mit „Stand HH:mm“.
   - Ohne Login steht dort „Noch nicht angemeldet“.
+  - Vor dem Usage-Request wird einmal pro Token geprüft, ob es zu dem Account gehört, den `.claude.json` nennt. Im Speicher bleibt dafür nur ein SHA-256 des Tokens. Gehört es einem anderen Account, geht kein Usage-Request raus, der Cache-Eintrag wird gelöscht, und die Kachel zeigt „Claude Code ist hier mit … angemeldet – im Profil neu anmelden“ ohne Prozentwerte.
 - **Anzeige:**
   - Zwei schmale Balken, „5h“ und „Woche“, mit Prozent und Reset-Zeit.
   - Ab 90 % in Warnfarbe.

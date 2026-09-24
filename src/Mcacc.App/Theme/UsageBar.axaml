@@ -15,15 +15,10 @@
                   Background="{DynamicResource Mcacc.SurfaceHover}"
                   BorderBrush="{DynamicResource Mcacc.Border}"
                   BorderThickness="1">
-            <!-- The fill width follows the fraction of the track, which the Grid's star column expresses. -->
-            <Grid>
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="{TemplateBinding Fraction, Converter={x:Static controls:FractionConverter.Star}}" />
-                <ColumnDefinition Width="{TemplateBinding Fraction, Converter={x:Static controls:FractionConverter.Rest}}" />
-              </Grid.ColumnDefinitions>
+            <controls:FractionPanel Fraction="{TemplateBinding Fraction}">
               <!-- The fill color comes from the styles below; set here it would be a local value they cannot beat. -->
-              <Border Name="PART_Fill" Grid.Column="0" CornerRadius="2" />
-            </Grid>
+              <Border Name="PART_Fill" CornerRadius="2" />
+            </controls:FractionPanel>
           </Border>
         </StackPanel>
       </ControlTemplate>

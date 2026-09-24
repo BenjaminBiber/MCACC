@@ -135,6 +135,23 @@ public sealed class PageRenderTests : IDisposable
             .ShouldBe(AccountPalette.Colors.Count);
     }
 
+    [AvaloniaFact]
+    public void The_tile_menu_shows_its_entries_and_runs_their_commands()
+    {
+        var picker = new AccountPickerViewModel(_services.Services);
+        var window = Show(picker);
+        var privat = window.GetVisualDescendants().OfType<LaunchTile>().Single(tile => tile.Title == "Privat");
+        var more = privat.GetVisualDescendants().OfType<Button>().Single(button => button.Flyout is not null);
+
+        var flyout = more.Flyout.ShouldBeOfType<MenuFlyout>();
+        flyout.ShowAt(more);
+        window.UpdateLayout();
+
+        var items = flyout.Items.OfType<MenuItem>().ToList();
+        items.Select(item => item.Header).ShouldBe([picker.EditText, picker.RemoveText, picker.OpenFolderText]);
+        items.ShouldAllBe(item => item.Command != null && ReferenceEquals(item.CommandParameter, privat.DataContext));
+    }
+
     private static Border? Banner(Window window) =>
         window.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.Classes.Contains("banner") && b.IsVisible);
 }

@@ -29,17 +29,16 @@
         </Button>
       </Grid>
 
-      <ItemsControl ItemsSource="{Binding Tiles}">
+      <!-- The add tile is the last entry, so it takes the next free cell and the size of an account tile. -->
+      <ItemsControl x:Name="TileList" ItemsSource="{Binding Entries}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
-            <WrapPanel Orientation="Horizontal" XYFocus.NavigationModes="Enabled" />
+            <controls:TileGrid MinColumnWidth="300" Spacing="12" XYFocus.NavigationModes="Enabled" />
           </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
-        <ItemsControl.ItemTemplate>
+        <ItemsControl.DataTemplates>
           <DataTemplate x:DataType="vm:AccountTileViewModel">
             <controls:LaunchTile Variant="Account"
-                                 Width="332"
-                                 Margin="0,0,12,12"
                                  Title="{Binding Name}"
                                  Subtitle="{Binding Subtitle}"
                                  Badge="{Binding Badge}"
@@ -50,17 +49,18 @@
               <controls:LaunchTile.Overlay>
                 <Button Classes="icon" Width="28" Height="28" ToolTip.Tip="{Binding $parent[ItemsControl].((vm:AccountPickerViewModel)DataContext).MoreTooltip}">
                   <controls:MIcon Kind="MoreVert" FontSize="18" />
+                  <!-- The flyout opens in its own popup, outside the visual tree, so it reaches the page by name, not by $parent. -->
                   <Button.Flyout>
                     <MenuFlyout>
-                      <MenuItem Header="{Binding $parent[ItemsControl].((vm:AccountPickerViewModel)DataContext).EditText}"
-                                Command="{Binding $parent[ItemsControl].((vm:AccountPickerViewModel)DataContext).EditCommand}"
+                      <MenuItem Header="{Binding #TileList.((vm:AccountPickerViewModel)DataContext).EditText}"
+                                Command="{Binding #TileList.((vm:AccountPickerViewModel)DataContext).EditCommand}"
                                 CommandParameter="{Binding}" />
-                      <MenuItem Header="{Binding $parent[ItemsControl].((vm:AccountPickerViewModel)DataContext).RemoveText}"
+                      <MenuItem Header="{Binding #TileList.((vm:AccountPickerViewModel)DataContext).RemoveText}"
                                 IsVisible="{Binding !IsDefault}"
-                                Command="{Binding $parent[ItemsControl].((vm:AccountPickerViewModel)DataContext).RemoveCommand}"
+                                Command="{Binding #TileList.((vm:AccountPickerViewModel)DataContext).RemoveCommand}"
                                 CommandParameter="{Binding}" />
-                      <MenuItem Header="{Binding $parent[ItemsControl].((vm:AccountPickerViewModel)DataContext).OpenFolderText}"
-                                Command="{Binding $parent[ItemsControl].((vm:AccountPickerViewModel)DataContext).OpenFolderCommand}"
+                      <MenuItem Header="{Binding #TileList.((vm:AccountPickerViewModel)DataContext).OpenFolderText}"
+                                Command="{Binding #TileList.((vm:AccountPickerViewModel)DataContext).OpenFolderCommand}"
                                 CommandParameter="{Binding}" />
                     </MenuFlyout>
                   </Button.Flyout>
@@ -82,15 +82,14 @@
               </controls:LaunchTile.Footer>
             </controls:LaunchTile>
           </DataTemplate>
-        </ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:AddAccountTileViewModel">
+            <controls:LaunchTile Variant="Add"
+                                 IconKind="Add"
+                                 Title="{Binding Title}"
+                                 Command="{Binding Command}" />
+          </DataTemplate>
+        </ItemsControl.DataTemplates>
       </ItemsControl>
-
-      <controls:LaunchTile Variant="Add"
-                           Width="332"
-                           HorizontalAlignment="Left"
-                           IconKind="Add"
-                           Title="{Binding AddText}"
-                           Command="{Binding AddCommand}" />
 
     </StackPanel>
   </ScrollViewer>

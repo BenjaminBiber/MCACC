@@ -73,6 +73,7 @@ public sealed partial class AccountTileViewModel : ViewModelBase
     private static string? HintFor(AccountUsage usage) => usage.State switch
     {
         UsageState.Expired => Texts.UsageExpired,
+        UsageState.WrongAccount => Texts.UsageWrongAccount(usage.TokenEmail),
         UsageState.NotLoggedIn => null,
         UsageState.Ok => null,
         _ => usage.Snapshot is { } snapshot ? Texts.UsageAsOf(snapshot.FetchedAt) : null,

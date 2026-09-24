@@ -62,6 +62,18 @@ xattr -dr com.apple.quarantine MCACC.app
 
 Nach einem erfolgreichen Start schließt sich MCACC (abschaltbar in den Einstellungen).
 
+### Anmelden
+
+Claude Desktop reicht die Anmeldung an den Standardbrowser weiter. Der kommt mit einer
+`claude://`-Adresse zurück, und die öffnet Windows bzw. macOS mit dem registrierten Handler —
+also ohne `--user-data-dir` und damit im Standardprofil. Ohne Gegenmaßnahme landet die
+Anmeldung deshalb im falschen Account.
+
+Darum bleibt MCACC nach dem Start eines Profil-Accounts bis zu drei Minuten offen und sagt das
+auch. Taucht in dieser Zeit so ein Start auf, beendet MCACC ihn, bevor er den einmaligen Code
+einlösen kann, und übergibt die Adresse an das Profil des gewählten Accounts. Danach schließt
+sich MCACC. Wer nicht warten will, schließt es einfach selbst.
+
 ### Tastatur
 
 | Taste | Wirkung |
@@ -128,6 +140,11 @@ Ausprobieren, ohne das echte Setup anzufassen.
   Claude Code benutzt. Er ist ratenbegrenzt und kann sich jederzeit ändern. MCACC liest das
   Token nur, erneuert es nie und zeigt bei einem Fehler den letzten bekannten Wert mit
   Zeitstempel. Ist das Token abgelaufen, hilft ein Start von Claude Code.
+- **MCACC prüft, wem das Token gehört.** Einmal pro Token fragt es `/api/oauth/profile`. Gehört
+  das Token zu einem anderen Account als dem, den `.claude.json` nennt, zeigt die Kachel keine
+  Limits, sondern „Claude Code ist hier mit … angemeldet – im Profil neu anmelden“. Dann läuft
+  auch `claude` in diesem Profil mit dem fremden Account. Abhilfe: im Profil `claude` starten
+  und mit `/login` den richtigen Account wählen.
 - **Platzbedarf:** Jedes Desktop-Profil lädt eigene claude-code-Binaries und VM-Bundles, also
   mehrere hundert MB pro Account.
 - **macOS fragt beim ersten Lesen der Limits nach Zugriff auf den Schlüsselbund.** Das ist der

@@ -108,7 +108,16 @@ public sealed partial class TargetPickerViewModel : PageViewModel
         {
             case DesktopLaunchOutcome.Launched:
                 _services.Log.Info($"Claude Desktop started for '{Account.Id}'.");
-                await FinishAsync(LaunchTarget.Desktop, autoClose: true).ConfigureAwait(true);
+                if (Account.IsDefault)
+                {
+                    await FinishAsync(LaunchTarget.Desktop, autoClose: true).ConfigureAwait(true);
+                    return;
+                }
+
+                // A login through the browser comes back to the app default profile, so MCACC stays until it can
+                // put it on this account's profile instead.
+                await FinishAsync(LaunchTarget.Desktop, autoClose: false).ConfigureAwait(true);
+                await WatchLoginAsync().ConfigureAwait(true);
                 return;
             case DesktopLaunchOutcome.NotInstalled:
                 _services.Shell.ShowError(Texts.ErrorDesktopNotFound);
@@ -179,6 +188,39 @@ public sealed partial class TargetPickerViewModel : PageViewModel
                 return true;
             default:
                 return false;
+        }
+    }
+
+    /// <summary>Keeps the window up while a browser login may still come back, and closes it afterwards.</summary>
+    private async Task WatchLoginAsync()
+    {
+        _services.Shell.ShowError(Texts.HintLoginWatch);
+        DesktopRedirectOutcome outcome;
+        try
+        {
+            outcome = await _services.Redirect.WatchAsync(Account, CancellationToken.None).ConfigureAwait(true);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            _services.Log.Warn($"Watching the Claude Desktop login for '{Account.Id}' failed.", e);
+            outcome = DesktopRedirectOutcome.Failed;
+        }
+
+        if (outcome == DesktopRedirectOutcome.Failed)
+        {
+            _services.Shell.ShowError(Texts.ErrorLoginRedirectFailed);
+            return;
+        }
+
+        _services.Shell.ClearError();
+        if (outcome == DesktopRedirectOutcome.Redirected)
+        {
+            _services.Log.Info($"Claude Desktop login handed to '{Account.Id}'.");
+        }
+
+        if (_services.Accounts.Config.Settings.CloseAfterLaunch)
+        {
+            _services.Lifetime.Shutdown();
         }
     }
 

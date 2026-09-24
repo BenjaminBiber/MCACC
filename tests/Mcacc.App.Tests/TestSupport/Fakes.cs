@@ -103,6 +103,27 @@ internal sealed class FakeDesktopLauncher : IDesktopLauncher
     }
 }
 
+internal sealed class FakeLoginRedirector : IDesktopLoginRedirector
+{
+    public DesktopRedirectOutcome Outcome { get; set; } = DesktopRedirectOutcome.NotSeen;
+
+    public List<Account> Watched { get; } = [];
+
+    /// <summary>Set it to hold the watch open, the way the real one holds the window open.</summary>
+    public TaskCompletionSource? Gate { get; set; }
+
+    public async Task<DesktopRedirectOutcome> WatchAsync(Account target, CancellationToken ct)
+    {
+        Watched.Add(target);
+        if (Gate is { } gate)
+        {
+            await gate.Task.WaitAsync(ct).ConfigureAwait(false);
+        }
+
+        return Outcome;
+    }
+}
+
 internal sealed class FakeCodeLauncher : ICodeLauncher
 {
     public CodeLaunchResult Result { get; set; } =

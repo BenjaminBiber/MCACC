@@ -38,11 +38,11 @@ public sealed class ScreenshotTests : IDisposable
         frame.Save(stream, Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
     }
 
-    private Window Window(PageViewModel page, ThemeVariant variant)
+    private Window Window(PageViewModel page, ThemeVariant variant, double width = 760)
     {
         _services.Navigator.Reset(page);
         Avalonia.Application.Current!.RequestedThemeVariant = variant;
-        var window = new MainWindow { DataContext = _services.Window, Width = 760, Height = 540 };
+        var window = new MainWindow { DataContext = _services.Window, Width = width, Height = 540 };
         window.Show();
         return window;
     }
@@ -70,6 +70,30 @@ public sealed class ScreenshotTests : IDisposable
         var picker = new AccountPickerViewModel(_services.Services);
         picker.Tiles[1].IsRunning = true;
         Save(Window(picker, variant), $"picker-{theme}");
+    }
+
+    /// <summary>The minimum window width, where the tiles fill one column.</summary>
+    [AvaloniaFact]
+    public void Account_picker_at_the_minimum_width()
+    {
+        Seed();
+        Save(Window(new AccountPickerViewModel(_services.Services), ThemeVariant.Light, width: 560), "picker-narrow");
+    }
+
+    /// <summary>A wide window, where the add tile sits in the row of the accounts.</summary>
+    [AvaloniaFact]
+    public void Account_picker_in_a_wide_window()
+    {
+        Seed();
+        Save(Window(new AccountPickerViewModel(_services.Services), ThemeVariant.Light, width: 1100), "picker-wide");
+    }
+
+    [AvaloniaFact]
+    public void Account_picker_with_a_token_of_another_account()
+    {
+        Seed();
+        _services.Usage.Cached["standard"] = new AccountUsage(UsageState.WrongAccount, null, "privat@example.com");
+        Save(Window(new AccountPickerViewModel(_services.Services), ThemeVariant.Light), "picker-wrong-account");
     }
 
     [AvaloniaTheory]

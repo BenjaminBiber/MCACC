@@ -120,6 +120,86 @@ public sealed class TargetPickerViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task Starting_the_desktop_for_a_profile_watches_for_a_misrouted_login()
+    {
+        await Page().LaunchDesktopCommand.ExecuteAsync(null);
+
+        _services.Redirect.Watched.ShouldBe([Privat]);
+    }
+
+    [Fact]
+    public async Task The_default_account_is_not_watched_because_a_stray_login_lands_in_its_profile()
+    {
+        await Page(Standard).LaunchDesktopCommand.ExecuteAsync(null);
+
+        _services.Redirect.Watched.ShouldBeEmpty();
+        _services.Lifetime.Shutdowns.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task While_the_login_may_still_come_back_the_switcher_says_so_and_stays_open()
+    {
+        _services.Redirect.Gate = new TaskCompletionSource();
+        var page = Page();
+
+        var launch = page.LaunchDesktopCommand.ExecuteAsync(null);
+
+        _services.Window.ErrorBanner.ShouldBe(Texts.HintLoginWatch);
+        _services.Lifetime.Shutdowns.ShouldBe(0);
+
+        _services.Redirect.Gate.SetResult();
+        await launch;
+
+        _services.Window.ErrorBanner.ShouldBeNull();
+        _services.Lifetime.Shutdowns.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task A_redirected_login_takes_the_hint_down_and_closes_the_switcher()
+    {
+        _services.Redirect.Outcome = DesktopRedirectOutcome.Redirected;
+
+        await Page().LaunchDesktopCommand.ExecuteAsync(null);
+
+        _services.Window.ErrorBanner.ShouldBeNull();
+        _services.Lifetime.Shutdowns.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task A_login_that_could_not_be_handed_over_is_reported_and_keeps_the_switcher_open()
+    {
+        _services.Redirect.Outcome = DesktopRedirectOutcome.Failed;
+
+        await Page().LaunchDesktopCommand.ExecuteAsync(null);
+
+        _services.Window.ErrorBanner.ShouldBe(Texts.ErrorLoginRedirectFailed);
+        _services.Lifetime.Shutdowns.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task A_watch_that_throws_is_reported_like_a_failed_handover()
+    {
+        _services.Redirect.Gate = new TaskCompletionSource();
+        _services.Redirect.Gate.SetException(new InvalidOperationException("no snapshot"));
+
+        await Page().LaunchDesktopCommand.ExecuteAsync(null);
+
+        _services.Window.ErrorBanner.ShouldBe(Texts.ErrorLoginRedirectFailed);
+        _services.Lifetime.Shutdowns.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task With_close_after_launch_off_a_finished_watch_leaves_the_switcher_open()
+    {
+        _services.Accounts.UpdateSettings(settings => settings with { CloseAfterLaunch = false });
+
+        await Page().LaunchDesktopCommand.ExecuteAsync(null);
+
+        _services.Redirect.Watched.ShouldBe([Privat]);
+        _services.Lifetime.Shutdowns.ShouldBe(0);
+    }
+
+    [Fact]
     public async Task A_conflict_asks_before_quitting_and_then_restarts()
     {
         _services.Desktop.Check = new DesktopLaunchCheck.Conflict([new DesktopConflict(StandardInstance, Standard)]);

@@ -31,7 +31,8 @@
                 Padding="{TemplateBinding Padding}">
           <Panel>
             <!-- Account and Add tiles stack their rows; the Target tile puts its icon beside the text. -->
-            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="8">
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="8"
+                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}">
 
               <Ellipse Name="PART_Avatar"
                        Grid.Row="0" Grid.Column="0"
@@ -123,6 +124,8 @@
 
     <Style Selector="^[Variant=Add]">
       <Setter Property="Background" Value="Transparent" />
+      <!-- Stretched to the height of an account tile, the plus and its label sit in the middle. -->
+      <Setter Property="VerticalContentAlignment" Value="Center" />
       <!-- The dashed rectangle is the outline; the border itself stays invisible. -->
       <Setter Property="BorderBrush" Value="Transparent" />
       <Setter Property="Foreground" Value="{DynamicResource Mcacc.TextSecondary}" />
