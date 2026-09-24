@@ -12,15 +12,24 @@ public static class DesktopLaunchPlanner
     private static readonly IReadOnlyList<string> ScrubWithConfigDir = [.. EnvironmentScrub.Always, ConfigDir];
 
     /// <param name="homeDir">The working directory of Claude Desktop.</param>
-    public static ProcessSpec PlanWindows(DesktopInstallation inst, AccountPaths paths, string homeDir)
+    /// <param name="deepLinkUrl">
+    /// A <c>claude://</c> URL to hand to the profile. Electron holds its single-instance lock per user data
+    /// directory, so a running instance of that profile receives the URL and this start exits again.
+    /// </param>
+    public static ProcessSpec PlanWindows(
+        DesktopInstallation inst,
+        AccountPaths paths,
+        string homeDir,
+        string? deepLinkUrl = null)
     {
-        string[] arguments = paths.DesktopUserDataDir is { } userDataDir ? [UserDataDirArgument(userDataDir)] : [];
+        var arguments = Arguments(paths.DesktopUserDataDir, deepLinkUrl);
         return paths.ClaudeConfigDir is { } configDir
             ? new ProcessSpec(inst.LaunchPath, arguments, homeDir, new Dictionary<string, string> { [ConfigDir] = configDir }, EnvironmentScrub.Always)
             : new ProcessSpec(inst.LaunchPath, arguments, homeDir, ReadOnlyDictionary<string, string>.Empty, ScrubWithConfigDir);
     }
 
-    public static ProcessSpec PlanMac(DesktopInstallation inst, AccountPaths paths)
+    /// <param name="deepLinkUrl">See <see cref="PlanWindows"/>.</param>
+    public static ProcessSpec PlanMac(DesktopInstallation inst, AccountPaths paths, string? deepLinkUrl = null)
     {
         List<string> arguments = ["-n", "-a", inst.LaunchPath];
         if (paths.ClaudeConfigDir is { } configDir)
@@ -28,12 +37,31 @@ public static class DesktopLaunchPlanner
             arguments.AddRange(["--env", $"{ConfigDir}={configDir}"]);
         }
 
-        if (paths.DesktopUserDataDir is { } userDataDir)
+        var appArguments = Arguments(paths.DesktopUserDataDir, deepLinkUrl);
+        if (appArguments.Count > 0)
         {
-            arguments.AddRange(["--args", UserDataDirArgument(userDataDir)]);
+            arguments.Add("--args");
+            arguments.AddRange(appArguments);
         }
 
         return new ProcessSpec(Open, arguments, WorkingDirectory: null, ReadOnlyDictionary<string, string>.Empty, ScrubWithConfigDir);
+    }
+
+    /// <summary>The switch comes first, so Chromium has the profile before it looks at the URL behind it.</summary>
+    private static List<string> Arguments(string? userDataDir, string? deepLinkUrl)
+    {
+        List<string> arguments = [];
+        if (userDataDir is not null)
+        {
+            arguments.Add(UserDataDirArgument(userDataDir));
+        }
+
+        if (deepLinkUrl is not null)
+        {
+            arguments.Add(deepLinkUrl);
+        }
+
+        return arguments;
     }
 
     private static string UserDataDirArgument(string userDataDir) => $"{ClaudeDesktopConstants.UserDataDirSwitch}={userDataDir}";

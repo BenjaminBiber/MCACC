@@ -6,12 +6,13 @@ using Mcacc.Core.Usage;
 namespace Mcacc.Platform.Common;
 
 /// <summary>
-/// Calls the unofficial usage endpoint Claude Code itself uses. The token is only put into the Authorization header
-/// and never logged.
+/// Calls the unofficial usage and profile endpoints Claude Code itself uses. The token is only put into the
+/// Authorization header and never logged.
 /// </summary>
 public sealed class UsageHttpClient : IUsageHttp, IDisposable
 {
-    private const string Endpoint = "https://api.anthropic.com/api/oauth/usage";
+    private const string UsageEndpoint = "https://api.anthropic.com/api/oauth/usage";
+    private const string ProfileEndpoint = "https://api.anthropic.com/api/oauth/profile";
     private const string BetaHeader = "anthropic-beta";
     private const string BetaValue = "oauth-2025-04-20";
 
@@ -43,9 +44,15 @@ public sealed class UsageHttpClient : IUsageHttp, IDisposable
         }
     }
 
-    public async Task<UsageHttpResponse> GetUsageAsync(string accessToken, CancellationToken ct)
+    public Task<UsageHttpResponse> GetUsageAsync(string accessToken, CancellationToken ct) =>
+        GetAsync(UsageEndpoint, accessToken, ct);
+
+    public Task<UsageHttpResponse> GetProfileAsync(string accessToken, CancellationToken ct) =>
+        GetAsync(ProfileEndpoint, accessToken, ct);
+
+    private async Task<UsageHttpResponse> GetAsync(string endpoint, string accessToken, CancellationToken ct)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, Endpoint);
+        using var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         request.Headers.Add(BetaHeader, BetaValue);
         using var response = await _client.SendAsync(request, ct).ConfigureAwait(false);

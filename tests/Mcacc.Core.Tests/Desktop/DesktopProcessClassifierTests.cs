@@ -183,6 +183,41 @@ public class DesktopProcessClassifierTests
     }
 
     [Fact]
+    public void Deep_link_on_the_main_process_is_kept_with_the_instance()
+    {
+        var processes = new[]
+        {
+            MainProcess(100, " \"claude://login/google-auth?code=4%2F0AXlqoi45\""),
+            ChildProcess(110, 100, Renderer(RoamingClaude)),
+        };
+
+        var instance = DesktopProcessClassifier.Classify(processes, Windows).ShouldHaveSingleItem();
+
+        instance.DeepLinkUrl.ShouldBe("claude://login/google-auth?code=4%2F0AXlqoi45");
+        instance.UserDataDir.ShouldBe(RoamingClaude);
+    }
+
+    [Fact]
+    public void Deep_link_of_a_child_is_not_taken_for_the_instance()
+    {
+        var processes = new[]
+        {
+            MainProcess(100, $" --user-data-dir={PrivatDesktop}"),
+            ChildProcess(110, 100, $"{Renderer(PrivatDesktop)} --url=claude://login/google-auth"),
+        };
+
+        DesktopProcessClassifier.Classify(processes, Windows).ShouldHaveSingleItem().DeepLinkUrl.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Ordinary_start_carries_no_deep_link()
+    {
+        var processes = new[] { MainProcess(100, $" --user-data-dir={ArbeitDesktop}") };
+
+        DesktopProcessClassifier.Classify(processes, Windows).ShouldHaveSingleItem().DeepLinkUrl.ShouldBeNull();
+    }
+
+    [Fact]
     public void Mac_profile_snapshot_has_two_instances_with_their_helpers()
     {
         var processes = PsOutputParser.Parse(FixtureFiles.ReadAllText("ps-profile.txt"));

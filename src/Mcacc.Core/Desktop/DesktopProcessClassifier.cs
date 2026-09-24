@@ -44,6 +44,14 @@ public static class DesktopProcessClassifier
             .Select(p => CommandLineSwitch.TryGetValue(p.CommandLine, ClaudeDesktopConstants.UserDataDirSwitch, out var dir) ? dir : null)
             .FirstOrDefault(dir => dir is not null);
 
-        return new DesktopInstance(main.Pid, main.StartTime, userDataDir, [main.Pid, .. descendants.Select(p => p.Pid)]);
+        // Only the main process is asked: the OS puts the deep link on the launch it starts, never on a child.
+        var deepLink = DesktopDeepLink.TryGetUrl(main.CommandLine, out var url) ? url : null;
+
+        return new DesktopInstance(
+            main.Pid,
+            main.StartTime,
+            userDataDir,
+            [main.Pid, .. descendants.Select(p => p.Pid)],
+            deepLink);
     }
 }

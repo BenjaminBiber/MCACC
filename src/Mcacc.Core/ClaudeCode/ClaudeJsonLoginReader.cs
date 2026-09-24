@@ -44,7 +44,13 @@ public static class ClaudeJsonLoginReader
         }
 
         var email = Text(account, "emailAddress");
-        return email is null ? null : new ClaudeLoginInfo(email, Text(account, "organizationName"), Text(account, "displayName"));
+        return email is null
+            ? null
+            : new ClaudeLoginInfo(
+                email,
+                Text(account, "organizationName"),
+                Text(account, "displayName"),
+                Text(account, "accountUuid"));
     }
 
     private static string? Text(JsonElement owner, string name) =>

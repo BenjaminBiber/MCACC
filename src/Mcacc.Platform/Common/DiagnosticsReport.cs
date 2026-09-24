@@ -114,6 +114,11 @@ public static class DiagnosticsReport
                 $"pid {instance.MainPid} started {instance.StartTime:yyyy-MM-dd HH:mm:ss} account '{owner}'");
             report.AppendLine(CultureInfo.InvariantCulture, $"  user-data-dir {instance.UserDataDir ?? "<app default>"}");
             report.AppendLine(CultureInfo.InvariantCulture, $"  pids          {string.Join(", ", instance.ProcessIds)}");
+            if (instance.DeepLinkUrl is not null)
+            {
+                // Only that there is one: the URL carries a one-time login code.
+                report.AppendLine("  started by a claude:// link");
+            }
         }
     }
 

@@ -18,6 +18,13 @@ public sealed class UsageServiceTests : IDisposable
 
     private const string Token = "sk-ant-oat01-EXAMPLE-NOT-A-REAL-TOKEN";
 
+    private const string OwnUuid = "00000000-0000-0000-0000-000000000001";
+
+    private const string OtherProfile =
+        """{ "account": { "uuid": "00000000-0000-0000-0000-000000000099", "email": "privat@example.com" } }""";
+
+    private static readonly ClaudeLoginInfo OwnLogin = new("max.muster@example.com", null, null, OwnUuid);
+
     private static readonly UsageSnapshot Old = new(
         new UsageWindow(11, new DateTimeOffset(2026, 9, 23, 10, 0, 0, TimeSpan.Zero)),
         null,
@@ -26,6 +33,7 @@ public sealed class UsageServiceTests : IDisposable
     private readonly TempDirectory _temp = new();
     private readonly FakeTimeProvider _time = new(Now, TimeZoneInfo.Utc);
     private readonly FakeCredentialSource _credentials = new();
+    private readonly FakeLoginReader _login = new();
     private readonly FakeUsageHttp _http = new();
 
     public UsageServiceTests()
@@ -34,6 +42,7 @@ public sealed class UsageServiceTests : IDisposable
             CredentialReadStatus.Found,
             new OAuthCredentials(Token, Now + TimeSpan.FromHours(1)));
         _http.Response = new UsageHttpResponse(200, FixtureFiles.ReadAllText("usage-ok.json"));
+        _http.ProfileResponse = new UsageHttpResponse(200, FixtureFiles.ReadAllText("profile-ok.json"));
     }
 
     public void Dispose() => _temp.Dispose();
@@ -51,7 +60,7 @@ public sealed class UsageServiceTests : IDisposable
     private UsageCache Cache => new(Paths);
 
     private UsageService Service() =>
-        new(_credentials, _http, Cache, new AccountPathResolver(Paths, Platform), _time);
+        new(_credentials, _login, _http, Cache, new AccountPathResolver(Paths, Platform), _time);
 
     private void SeedCache(params string[] ids) =>
         Cache.Save(ids.ToDictionary(id => id, _ => Old));
@@ -241,6 +250,133 @@ public sealed class UsageServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task A_token_of_the_logged_in_account_is_checked_and_then_read()
+    {
+        _login.Info = OwnLogin;
+
+        var usage = await Service().RefreshAsync(Privat, Ct);
+
+        usage.ShouldBe(new AccountUsage(UsageState.Ok, Fresh(Now)));
+        _http.ProfileRequests.ShouldBe([Token]);
+        _http.Requests.ShouldBe([Token]);
+        _login.ReadPaths.Single().ClaudeJsonFile
+            .ShouldBe(new AccountPathResolver(Paths, Platform).Resolve(Privat).ClaudeJsonFile);
+    }
+
+    [Fact]
+    public async Task A_token_of_another_account_shows_no_limits_and_forgets_the_cached_ones()
+    {
+        SeedCache("privat", "arbeit");
+        _login.Info = OwnLogin;
+        _http.ProfileResponse = new UsageHttpResponse(200, OtherProfile);
+
+        var usage = await Service().RefreshAsync(Privat, Ct);
+
+        usage.ShouldBe(new AccountUsage(UsageState.WrongAccount, null, "privat@example.com"));
+        _http.Requests.ShouldBeEmpty();
+        Cache.Load().Keys.ShouldBe(["arbeit"]);
+    }
+
+    [Fact]
+    public async Task Without_a_uuid_the_emails_are_compared_ignoring_case()
+    {
+        _login.Info = new ClaudeLoginInfo("Max.Muster@example.com", null, null);
+        _http.ProfileResponse = new UsageHttpResponse(200, """{ "account": { "email": "max.muster@EXAMPLE.com" } }""");
+
+        (await Service().RefreshAsync(Privat, Ct)).State.ShouldBe(UsageState.Ok);
+    }
+
+    [Fact]
+    public async Task The_owner_of_a_token_is_asked_only_once()
+    {
+        _login.Info = OwnLogin;
+        var service = Service();
+        await service.RefreshAsync(Privat, Ct);
+        _time.Advance(TimeSpan.FromSeconds(60));
+
+        await service.RefreshAsync(Privat, Ct);
+
+        _http.ProfileRequests.Count.ShouldBe(1);
+        _http.Requests.Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task A_new_token_is_checked_again()
+    {
+        const string rotated = Token + "-ROTATED";
+        _login.Info = OwnLogin;
+        var service = Service();
+        await service.RefreshAsync(Privat, Ct);
+        _time.Advance(TimeSpan.FromSeconds(60));
+        _credentials.Result = new CredentialReadResult(
+            CredentialReadStatus.Found,
+            new OAuthCredentials(rotated, Now + TimeSpan.FromHours(1)));
+
+        await service.RefreshAsync(Privat, Ct);
+
+        _http.ProfileRequests.ShouldBe([Token, rotated]);
+    }
+
+    [Fact]
+    public async Task Without_a_login_the_token_is_not_checked()
+    {
+        (await Service().RefreshAsync(Privat, Ct)).State.ShouldBe(UsageState.Ok);
+
+        _http.ProfileRequests.ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData(401, UsageState.Unauthorized)]
+    [InlineData(403, UsageState.Unauthorized)]
+    [InlineData(429, UsageState.RateLimited)]
+    [InlineData(500, UsageState.Error)]
+    public async Task A_failed_owner_check_keeps_the_cached_value(int statusCode, UsageState expected)
+    {
+        SeedCache("privat");
+        _login.Info = OwnLogin;
+        _http.ProfileResponse = new UsageHttpResponse(statusCode, null);
+
+        (await Service().RefreshAsync(Privat, Ct)).ShouldBe(new AccountUsage(expected, Old));
+        _http.Requests.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task An_unparsable_profile_keeps_the_cached_value()
+    {
+        SeedCache("privat");
+        _login.Info = OwnLogin;
+        _http.ProfileResponse = new UsageHttpResponse(200, "<html>oops</html>");
+
+        (await Service().RefreshAsync(Privat, Ct)).ShouldBe(new AccountUsage(UsageState.Error, Old));
+        _http.Requests.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task A_network_failure_during_the_owner_check_keeps_the_cached_value()
+    {
+        SeedCache("privat");
+        _login.Info = OwnLogin;
+        _http.OnProfileRequest = _ => throw new HttpRequestException("no route to host");
+
+        (await Service().RefreshAsync(Privat, Ct)).ShouldBe(new AccountUsage(UsageState.Error, Old));
+    }
+
+    [Fact]
+    public async Task A_failed_owner_check_is_not_remembered()
+    {
+        _login.Info = OwnLogin;
+        var profile = _http.ProfileResponse;
+        _http.ProfileResponse = new UsageHttpResponse(500, null);
+        var service = Service();
+        await service.RefreshAsync(Privat, Ct);
+        _time.Advance(TimeSpan.FromSeconds(60));
+        _http.ProfileResponse = profile;
+
+        (await service.RefreshAsync(Privat, Ct)).State.ShouldBe(UsageState.Ok);
+        _http.ProfileRequests.Count.ShouldBe(2);
+    }
+
+    [Fact]
     public async Task A_canceled_refresh_throws_and_writes_nothing()
     {
         using var cts = new CancellationTokenSource();
@@ -262,26 +398,62 @@ public sealed class UsageServiceTests : IDisposable
         }
     }
 
+    private sealed class FakeLoginReader : ILoginInfoReader
+    {
+        private readonly Lock _gate = new();
+
+        public ClaudeLoginInfo? Info { get; set; }
+
+        public List<AccountPaths> ReadPaths { get; } = [];
+
+        public ClaudeLoginInfo? Read(AccountPaths paths)
+        {
+            lock (_gate)
+            {
+                ReadPaths.Add(paths);
+            }
+
+            return Info;
+        }
+    }
+
     private sealed class FakeUsageHttp : IUsageHttp
     {
         private readonly Lock _gate = new();
 
         public List<string> Requests { get; } = [];
 
+        public List<string> ProfileRequests { get; } = [];
+
         public UsageHttpResponse Response { get; set; } = new(200, "{}");
+
+        public UsageHttpResponse ProfileResponse { get; set; } = new(200, "{}");
 
         public Action<string>? OnRequest { get; set; }
 
-        public Task<UsageHttpResponse> GetUsageAsync(string accessToken, CancellationToken ct)
+        public Action<string>? OnProfileRequest { get; set; }
+
+        public Task<UsageHttpResponse> GetUsageAsync(string accessToken, CancellationToken ct) =>
+            Record(Requests, OnRequest, Response, accessToken, ct);
+
+        public Task<UsageHttpResponse> GetProfileAsync(string accessToken, CancellationToken ct) =>
+            Record(ProfileRequests, OnProfileRequest, ProfileResponse, accessToken, ct);
+
+        private Task<UsageHttpResponse> Record(
+            List<string> requests,
+            Action<string>? onRequest,
+            UsageHttpResponse response,
+            string accessToken,
+            CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
             lock (_gate)
             {
-                Requests.Add(accessToken);
+                requests.Add(accessToken);
             }
 
-            OnRequest?.Invoke(accessToken);
-            return Task.FromResult(Response);
+            onRequest?.Invoke(accessToken);
+            return Task.FromResult(response);
         }
     }
 }

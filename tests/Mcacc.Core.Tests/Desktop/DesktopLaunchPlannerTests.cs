@@ -11,6 +11,8 @@ public class DesktopLaunchPlannerTests
     private static readonly Account Standard = Account.CreateDefault();
     private static readonly Account Privat = new("privat", "Privat", "#6A9BCC", IsDefault: false);
 
+    private const string LoginUrl = "claude://login/google-auth?code=4%2F0AXlqoi45&hop_nonce=1BkdtqPC";
+
     private const string WindowsHome = @"C:\Users\Jö O'Neil";
     private const string MacHome = "/Users/Jö O'Neil";
 
@@ -87,6 +89,49 @@ public class DesktopLaunchPlannerTests
 
         spec.FileName.ShouldBe("/usr/bin/open");
         spec.Arguments.ShouldBe(["-n", "-a", "/Applications/Claude.app"]);
+    }
+
+    [Theory]
+    [InlineData(DesktopInstallKind.Msix)]
+    [InlineData(DesktopInstallKind.Squirrel)]
+    public void Windows_login_url_comes_behind_the_user_data_dir_it_belongs_to(DesktopInstallKind kind)
+    {
+        var spec = DesktopLaunchPlanner.PlanWindows(
+            WindowsInstallation(kind),
+            PathsOf(Privat, Windows),
+            WindowsHome,
+            LoginUrl);
+
+        spec.Arguments.ShouldBe([@"--user-data-dir=C:\Users\Jö O'Neil\.mcacc\profiles\privat\desktop", LoginUrl]);
+    }
+
+    [Fact]
+    public void Windows_default_takes_a_login_url_as_its_only_argument()
+    {
+        var spec = DesktopLaunchPlanner.PlanWindows(Msix, PathsOf(Standard, Windows), WindowsHome, LoginUrl);
+
+        spec.Arguments.ShouldBe([LoginUrl]);
+    }
+
+    [Fact]
+    public void Mac_login_url_goes_behind_the_user_data_dir_in_the_app_arguments()
+    {
+        var spec = DesktopLaunchPlanner.PlanMac(Bundle, PathsOf(Privat, Mac), LoginUrl);
+
+        spec.Arguments.ShouldBe(
+        [
+            "-n", "-a", "/Applications/Claude.app",
+            "--env", "CLAUDE_CONFIG_DIR=/Users/Jö O'Neil/.mcacc/profiles/privat/claude",
+            "--args", "--user-data-dir=/Users/Jö O'Neil/.mcacc/profiles/privat/desktop", LoginUrl,
+        ]);
+    }
+
+    [Fact]
+    public void Mac_default_with_a_login_url_still_opens_the_args_section_for_it()
+    {
+        var spec = DesktopLaunchPlanner.PlanMac(Bundle, PathsOf(Standard, Mac), LoginUrl);
+
+        spec.Arguments.ShouldBe(["-n", "-a", "/Applications/Claude.app", "--args", LoginUrl]);
     }
 
     [Theory]

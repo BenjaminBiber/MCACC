@@ -30,7 +30,11 @@ public sealed class ClaudeJsonLoginReaderTests : IDisposable
     {
         var info = ClaudeJsonLoginReader.Read(WriteFixture("claude-json-duplicate-case-keys.json"));
 
-        info.ShouldBe(new ClaudeLoginInfo("max.muster@example.com", "Example GmbH", "Benjamin Biber"));
+        info.ShouldBe(new ClaudeLoginInfo(
+            "max.muster@example.com",
+            "Example GmbH",
+            "Benjamin Biber",
+            "00000000-0000-0000-0000-000000000001"));
     }
 
     [Fact]

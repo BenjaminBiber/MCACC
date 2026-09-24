@@ -32,6 +32,24 @@ public class UsageHttpClientTests
     }
 
     [Fact]
+    public async Task Asks_the_profile_endpoint_with_the_same_headers()
+    {
+        var handler = new RecordingHandler(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") });
+        using var client = new UsageHttpClient(handler);
+
+        var response = await client.GetProfileAsync(Token, Ct);
+
+        response.StatusCode.ShouldBe(200);
+        response.Body.ShouldBe("{}");
+        var request = handler.Request.ShouldNotBeNull();
+        request.Method.ShouldBe(HttpMethod.Get);
+        request.RequestUri!.ToString().ShouldBe("https://api.anthropic.com/api/oauth/profile");
+        request.Headers.Authorization!.Scheme.ShouldBe("Bearer");
+        request.Headers.Authorization.Parameter.ShouldBe(Token);
+        request.Headers.GetValues("anthropic-beta").ShouldBe(["oauth-2025-04-20"]);
+    }
+
+    [Fact]
     public async Task Returns_the_status_of_a_rejected_request()
     {
         var handler = new RecordingHandler(new HttpResponseMessage(HttpStatusCode.TooManyRequests)

@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Mcacc.Core.Abstractions;
 using Mcacc.Core.ClaudeCode;
 using Mcacc.Core.Model;
@@ -7,10 +9,12 @@ namespace Mcacc.Core.Usage;
 
 /// <summary>
 /// Reads the usage limits of an account with its Claude Code token. The token is never refreshed and never stored;
-/// an expired one simply leaves the last cached value standing.
+/// an expired one simply leaves the last cached value standing. A token of another account than the one
+/// <c>.claude.json</c> names shows no limits at all, so a tile never carries someone else's numbers.
 /// </summary>
 public sealed class UsageService(
     ICredentialSource credentials,
+    ILoginInfoReader login,
     IUsageHttp http,
     UsageCache cache,
     AccountPathResolver resolver,
@@ -21,6 +25,7 @@ public sealed class UsageService(
     private readonly TimeProvider _time = time ?? TimeProvider.System;
     private readonly Lock _gate = new();
     private readonly Dictionary<string, Attempt> _attempts = [];
+    private readonly Dictionary<string, CheckedToken> _owners = [];
     private Dictionary<string, UsageSnapshot>? _snapshots;
 
     public AccountUsage GetCached(Account account) =>
@@ -52,7 +57,8 @@ public sealed class UsageService(
     private async Task<AccountUsage> FetchAsync(Account account, DateTimeOffset now, CancellationToken ct)
     {
         var cached = Cached(account.Id);
-        var read = await credentials.ReadAsync(account, resolver.Resolve(account), ct).ConfigureAwait(false);
+        var paths = resolver.Resolve(account);
+        var read = await credentials.ReadAsync(account, paths, ct).ConfigureAwait(false);
         if (read is not { Status: CredentialReadStatus.Found, Credentials: { } found })
         {
             return new AccountUsage(
@@ -65,14 +71,85 @@ public sealed class UsageService(
             return new AccountUsage(UsageState.Expired, cached);
         }
 
+        // Without a login in .claude.json there is nothing to compare with, and the tile says so anyway.
+        if (login.Read(paths) is { } expected)
+        {
+            var check = await OwnerAsync(account.Id, found.AccessToken, ct).ConfigureAwait(false);
+            if (check.Owner is not { } owner)
+            {
+                return new AccountUsage(check.State, cached);
+            }
+
+            if (!IsSameAccount(expected, owner))
+            {
+                Forget(account.Id);
+                return new AccountUsage(UsageState.WrongAccount, null, owner.Email);
+            }
+        }
+
+        var (state, body) = await GetAsync(() => http.GetUsageAsync(found.AccessToken, ct), ct).ConfigureAwait(false);
+        if (state != UsageState.Ok)
+        {
+            return new AccountUsage(state, cached);
+        }
+
+        if (body is null || UsageResponseParser.Parse(body, now) is not { } snapshot)
+        {
+            return new AccountUsage(UsageState.Error, cached);
+        }
+
+        Store(account.Id, snapshot);
+        return new AccountUsage(UsageState.Ok, snapshot);
+    }
+
+    /// <summary>Asks the profile endpoint once per token; only an answer that names the owner is remembered.</summary>
+    /// <returns>The owner with <see cref="UsageState.Ok"/>, otherwise no owner and the state of the failure.</returns>
+    private async Task<(UsageState State, TokenOwner? Owner)> OwnerAsync(
+        string accountId,
+        string accessToken,
+        CancellationToken ct)
+    {
+        var tokenHash = Hash(accessToken);
+        lock (_gate)
+        {
+            if (_owners.TryGetValue(accountId, out var known) && known.TokenHash == tokenHash)
+            {
+                return (UsageState.Ok, known.Owner);
+            }
+        }
+
+        var (state, body) = await GetAsync(() => http.GetProfileAsync(accessToken, ct), ct).ConfigureAwait(false);
+        if (state != UsageState.Ok)
+        {
+            return (state, null);
+        }
+
+        if (body is null || TokenOwnerParser.Parse(body) is not { } owner)
+        {
+            return (UsageState.Error, null);
+        }
+
+        lock (_gate)
+        {
+            _owners[accountId] = new CheckedToken(tokenHash, owner);
+        }
+
+        return (UsageState.Ok, owner);
+    }
+
+    /// <summary>A request that does not reach the endpoint counts as an error; a canceled one still throws.</summary>
+    private static async Task<(UsageState State, string? Body)> GetAsync(
+        Func<Task<UsageHttpResponse>> request,
+        CancellationToken ct)
+    {
         UsageHttpResponse response;
         try
         {
-            response = await http.GetUsageAsync(found.AccessToken, ct).ConfigureAwait(false);
+            response = await request().ConfigureAwait(false);
         }
         catch (Exception e) when (e is HttpRequestException or TaskCanceledException && !ct.IsCancellationRequested)
         {
-            return new AccountUsage(UsageState.Error, cached);
+            return (UsageState.Error, null);
         }
 
         var state = response.StatusCode switch
@@ -82,19 +159,18 @@ public sealed class UsageService(
             200 => UsageState.Ok,
             _ => UsageState.Error,
         };
-        if (state != UsageState.Ok)
-        {
-            return new AccountUsage(state, cached);
-        }
-
-        if (response.Body is null || UsageResponseParser.Parse(response.Body, now) is not { } snapshot)
-        {
-            return new AccountUsage(UsageState.Error, cached);
-        }
-
-        Store(account.Id, snapshot);
-        return new AccountUsage(UsageState.Ok, snapshot);
+        return (state, response.Body);
     }
+
+    /// <summary>The uuid decides when both sides have one; older files only carry the e-mail.</summary>
+    private static bool IsSameAccount(ClaudeLoginInfo expected, TokenOwner owner) =>
+        expected.AccountUuid is { } uuid && owner.AccountUuid is { } ownerUuid
+            ? string.Equals(uuid, ownerUuid, StringComparison.OrdinalIgnoreCase)
+            : string.Equals(expected.Email, owner.Email, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Only the hash is remembered, so the token itself does not outlive the refresh.</summary>
+    private static string Hash(string accessToken) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(accessToken)));
 
     private UsageSnapshot? Cached(string id)
     {
@@ -114,8 +190,22 @@ public sealed class UsageService(
         }
     }
 
+    private void Forget(string id)
+    {
+        lock (_gate)
+        {
+            var snapshots = Snapshots();
+            if (snapshots.Remove(id))
+            {
+                cache.Save(snapshots);
+            }
+        }
+    }
+
     /// <summary>Call under <see cref="_gate"/>: the cache file is read once and written from here on.</summary>
     private Dictionary<string, UsageSnapshot> Snapshots() => _snapshots ??= new Dictionary<string, UsageSnapshot>(cache.Load());
 
     private sealed record Attempt(DateTimeOffset At, AccountUsage Result);
+
+    private sealed record CheckedToken(string TokenHash, TokenOwner Owner);
 }

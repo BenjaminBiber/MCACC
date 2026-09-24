@@ -1,0 +1,23 @@
+{
+  "account": {
+    "uuid": "00000000-0000-0000-0000-000000000001",
+    "full_name": "Benjamin Biber",
+    "display_name": "Benjamin",
+    "email": "max.muster@example.com",
+    "has_claude_max": false,
+    "has_claude_pro": true,
+    "created_at": "2025-01-01T00:00:00Z"
+  },
+  "organization": {
+    "uuid": "00000000-0000-0000-0000-000000000002",
+    "name": "Example GmbH",
+    "organization_type": "claude_pro",
+    "billing_type": "stripe_subscription",
+    "rate_limit_tier": "default_claude_ai"
+  },
+  "application": {
+    "uuid": "00000000-0000-0000-0000-000000000003",
+    "name": "Claude Code",
+    "slug": "claude-code"
+  }
+}
