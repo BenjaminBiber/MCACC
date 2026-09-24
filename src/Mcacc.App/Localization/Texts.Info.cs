@@ -33,6 +33,7 @@ public static partial class Texts
     public const string InfoDesktopNotRunning = "läuft nicht";
     public const string InfoNoAccountData = "Noch keine Kontodaten – einmal mit diesem Account anmelden.";
     public const string InfoNoLimits = "Keine Limits verfügbar.";
+    public const string InfoLimitsStale = "Aktualisierung fehlgeschlagen – angezeigt wird der letzte Stand.";
 
     public const string InfoHistory = "Verlauf";
     public const string InfoHistoryDay = "24 h";

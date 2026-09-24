@@ -319,8 +319,19 @@ public sealed partial class AccountInfoViewModel : PageViewModel
 
         Rings = rings;
         LimitsAsOf = usage.Snapshot is { } shown ? Texts.UsageAsOf(shown.FetchedAt) : null;
-        LimitsHint = AccountTileViewModel.HintFor(usage);
+        LimitsHint = HintFor(usage);
     }
+
+    /// <summary>
+    /// The tile falls back to the time of the shown limits after a failed refresh; the header here names that time
+    /// already, so the hint says what the time alone does not: that the refresh failed.
+    /// </summary>
+    private static string? HintFor(AccountUsage usage) => usage.State switch
+    {
+        UsageState.RateLimited or UsageState.Unauthorized or UsageState.Error =>
+            usage.Snapshot is null ? null : Texts.InfoLimitsStale,
+        _ => AccountTileViewModel.HintFor(usage),
+    };
 
     private static void AddRing(List<LimitRingViewModel> rings, string label, UsageWindow? window)
     {

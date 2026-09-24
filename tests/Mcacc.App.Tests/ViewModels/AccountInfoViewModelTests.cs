@@ -117,6 +117,28 @@ public sealed class AccountInfoViewModelTests : IDisposable
         Page().LimitsHint.ShouldBe(Texts.UsageWrongAccount("other@example.com"));
     }
 
+    [Theory]
+    [InlineData(UsageState.RateLimited)]
+    [InlineData(UsageState.Unauthorized)]
+    [InlineData(UsageState.Error)]
+    public void A_failed_refresh_says_the_limits_are_stale_instead_of_repeating_their_time(UsageState state)
+    {
+        _services.Usage.Cached["privat"] = Usage(42, 7) with { State = state };
+
+        var page = Page();
+
+        page.LimitsHint.ShouldBe(Texts.InfoLimitsStale);
+        page.LimitsAsOf.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void A_failed_refresh_without_limits_shows_no_hint()
+    {
+        _services.Usage.Cached["privat"] = new AccountUsage(UsageState.RateLimited, null);
+
+        Page().LimitsHint.ShouldBeNull();
+    }
+
     [Fact]
     public async Task A_poll_of_this_account_updates_the_rings()
     {
