@@ -9,6 +9,7 @@ using Mcacc.Core.ConfigCopy;
 using Mcacc.Core.Desktop;
 using Mcacc.Core.Logging;
 using Mcacc.Core.Processes;
+using Mcacc.Core.Stats;
 using Mcacc.Core.Terminal;
 using Mcacc.Core.Usage;
 using Mcacc.Platform;
@@ -39,6 +40,16 @@ public static class CompositionRoot
             shell.ShowError(Localization.Texts.ErrorConfigReadOnly);
         }
 
+        var usage = new UsageService(
+            platform.Credentials,
+            login,
+            platform.UsageHttp,
+            new UsageCache(platform.Paths),
+            new ProfileCache(platform.Paths),
+            new UsageHistoryStore(platform.Paths, log: log),
+            resolver);
+        var poller = new UsagePoller(accounts, usage, log);
+
         var services = new AppServices(
             accounts,
             new DesktopLaunchService(
@@ -65,14 +76,10 @@ public static class CompositionRoot
                 resolver,
                 platform.Paths,
                 platform.Info),
-            new UsageService(
-                platform.Credentials,
-                login,
-                platform.UsageHttp,
-                new UsageCache(platform.Paths),
-                new ProfileCache(platform.Paths),
-                new UsageHistoryStore(platform.Paths, log: log),
-                resolver),
+            usage,
+            poller,
+            new ClaudeStatsProvider(new StatsIndexStore(platform.Paths), resolver),
+            platform.Credentials,
             login,
             platform.CreateDetector(),
             new DesktopInstanceMatcher(resolver, platform.Info.PathStyle),
@@ -90,6 +97,7 @@ public static class CompositionRoot
 
         navigator.Navigated += page => Activate(page, log);
         navigator.Reset(new AccountPickerViewModel(services));
+        poller.Start();
         return shell;
     }
 

@@ -54,9 +54,13 @@ public sealed partial class AccountPickerViewModel : PageViewModel
 
     public override async Task ActivateAsync(CancellationToken ct)
     {
+        _services.Poller.Updated -= OnPolled;
+        _services.Poller.Updated += OnPolled;
         Reload();
         await Task.WhenAll(RefreshRunningAsync(ct), RefreshUsageAsync(ct)).ConfigureAwait(true);
     }
+
+    public override void Deactivate() => _services.Poller.Updated -= OnPolled;
 
     [RelayCommand]
     public void Select(AccountTileViewModel? tile)
@@ -119,6 +123,8 @@ public sealed partial class AccountPickerViewModel : PageViewModel
         try
         {
             _services.Accounts.Remove(tile.Account.Id, result.DeleteData);
+            _services.Usage.Forget(tile.Account);
+            _services.Stats.Forget(tile.Account);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
@@ -284,6 +290,9 @@ public sealed partial class AccountPickerViewModel : PageViewModel
             tiles[i].SetUsage(results[i]);
         }
     }
+
+    private void OnPolled(Account account, AccountUsage usage) =>
+        Tiles.FirstOrDefault(tile => tile.Id == account.Id)?.SetUsage(usage);
 
     private async Task RefreshRunningAsync(CancellationToken ct)
     {

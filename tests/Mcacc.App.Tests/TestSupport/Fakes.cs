@@ -8,6 +8,7 @@ using Mcacc.Core.ConfigCopy;
 using Mcacc.Core.Desktop;
 using Mcacc.Core.Model;
 using Mcacc.Core.Paths;
+using Mcacc.Core.Stats;
 using Mcacc.Core.Terminal;
 using Mcacc.Core.Usage;
 
@@ -272,4 +273,49 @@ internal sealed class FakeDialogService : IDialogService
         {
         }
     }
+}
+
+internal sealed class FakeClaudeStatsProvider : IClaudeStatsProvider
+{
+    public List<TokenBucket> Buckets { get; } = [];
+
+    public List<string> Loaded { get; } = [];
+
+    public List<string> Forgotten { get; } = [];
+
+    /// <summary>Holds a load until it is completed, to look at the page while it scans.</summary>
+    public TaskCompletionSource? Gate { get; set; }
+
+    public Exception? ThrowOnLoad { get; set; }
+
+    public async Task<IReadOnlyList<TokenBucket>> LoadAsync(
+        Account account,
+        IProgress<double>? progress,
+        CancellationToken ct)
+    {
+        Loaded.Add(account.Id);
+        if (Gate is { } gate)
+        {
+            await gate.Task.WaitAsync(ct).ConfigureAwait(true);
+        }
+
+        if (ThrowOnLoad is { } error)
+        {
+            throw error;
+        }
+
+        return Buckets.ToList();
+    }
+
+    public void Forget(Account account) => Forgotten.Add(account.Id);
+}
+
+internal sealed class FakeCredentialSource : ICredentialSource
+{
+    public Dictionary<string, CredentialReadResult> Results { get; } = [];
+
+    public Task<CredentialReadResult> ReadAsync(Account account, AccountPaths paths, CancellationToken ct) =>
+        Task.FromResult(Results.GetValueOrDefault(
+            account.Id,
+            new CredentialReadResult(CredentialReadStatus.NotLoggedIn, null)));
 }

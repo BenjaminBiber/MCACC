@@ -432,4 +432,56 @@ public sealed class AccountPickerViewModelTests : IDisposable
         _services.Accounts.Updated.ShouldBe([("privat", "Privat neu", Privat.Color)]);
         picker.Tiles.Single(t => t.Id == "privat").Name.ShouldBe("Privat neu");
     }
+
+    [Fact]
+    public async Task A_poll_updates_the_tile_of_that_account()
+    {
+        var picker = Picker();
+        await picker.ActivateAsync(Ct);
+        var snapshot = new UsageSnapshot(new UsageWindow(77, null), null, DateTimeOffset.Now);
+        _services.Usage.Fresh["privat"] = new AccountUsage(UsageState.Ok, snapshot);
+
+        await _services.Poller.TickAsync(Ct);
+
+        picker.Tiles.Single(tile => tile.Id == "privat").FiveHour.Value.ShouldBe(77);
+    }
+
+    [Fact]
+    public async Task A_deactivated_picker_ignores_polls()
+    {
+        var picker = Picker();
+        await picker.ActivateAsync(Ct);
+        picker.Deactivate();
+        _services.Usage.Fresh["privat"] =
+            new AccountUsage(UsageState.Ok, new UsageSnapshot(new UsageWindow(77, null), null, DateTimeOffset.Now));
+
+        await _services.Poller.TickAsync(Ct);
+
+        picker.Tiles.Single(tile => tile.Id == "privat").FiveHour.Value.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Removing_an_account_forgets_its_limits_and_statistics()
+    {
+        _services.Dialogs.Answer<RemoveAccountDialogViewModel>(_ => new RemoveAccountResult(DeleteData: false));
+        var picker = Picker();
+
+        await picker.RemoveCommand.ExecuteAsync(picker.Tiles.Single(t => t.Id == "privat"));
+
+        _services.Usage.Forgotten.ShouldBe(["privat"]);
+        _services.Stats.Forgotten.ShouldBe(["privat"]);
+    }
+
+    [Fact]
+    public async Task A_failing_removal_forgets_nothing()
+    {
+        _services.Accounts.ThrowOnRemove = new IOException("the folder is in use");
+        _services.Dialogs.Answer<RemoveAccountDialogViewModel>(_ => new RemoveAccountResult(DeleteData: false));
+        var picker = Picker();
+
+        await picker.RemoveCommand.ExecuteAsync(picker.Tiles.Single(t => t.Id == "privat"));
+
+        _services.Usage.Forgotten.ShouldBeEmpty();
+        _services.Stats.Forgotten.ShouldBeEmpty();
+    }
 }

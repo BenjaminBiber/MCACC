@@ -24,12 +24,16 @@ internal sealed class TestServices : IDisposable
         var resolver = new AccountPathResolver(Paths, Platform);
         Navigator = new Navigator();
         Window = new MainWindowViewModel(Navigator);
+        Poller = new UsagePoller(Accounts, Usage, NullLog.Instance);
         Services = new AppServices(
             Accounts,
             Desktop,
             Redirect,
             Code,
             Usage,
+            Poller,
+            Stats,
+            Credentials,
             Login,
             Detector,
             new DesktopInstanceMatcher(resolver, Platform.PathStyle),
@@ -63,6 +67,12 @@ internal sealed class TestServices : IDisposable
 
     public FakeUsageProvider Usage { get; } = new();
 
+    public UsagePoller Poller { get; }
+
+    public FakeClaudeStatsProvider Stats { get; } = new();
+
+    public FakeCredentialSource Credentials { get; } = new();
+
     public FakeLoginReader Login { get; } = new();
 
     public FakeDetector Detector { get; } = new();
@@ -81,7 +91,11 @@ internal sealed class TestServices : IDisposable
 
     public AppServices Services { get; }
 
-    public void Dispose() => _temp.Dispose();
+    public void Dispose()
+    {
+        Poller.Dispose();
+        _temp.Dispose();
+    }
 
     /// <summary>Makes the account look logged in with that e-mail.</summary>
     public void SetLogin(Account account, string email) =>

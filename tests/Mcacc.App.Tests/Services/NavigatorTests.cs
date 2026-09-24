@@ -10,6 +10,10 @@ public class NavigatorTests
     private sealed class Page(string name) : PageViewModel
     {
         public string Name { get; } = name;
+
+        public int Deactivations { get; private set; }
+
+        public override void Deactivate() => Deactivations++;
     }
 
     [Fact]
@@ -78,5 +82,46 @@ public class NavigatorTests
         navigator.Back();
 
         seen.ShouldBe([first, second, first]);
+    }
+
+    [Fact]
+    public void Navigating_away_deactivates_the_page_that_is_left()
+    {
+        var navigator = new Navigator();
+        var first = new Page("first");
+        var second = new Page("second");
+        navigator.Reset(first);
+
+        navigator.NavigateTo(second);
+
+        first.Deactivations.ShouldBe(1);
+        second.Deactivations.ShouldBe(0);
+    }
+
+    [Fact]
+    public void Going_back_deactivates_the_page_that_is_left()
+    {
+        var navigator = new Navigator();
+        var first = new Page("first");
+        var second = new Page("second");
+        navigator.Reset(first);
+        navigator.NavigateTo(second);
+
+        navigator.Back();
+
+        second.Deactivations.ShouldBe(1);
+        first.Deactivations.ShouldBe(1);
+    }
+
+    [Fact]
+    public void Showing_the_same_page_again_does_not_deactivate_it()
+    {
+        var navigator = new Navigator();
+        var first = new Page("first");
+        navigator.Reset(first);
+
+        navigator.Reset(first);
+
+        first.Deactivations.ShouldBe(0);
     }
 }

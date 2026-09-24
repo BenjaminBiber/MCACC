@@ -42,7 +42,13 @@ public sealed partial class Navigator : ObservableObject, INavigator
 
     private void Show(PageViewModel page)
     {
+        var previous = CurrentPage;
         CurrentPage = page;
+        if (previous is not null && !ReferenceEquals(previous, page))
+        {
+            previous.Deactivate();
+        }
+
         OnPropertyChanged(nameof(CanGoBack));
         Navigated?.Invoke(page);
     }
