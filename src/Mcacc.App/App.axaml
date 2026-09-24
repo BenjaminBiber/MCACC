@@ -13,6 +13,9 @@
     <DataTemplate DataType="vm:TargetPickerViewModel">
       <views:TargetPickerView />
     </DataTemplate>
+    <DataTemplate DataType="vm:AccountInfoViewModel">
+      <views:AccountInfoView />
+    </DataTemplate>
     <DataTemplate DataType="vm:SettingsViewModel">
       <views:SettingsView />
     </DataTemplate>

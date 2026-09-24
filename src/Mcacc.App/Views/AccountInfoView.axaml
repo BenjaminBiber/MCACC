@@ -1,0 +1,244 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Mcacc.App.ViewModels"
+             xmlns:controls="using:Mcacc.App.Controls"
+             x:Class="Mcacc.App.Views.AccountInfoView"
+             x:DataType="vm:AccountInfoViewModel">
+
+  <UserControl.DataTemplates>
+    <DataTemplate DataType="vm:LegendItemViewModel">
+      <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,14,4">
+        <controls:ChartSwatch Color="{Binding Color}" VerticalAlignment="Center" />
+        <TextBlock Classes="caption" Text="{Binding Label}" VerticalAlignment="Center" />
+        <TextBlock Classes="muted" Text="{Binding Value}" FontSize="12" VerticalAlignment="Center"
+                   IsVisible="{Binding Value, Converter={x:Static ObjectConverters.IsNotNull}}" />
+      </StackPanel>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+
+  <ScrollViewer>
+    <StackPanel Margin="24,20" Spacing="16">
+
+      <!-- Header, as on the target picker -->
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Orientation="Horizontal" Spacing="10">
+          <Button Classes="icon" Command="{Binding BackCommand}" ToolTip.Tip="{Binding BackTooltip}">
+            <controls:MIcon Kind="ArrowBack" />
+          </Button>
+          <Border Classes="chip">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Panel Width="20" Height="20">
+                <Ellipse Fill="{Binding AvatarBrush}" />
+                <TextBlock Text="{Binding Initials}"
+                           Foreground="White"
+                           FontSize="10"
+                           FontWeight="SemiBold"
+                           TextAlignment="Center"
+                           VerticalAlignment="Center" />
+              </Panel>
+              <TextBlock Text="{Binding AccountName}" FontSize="12" VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+        <Button Grid.Column="1" Classes="icon" Command="{Binding RefreshCommand}" ToolTip.Tip="{Binding RefreshTooltip}">
+          <controls:MIcon Kind="Refresh" />
+        </Button>
+      </Grid>
+
+      <StackPanel Spacing="4">
+        <TextBlock Classes="h1" Text="{Binding Title}" />
+        <TextBlock Classes="caption" Text="{Binding Subtitle}" />
+      </StackPanel>
+
+      <!-- Account -->
+      <Border Classes="card">
+        <StackPanel Spacing="10">
+          <TextBlock Classes="h2" Text="{Binding AccountHeader}" />
+          <TextBlock Classes="muted" Text="{Binding NoAccountDataText}" TextWrapping="Wrap"
+                     IsVisible="{Binding !HasAccountData}" />
+          <ItemsControl ItemsSource="{Binding Fields}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate DataType="vm:InfoFieldViewModel">
+                <Grid ColumnDefinitions="170,*" Margin="0,2">
+                  <TextBlock Classes="caption" Text="{Binding Label}" />
+                  <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <!-- Limits -->
+      <Border Classes="card">
+        <StackPanel Spacing="12">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Classes="h2" Text="{Binding LimitsHeader}" />
+            <TextBlock Grid.Column="1" Classes="muted" FontSize="12" Text="{Binding LimitsAsOf}"
+                       VerticalAlignment="Center" />
+          </Grid>
+          <Border Classes="banner" IsVisible="{Binding LimitsHint, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <TextBlock Text="{Binding LimitsHint}" TextWrapping="Wrap" />
+          </Border>
+          <TextBlock Classes="muted" Text="{Binding NoLimitsText}" IsVisible="{Binding !HasRings}" />
+          <ItemsControl ItemsSource="{Binding Rings}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate DataType="vm:LimitRingViewModel">
+                <StackPanel Width="120" Spacing="4" Margin="0,0,12,8">
+                  <controls:DonutChart Width="96" Height="96" Thickness="10"
+                                       Slices="{Binding Slices}"
+                                       CenterText="{Binding ValueText}"
+                                       CenterCaption="{Binding Label}" />
+                  <TextBlock Classes="muted" FontSize="12" Text="{Binding ResetText}" TextAlignment="Center" />
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Classes="caption" Text="{Binding HistoryHeader}" VerticalAlignment="Center" />
+            <Border Grid.Column="1" Classes="chip" Padding="2">
+              <StackPanel Orientation="Horizontal">
+                <Button Classes="segment" Classes.selected="{Binding IsHistoryDay}"
+                        Content="{Binding HistoryDayText}"
+                        Command="{Binding ShowHistoryCommand}" CommandParameter="24h" />
+                <Button Classes="segment" Classes.selected="{Binding IsHistoryWeek}"
+                        Content="{Binding HistoryWeekText}"
+                        Command="{Binding ShowHistoryCommand}" CommandParameter="7d" />
+              </StackPanel>
+            </Border>
+          </Grid>
+          <controls:LineChart Height="170"
+                              Series="{Binding HistorySeries}"
+                              XMax="{Binding HistoryMax}"
+                              MaxGap="{Binding HistoryGap}"
+                              Threshold="90"
+                              StartLabel="{Binding HistoryStartLabel}"
+                              EndLabel="{Binding HistoryEndLabel}"
+                              EmptyText="{Binding NoHistoryText}" />
+          <ItemsControl ItemsSource="{Binding HistoryLegend}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <!-- Claude Code usage -->
+      <Border Classes="card">
+        <StackPanel Spacing="14">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Classes="h2" Text="{Binding UsageHeader}" />
+            <Border Grid.Column="1" Classes="chip" Padding="2">
+              <StackPanel Orientation="Horizontal">
+                <Button Classes="segment" Classes.selected="{Binding IsDays7}" Content="{Binding Days7Text}"
+                        Command="{Binding ShowDaysCommand}" CommandParameter="7" />
+                <Button Classes="segment" Classes.selected="{Binding IsDays30}" Content="{Binding Days30Text}"
+                        Command="{Binding ShowDaysCommand}" CommandParameter="30" />
+                <Button Classes="segment" Classes.selected="{Binding IsDays90}" Content="{Binding Days90Text}"
+                        Command="{Binding ShowDaysCommand}" CommandParameter="90" />
+              </StackPanel>
+            </Border>
+          </Grid>
+
+          <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsScanning}">
+            <ProgressBar IsIndeterminate="True" Width="120" VerticalAlignment="Center" />
+            <TextBlock Classes="caption" Text="{Binding ScanText}" VerticalAlignment="Center" />
+          </StackPanel>
+          <Border Classes="banner" IsVisible="{Binding StatsError, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <TextBlock Text="{Binding StatsError}" TextWrapping="Wrap" />
+          </Border>
+          <TextBlock Classes="muted" Text="{Binding NoSessionsText}" TextWrapping="Wrap">
+            <TextBlock.IsVisible>
+              <MultiBinding Converter="{x:Static BoolConverters.And}">
+                <Binding Path="!HasSessions" />
+                <Binding Path="!IsScanning" />
+              </MultiBinding>
+            </TextBlock.IsVisible>
+          </TextBlock>
+
+          <StackPanel Spacing="14" IsVisible="{Binding HasSessions}">
+            <ItemsControl ItemsSource="{Binding Kpis}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <UniformGrid Rows="1" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="vm:KpiViewModel">
+                  <StackPanel Spacing="2" Margin="0,0,12,0">
+                    <TextBlock Classes="caption" Text="{Binding Label}" />
+                    <TextBlock Text="{Binding Value}" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Classes="muted" FontSize="11" Text="{Binding Caption}" TextWrapping="Wrap"
+                               IsVisible="{Binding Caption, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <StackPanel Spacing="6">
+              <TextBlock Classes="caption" Text="{Binding TokensPerDayHeader}" />
+              <controls:StackedBarChart Height="180" Bars="{Binding DailyBars}" AxisFormatter="{Binding TokenAxis}" />
+              <ItemsControl ItemsSource="{Binding ModelLegend}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <WrapPanel />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+              </ItemsControl>
+            </StackPanel>
+
+            <Grid ColumnDefinitions="Auto,24,*">
+              <StackPanel Spacing="8">
+                <TextBlock Classes="caption" Text="{Binding KindsHeader}" />
+                <controls:DonutChart Width="140" Height="140"
+                                     Slices="{Binding KindSlices}"
+                                     CenterText="{Binding KindCenterText}"
+                                     CenterCaption="{Binding KindsCaption}" />
+                <ItemsControl ItemsSource="{Binding KindLegend}" />
+              </StackPanel>
+              <StackPanel Grid.Column="2" Spacing="8">
+                <TextBlock Classes="caption" Text="{Binding ProjectsHeader}" />
+                <controls:BarList Items="{Binding Projects}" />
+              </StackPanel>
+            </Grid>
+
+            <StackPanel Spacing="6">
+              <TextBlock Classes="caption" Text="{Binding ModelsHeader}" />
+              <Grid ColumnDefinitions="18,*,80,70,100">
+                <TextBlock Grid.Column="1" Classes="muted" FontSize="12" Text="{Binding ColumnModel}" />
+                <TextBlock Grid.Column="2" Classes="muted" FontSize="12" Text="{Binding ColumnTokens}" TextAlignment="Right" />
+                <TextBlock Grid.Column="3" Classes="muted" FontSize="12" Text="{Binding ColumnShare}" TextAlignment="Right" />
+                <TextBlock Grid.Column="4" Classes="muted" FontSize="12" Text="{Binding ColumnCost}" TextAlignment="Right" />
+              </Grid>
+              <ItemsControl ItemsSource="{Binding Models}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate DataType="vm:ModelRowViewModel">
+                    <Grid ColumnDefinitions="18,*,80,70,100" Margin="0,3">
+                      <controls:ChartSwatch Color="{Binding Color}" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="1" Text="{Binding Name}" />
+                      <TextBlock Grid.Column="2" Text="{Binding Tokens}" TextAlignment="Right" />
+                      <TextBlock Grid.Column="3" Text="{Binding Share}" TextAlignment="Right" />
+                      <TextBlock Grid.Column="4" Text="{Binding Cost}" TextAlignment="Right" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Classes="muted" FontSize="11" Text="{Binding CostNote}" />
+              <TextBlock Classes="muted" FontSize="11" Text="{Binding UnpricedText}"
+                         IsVisible="{Binding UnpricedText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </StackPanel>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

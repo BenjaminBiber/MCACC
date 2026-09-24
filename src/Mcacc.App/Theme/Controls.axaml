@@ -133,4 +133,30 @@
     <Setter Property="Padding" Value="8,4" />
   </Style>
 
+  <!-- Segmented switch: buttons inside a chip border, the selected one tinted in the accent. -->
+  <Style Selector="Button.segment">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Mcacc.TextSecondary}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="10,3" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="MinHeight" Value="0" />
+
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Mcacc.SurfaceHover}" />
+      <Setter Property="Foreground" Value="{DynamicResource Mcacc.Text}" />
+    </Style>
+
+    <Style Selector="^.selected /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Mcacc.AccentSubtle}" />
+      <Setter Property="Foreground" Value="{DynamicResource Mcacc.Accent}" />
+    </Style>
+
+    <Style Selector="^.selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Mcacc.AccentSubtle}" />
+      <Setter Property="Foreground" Value="{DynamicResource Mcacc.Accent}" />
+    </Style>
+  </Style>
+
 </Styles>

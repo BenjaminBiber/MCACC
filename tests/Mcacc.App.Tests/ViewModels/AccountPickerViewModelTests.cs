@@ -484,4 +484,16 @@ public sealed class AccountPickerViewModelTests : IDisposable
         _services.Usage.Forgotten.ShouldBeEmpty();
         _services.Stats.Forgotten.ShouldBeEmpty();
     }
+
+    [Fact]
+    public void The_info_entry_opens_the_info_page_of_that_account()
+    {
+        var picker = Picker();
+        _services.Navigator.Reset(picker);
+
+        picker.OpenInfoCommand.Execute(picker.Tiles.Single(t => t.Id == "privat"));
+
+        _services.Navigator.CurrentPage.ShouldBeOfType<AccountInfoViewModel>().Account.Id.ShouldBe("privat");
+        _services.Navigator.CanGoBack.ShouldBeTrue();
+    }
 }

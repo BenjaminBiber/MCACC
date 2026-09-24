@@ -52,6 +52,13 @@
                   <!-- The flyout opens in its own popup, outside the visual tree, so it reaches the page by name, not by $parent. -->
                   <Button.Flyout>
                     <MenuFlyout>
+                      <MenuItem Header="{Binding #TileList.((vm:AccountPickerViewModel)DataContext).InfoText}"
+                                Command="{Binding #TileList.((vm:AccountPickerViewModel)DataContext).OpenInfoCommand}"
+                                CommandParameter="{Binding}">
+                        <MenuItem.Icon>
+                          <controls:MIcon Kind="Insights" />
+                        </MenuItem.Icon>
+                      </MenuItem>
                       <MenuItem Header="{Binding #TileList.((vm:AccountPickerViewModel)DataContext).EditText}"
                                 Command="{Binding #TileList.((vm:AccountPickerViewModel)DataContext).EditCommand}"
                                 CommandParameter="{Binding}" />

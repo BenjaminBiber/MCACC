@@ -6,6 +6,7 @@ using Mcacc.App.Tests.TestSupport;
 using Mcacc.App.ViewModels;
 using Mcacc.App.Views;
 using Mcacc.Core.Model;
+using Mcacc.Core.Stats;
 using Mcacc.Core.Usage;
 using Xunit;
 
@@ -38,11 +39,11 @@ public sealed class ScreenshotTests : IDisposable
         frame.Save(stream, Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
     }
 
-    private Window Window(PageViewModel page, ThemeVariant variant, double width = 760)
+    private Window Window(PageViewModel page, ThemeVariant variant, double width = 760, double height = 540)
     {
         _services.Navigator.Reset(page);
         Avalonia.Application.Current!.RequestedThemeVariant = variant;
-        var window = new MainWindow { DataContext = _services.Window, Width = width, Height = 540 };
+        var window = new MainWindow { DataContext = _services.Window, Width = width, Height = height };
         window.Show();
         return window;
     }
@@ -143,5 +144,36 @@ public sealed class ScreenshotTests : IDisposable
         dialog.DeleteData = true;
         _services.Window.Dialog = dialog;
         Save(window, "remove");
+    }
+
+    [AvaloniaTheory]
+    [InlineData("light")]
+    [InlineData("dark")]
+    public async Task Info_page(string theme)
+    {
+        Seed();
+        var now = DateTimeOffset.Now;
+        _services.Usage.Profiles["privat"] = new AccountProfile(
+            "uuid", "privat@example.com", "Ben Biber", "Ben", true, false, now.AddYears(-1), "Privat", "claude_max",
+            "stripe_subscription", "default_claude_max_20x");
+        _services.Usage.History["privat"] = Enumerable.Range(0, 24 * 12)
+            .Select(i => new UsageHistoryPoint(
+                now.AddMinutes(-5 * i), Math.Max(0, 94 - i * 0.4), null, 30 + i * 0.02, null))
+            .ToList();
+        string[] models = ["claude-opus-4-5", "claude-sonnet-4-5", "claude-haiku-4-5"];
+        string[] projects = ["/code/mcacc", "/code/shop", "/code/blog"];
+        _services.Stats.Buckets.AddRange(Enumerable.Range(0, 30 * 3).Select(i => new TokenBucket(
+            now.AddDays(-(i / 3)).AddHours(-1),
+            models[i % 3],
+            projects[(i / 7) % 3],
+            $"s{i / 4}",
+            new TokenCounts(20_000 * (i % 5 + 1), 8_000 * (i % 3 + 1), 30_000, 5_000, 400_000 * (i % 4 + 1)),
+            Messages: 10 + i % 7)));
+        var variant = theme == "dark" ? ThemeVariant.Dark : ThemeVariant.Light;
+        var page = new AccountInfoViewModel(_services.Services, Privat);
+
+        var window = Window(page, variant, height: 1750);
+        await page.ActivateAsync(TestContext.Current.CancellationToken);
+        Save(window, $"info-{theme}");
     }
 }

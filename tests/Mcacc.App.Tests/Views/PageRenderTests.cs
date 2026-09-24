@@ -6,6 +6,8 @@ using Mcacc.App.Tests.TestSupport;
 using Mcacc.App.ViewModels;
 using Mcacc.App.Views;
 using Mcacc.Core.Model;
+using Mcacc.Core.Stats;
+using Mcacc.Core.Usage;
 using Shouldly;
 using Xunit;
 
@@ -148,8 +150,34 @@ public sealed class PageRenderTests : IDisposable
         window.UpdateLayout();
 
         var items = flyout.Items.OfType<MenuItem>().ToList();
-        items.Select(item => item.Header).ShouldBe([picker.EditText, picker.RemoveText, picker.OpenFolderText]);
+        items.Select(item => item.Header)
+            .ShouldBe([picker.InfoText, picker.EditText, picker.RemoveText, picker.OpenFolderText]);
         items.ShouldAllBe(item => item.Command != null && ReferenceEquals(item.CommandParameter, privat.DataContext));
+    }
+
+    [AvaloniaFact]
+    public async Task The_info_page_renders_its_rings_and_charts()
+    {
+        var now = DateTimeOffset.Now;
+        _services.Usage.Cached["privat"] = new AccountUsage(
+            UsageState.Ok,
+            new UsageSnapshot(new UsageWindow(42, now.AddHours(2)), new UsageWindow(7, now.AddDays(3)), now));
+        _services.Usage.History["privat"] =
+            [new UsageHistoryPoint(now.AddHours(-2), 30, null, 5, null), new UsageHistoryPoint(now.AddHours(-1), 42, null, 7, null)];
+        _services.Stats.Buckets.Add(new TokenBucket(
+            now.AddHours(-1), "claude-opus-4-5", "/code/shop", "s1", new TokenCounts(100, 200, 0, 0, 700), 1));
+        var page = new AccountInfoViewModel(_services.Services, Privat);
+        var window = Show(page);
+
+        await page.ActivateAsync(TestContext.Current.CancellationToken);
+        window.UpdateLayout();
+
+        var controls = window.GetVisualDescendants().ToList();
+        controls.OfType<LineChart>().ShouldHaveSingleItem().Series.ShouldNotBeNull().Count.ShouldBe(2);
+        controls.OfType<StackedBarChart>().ShouldHaveSingleItem().Bars.ShouldNotBeNull().Count.ShouldBe(30);
+        controls.OfType<DonutChart>().Count().ShouldBe(3); // two limit rings and the token kinds
+        controls.OfType<BarList>().ShouldHaveSingleItem().Items.ShouldNotBeNull().Count.ShouldBe(1);
+        controls.OfType<TextBlock>().Select(text => text.Text).ShouldContain("Opus 4.5");
     }
 
     private static Border? Banner(Window window) =>

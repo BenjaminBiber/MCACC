@@ -46,6 +46,8 @@ public sealed partial class AccountPickerViewModel : PageViewModel
 
     public string MoreTooltip => Texts.More;
 
+    public string InfoText => Texts.Info;
+
     public string EditText => Texts.Edit;
 
     public string RemoveText => Texts.Remove;
@@ -82,6 +84,15 @@ public sealed partial class AccountPickerViewModel : PageViewModel
 
         Reload();
         await RefreshUsageAsync(CancellationToken.None).ConfigureAwait(true);
+    }
+
+    [RelayCommand]
+    public void OpenInfo(AccountTileViewModel? tile)
+    {
+        if (tile is not null)
+        {
+            _services.Navigator.NavigateTo(new AccountInfoViewModel(_services, tile.Account));
+        }
     }
 
     [RelayCommand]
