@@ -70,7 +70,7 @@ public sealed partial class AccountTileViewModel : ViewModelBase
         UsageHint = HintFor(usage);
     }
 
-    private static string? HintFor(AccountUsage usage) => usage.State switch
+    internal static string? HintFor(AccountUsage usage) => usage.State switch
     {
         UsageState.Expired => Texts.UsageExpired,
         UsageState.WrongAccount => Texts.UsageWrongAccount(usage.TokenEmail),
