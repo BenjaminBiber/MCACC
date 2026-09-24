@@ -411,10 +411,13 @@ public sealed partial class AccountInfoViewModel : PageViewModel
         var total = stats.Tokens.Total;
         HasSessions = total > 0;
 
+        // Without a priced model the cost has no source and is left out like any missing value; the model table and
+        // the unpriced note below still say why.
+        KpiViewModel[] cost = stats.Cost is { } usd ? [new(Texts.InfoCost, Texts.Cost(usd), Texts.InfoCostNote)] : [];
         Kpis =
         [
             new(Texts.InfoTokens, Texts.TokenAmount(total)),
-            new(Texts.InfoCost, Texts.Cost(stats.Cost), Texts.InfoCostNote),
+            .. cost,
             new(Texts.InfoSessions, Texts.Count(stats.Sessions)),
             new(Texts.InfoMessages, Texts.Count(stats.Messages)),
             new(Texts.InfoActiveDays, Texts.InfoActiveDaysOf(stats.ActiveDays, UsageDays)),

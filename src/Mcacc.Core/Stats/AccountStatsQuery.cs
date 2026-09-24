@@ -51,9 +51,9 @@ public static class AccountStatsQuery
             .Select(group => new ProjectUsage(
                 group.Key,
                 group.Sum(entry => entry.Bucket.Tokens.Total),
-                group
+                PricedSum(group
                     .GroupBy(entry => entry.Bucket.Model, StringComparer.Ordinal)
-                    .Sum(model => CostEstimator.Estimate(model.Key, Sum(model.Select(entry => entry.Bucket.Tokens))) ?? 0m)))
+                    .Select(model => CostEstimator.Estimate(model.Key, Sum(model.Select(entry => entry.Bucket.Tokens)))))))
             .OrderByDescending(project => project.Tokens)
             .ThenBy(project => project.Project, StringComparer.Ordinal)
             .Take(topProjects)
@@ -63,7 +63,7 @@ public static class AccountStatsQuery
             from,
             to,
             Sum(models.Select(model => model.Tokens)),
-            models.Sum(model => model.Cost ?? 0m),
+            models.Count == 0 ? 0m : PricedSum(models.Select(model => model.Cost)),
             models.Where(model => model.Cost is null).Sum(model => model.Tokens.Total),
             models.Sum(model => model.Messages),
             inRange
@@ -82,6 +82,10 @@ public static class AccountStatsQuery
 
     private static DateOnly LocalDay(DateTimeOffset at, TimeZoneInfo zone) =>
         DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(at, zone).DateTime);
+
+    /// <summary>The sum of the known costs; null when none is known, so unpriced tokens never add up to 0.</summary>
+    private static decimal? PricedSum(IEnumerable<decimal?> costs) =>
+        costs.Aggregate((decimal?)null, (sum, cost) => cost is { } known ? (sum ?? 0m) + known : sum);
 
     private static TokenCounts Sum(IEnumerable<TokenCounts> all) =>
         all.Aggregate(TokenCounts.Zero, (sum, tokens) => sum + tokens);

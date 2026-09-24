@@ -111,6 +111,35 @@ public class AccountStatsQueryTests
     }
 
     [Fact]
+    public void A_range_of_unknown_models_only_has_no_cost()
+    {
+        var stats = Compute(Bucket("2026-09-20T08:00Z", model: "claude-opus-9", input: 40));
+
+        stats.Cost.ShouldBeNull();
+        stats.UnpricedTokens.ShouldBe(40);
+    }
+
+    [Fact]
+    public void An_empty_range_costs_nothing()
+    {
+        Compute().Cost.ShouldBe(0m);
+    }
+
+    [Fact]
+    public void A_project_of_unknown_models_only_has_no_cost()
+    {
+        var stats = Compute(
+            Bucket("2026-09-20T08:00Z", model: "claude-opus-9", project: @"C:\A", input: 400),
+            Bucket("2026-09-20T08:00Z", model: "claude-opus-4-5", project: @"C:\B", input: 100),
+            Bucket("2026-09-20T08:00Z", model: "claude-opus-9", project: @"C:\B", input: 200));
+
+        stats.Projects.ShouldBe([
+            new ProjectUsage(@"C:\A", 400, null),
+            new ProjectUsage(@"C:\B", 300, 0.0005m),
+        ]);
+    }
+
+    [Fact]
     public void Only_the_top_projects_are_listed()
     {
         var stats = AccountStatsQuery.Compute(

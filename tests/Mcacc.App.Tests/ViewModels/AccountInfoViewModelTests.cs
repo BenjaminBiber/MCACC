@@ -348,6 +348,21 @@ public sealed class AccountInfoViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task Without_a_priced_model_the_cost_is_left_out()
+    {
+        _services.Stats.Buckets.Add(Bucket("claude-test-1", 1_000));
+        var page = Page();
+
+        await page.ActivateAsync(Ct);
+
+        page.Kpis.Select(kpi => kpi.Label)
+            .ShouldBe([Texts.InfoTokens, Texts.InfoSessions, Texts.InfoMessages, Texts.InfoActiveDays]);
+        page.Projects.ShouldHaveSingleItem().Tooltip.ShouldBe("/code/shop\n1 k Tokens");
+        page.Models.ShouldHaveSingleItem().Cost.ShouldBe(Texts.InfoNoValue);
+        page.UnpricedText.ShouldBe(Texts.InfoUnpriced(1_000));
+    }
+
+    [Fact]
     public async Task No_sessions_in_the_period_shows_the_empty_state()
     {
         var page = Page();

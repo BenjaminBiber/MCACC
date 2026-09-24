@@ -48,6 +48,7 @@ public class TextsTests
         Texts.AmountTooltip("Input", 0, 0).ShouldBe("Input: 0");
         Texts.ProjectTooltip("/home/ben/shop", 1_500, 0.5m).ShouldBe("/home/ben/shop\n1,5 k Tokens · ≈ 0,50 $");
         Texts.ProjectTooltip("", 1_500, 0.5m).ShouldStartWith(Texts.InfoNoProject);
+        Texts.ProjectTooltip("/home/ben/shop", 1_500, null).ShouldBe("/home/ben/shop\n1,5 k Tokens");
     }
 
     [Theory]

@@ -196,8 +196,10 @@ public static partial class Texts
         : $"{label}: {TokenAmount(value)}";
 
     /// <param name="project">The full working directory; the bar list shows only its last folder.</param>
-    public static string ProjectTooltip(string project, long tokens, decimal cost) =>
-        $"{(project.Length > 0 ? project : InfoNoProject)}\n{TokenAmount(tokens)} {InfoTokens} · {Cost(cost)}";
+    /// <param name="cost">Null when no model of the project has a price; the tooltip then names no amount.</param>
+    public static string ProjectTooltip(string project, long tokens, decimal? cost) =>
+        $"{(project.Length > 0 ? project : InfoNoProject)}\n{TokenAmount(tokens)} {InfoTokens}"
+        + (cost is { } usd ? $" · {Cost(usd)}" : "");
 
     public static string InfoDays(int days) => $"{days} Tage";
 
