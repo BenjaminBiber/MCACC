@@ -473,6 +473,18 @@ public sealed class AccountPickerViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task A_failure_while_forgetting_the_limits_still_forgets_the_statistics()
+    {
+        _services.Usage.ThrowOnForget = new IOException("the cache file is in use");
+        _services.Dialogs.Answer<RemoveAccountDialogViewModel>(_ => new RemoveAccountResult(DeleteData: false));
+        var picker = Picker();
+
+        await picker.RemoveCommand.ExecuteAsync(picker.Tiles.Single(t => t.Id == "privat"));
+
+        _services.Stats.Forgotten.ShouldBe(["privat"]);
+    }
+
+    [Fact]
     public async Task A_failing_removal_forgets_nothing()
     {
         _services.Accounts.ThrowOnRemove = new IOException("the folder is in use");

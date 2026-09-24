@@ -134,8 +134,15 @@ public sealed partial class AccountPickerViewModel : PageViewModel
         try
         {
             _services.Accounts.Remove(tile.Account.Id, result.DeleteData);
-            _services.Usage.Forget(tile.Account);
-            _services.Stats.Forget(tile.Account);
+            // The account is gone at this point, so its statistics go too, whatever forgetting the limits hit.
+            try
+            {
+                _services.Usage.Forget(tile.Account);
+            }
+            finally
+            {
+                _services.Stats.Forget(tile.Account);
+            }
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidOperationException)
         {

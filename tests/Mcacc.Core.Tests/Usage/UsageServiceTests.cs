@@ -1,5 +1,6 @@
 using Mcacc.Core.Abstractions;
 using Mcacc.Core.ClaudeCode;
+using Mcacc.Core.Logging;
 using Mcacc.Core.Model;
 using Mcacc.Core.Paths;
 using Mcacc.Core.Tests.TestSupport;
@@ -35,6 +36,7 @@ public sealed class UsageServiceTests : IDisposable
     private readonly FakeCredentialSource _credentials = new();
     private readonly FakeLoginReader _login = new();
     private readonly FakeUsageHttp _http = new();
+    private readonly RecordingLog _log = new();
 
     public UsageServiceTests()
     {
@@ -64,7 +66,7 @@ public sealed class UsageServiceTests : IDisposable
     private UsageHistoryStore History => new(Paths, _time);
 
     private UsageService Service() =>
-        new(_credentials, _login, _http, Cache, Profiles, History, new AccountPathResolver(Paths, Platform), _time);
+        new(_credentials, _login, _http, Cache, Profiles, History, new AccountPathResolver(Paths, Platform), _time, _log);
 
     private void SeedCache(params string[] ids) =>
         Cache.Save(ids.ToDictionary(id => id, _ => Old));
@@ -468,6 +470,78 @@ public sealed class UsageServiceTests : IDisposable
         _http.Requests.Count.ShouldBe(2);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task A_refresh_that_ends_after_forget_writes_nothing_back(bool duringOwnerCheck)
+    {
+        _login.Info = OwnLogin;
+        var service = Service();
+        if (duringOwnerCheck)
+        {
+            _http.OnProfileRequest = _ => service.Forget(Privat);
+        }
+        else
+        {
+            _http.OnRequest = _ => service.Forget(Privat);
+        }
+
+        await service.RefreshAsync(Privat, Ct);
+
+        service.GetCached(Privat).State.ShouldBe(UsageState.NotLoggedIn);
+        service.GetProfile(Privat).ShouldBeNull();
+        service.GetHistory(Privat, DateTimeOffset.MinValue).ShouldBeEmpty();
+        Cache.Load().ShouldNotContainKey("privat");
+        Profiles.Load().ShouldNotContainKey("privat");
+        File.Exists(Paths.UsageHistoryFile("privat")).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task An_account_created_again_under_a_forgotten_id_refreshes_normally()
+    {
+        _login.Info = OwnLogin;
+        var service = Service();
+        _http.OnRequest = _ => service.Forget(Privat);
+        await service.RefreshAsync(Privat, Ct);
+        _http.OnRequest = null;
+
+        var usage = await service.RefreshAsync(Privat, Ct);
+
+        usage.ShouldBe(new AccountUsage(UsageState.Ok, Fresh(Now)));
+        _http.Requests.Count.ShouldBe(2);
+        service.GetProfile(Privat).ShouldBe(ProfileParser.Parse(FixtureFiles.ReadAllText("profile-ok.json")));
+        Cache.Load()["privat"].ShouldBe(Fresh(Now));
+        History.Read("privat", DateTimeOffset.MinValue).ShouldBe([UsageHistoryPoint.From(Fresh(Now))]);
+    }
+
+    [Fact]
+    public async Task Forget_goes_on_when_the_profile_cache_cannot_be_written()
+    {
+        _login.Info = OwnLogin;
+        var service = Service();
+        await service.RefreshAsync(Privat, Ct);
+        BlockWrites(Paths.ProfileCacheFile);
+
+        service.Forget(Privat);
+
+        Cache.Load().ShouldBeEmpty();
+        File.Exists(Paths.UsageHistoryFile("privat")).ShouldBeFalse();
+        _log.Warnings.ShouldHaveSingleItem().Exception.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task A_profile_cache_that_cannot_be_written_still_lets_the_limits_through()
+    {
+        _login.Info = OwnLogin;
+        BlockWrites(Paths.ProfileCacheFile);
+
+        var usage = await Service().RefreshAsync(Privat, Ct);
+
+        usage.ShouldBe(new AccountUsage(UsageState.Ok, Fresh(Now)));
+        _http.Requests.ShouldBe([Token]);
+        _log.Warnings.ShouldHaveSingleItem().Exception.ShouldNotBeNull();
+    }
+
     [Fact]
     public async Task GetHistory_returns_the_points_since_the_given_time()
     {
@@ -477,6 +551,9 @@ public sealed class UsageServiceTests : IDisposable
 
         Service().GetHistory(Privat, Now - TimeSpan.FromHours(1)).ShouldBe([UsageHistoryPoint.From(Fresh(Now))]);
     }
+
+    /// <summary>A directory where the temp file of a json write goes makes that write fail on every platform.</summary>
+    private static void BlockWrites(string file) => Directory.CreateDirectory(file + ".tmp");
 
     private sealed class FakeCredentialSource : ICredentialSource
     {
@@ -546,5 +623,26 @@ public sealed class UsageServiceTests : IDisposable
             onRequest?.Invoke(accessToken);
             return Task.FromResult(response);
         }
+    }
+
+    private sealed class RecordingLog : ILog
+    {
+        private readonly Lock _gate = new();
+
+        public List<(string Message, Exception? Exception)> Warnings { get; } = [];
+
+        public void Info(string message)
+        {
+        }
+
+        public void Warn(string message, Exception? exception = null)
+        {
+            lock (_gate)
+            {
+                Warnings.Add((message, exception));
+            }
+        }
+
+        public void Error(string message, Exception? exception = null) => Warn(message, exception);
     }
 }

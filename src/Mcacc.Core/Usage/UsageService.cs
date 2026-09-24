@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Mcacc.Core.Abstractions;
 using Mcacc.Core.ClaudeCode;
+using Mcacc.Core.Logging;
 using Mcacc.Core.Model;
 using Mcacc.Core.Paths;
 
@@ -21,14 +22,20 @@ public sealed class UsageService(
     ProfileCache profiles,
     UsageHistoryStore history,
     AccountPathResolver resolver,
-    TimeProvider? time = null) : IUsageProvider
+    TimeProvider? time = null,
+    ILog? log = null) : IUsageProvider
 {
     private static readonly TimeSpan MinimumInterval = TimeSpan.FromSeconds(60);
 
     private readonly TimeProvider _time = time ?? TimeProvider.System;
+    private readonly ILog _log = log ?? NullLog.Instance;
     private readonly Lock _gate = new();
     private readonly Dictionary<string, Attempt> _attempts = [];
     private readonly Dictionary<string, CheckedToken> _owners = [];
+
+    // Forget counts up an account's generation, and a refresh only writes back while the generation it started with
+    // still holds. A set of forgotten ids would not do: ids are slugs and a re-created account gets the same one.
+    private readonly Dictionary<string, int> _generations = [];
     private Dictionary<string, UsageSnapshot>? _snapshots;
     private Dictionary<string, AccountProfile>? _profiles;
 
@@ -48,45 +55,57 @@ public sealed class UsageService(
     public IReadOnlyList<UsageHistoryPoint> GetHistory(Account account, DateTimeOffset since) =>
         history.Read(account.Id, since);
 
+    /// <summary>
+    /// Best effort: a file that cannot be written or deleted is logged and the rest is removed anyway. A refresh still
+    /// running writes nothing back once it ends (see <see cref="_generations"/>).
+    /// </summary>
     public void Forget(Account account)
     {
+        var id = account.Id;
         lock (_gate)
         {
-            _attempts.Remove(account.Id);
-            _owners.Remove(account.Id);
+            _generations[id] = _generations.GetValueOrDefault(id) + 1;
+            _attempts.Remove(id);
+            _owners.Remove(id);
             var known = Profiles();
-            if (known.Remove(account.Id))
+            if (known.Remove(id))
             {
-                profiles.Save(known);
+                BestEffort($"Forgetting the profile of '{id}' failed.", () => profiles.Save(known));
             }
         }
 
-        ForgetLimits(account.Id);
-        history.Delete(account.Id);
+        BestEffort($"Forgetting the limits of '{id}' failed.", () => ForgetLimits(id));
+        BestEffort($"Forgetting the usage history of '{id}' failed.", () => history.Delete(id));
     }
 
     /// <summary>Asks the endpoint at most once per minute and account; in between it repeats the last result.</summary>
     public async Task<AccountUsage> RefreshAsync(Account account, CancellationToken ct)
     {
         var now = _time.GetUtcNow();
+        int generation;
         lock (_gate)
         {
             if (_attempts.TryGetValue(account.Id, out var last) && now - last.At < MinimumInterval)
             {
                 return last.Result;
             }
+
+            generation = _generations.GetValueOrDefault(account.Id);
         }
 
-        var usage = await FetchAsync(account, now, ct).ConfigureAwait(false);
+        var usage = await FetchAsync(account, generation, now, ct).ConfigureAwait(false);
         lock (_gate)
         {
-            _attempts[account.Id] = new Attempt(now, usage);
+            if (IsCurrent(account.Id, generation))
+            {
+                _attempts[account.Id] = new Attempt(now, usage);
+            }
         }
 
         return usage;
     }
 
-    private async Task<AccountUsage> FetchAsync(Account account, DateTimeOffset now, CancellationToken ct)
+    private async Task<AccountUsage> FetchAsync(Account account, int generation, DateTimeOffset now, CancellationToken ct)
     {
         var cached = Cached(account.Id);
         var paths = resolver.Resolve(account);
@@ -106,7 +125,7 @@ public sealed class UsageService(
         // Without a login in .claude.json there is nothing to compare with, and the tile says so anyway.
         if (login.Read(paths) is { } expected)
         {
-            var check = await ProfileAsync(account.Id, found.AccessToken, ct).ConfigureAwait(false);
+            var check = await ProfileAsync(account.Id, generation, found.AccessToken, ct).ConfigureAwait(false);
             if (check.Profile is not { } profile)
             {
                 return new AccountUsage(check.State, cached);
@@ -120,7 +139,7 @@ public sealed class UsageService(
                 return new AccountUsage(UsageState.WrongAccount, null, owner.Email);
             }
 
-            StoreProfile(account.Id, profile);
+            StoreProfile(account.Id, generation, profile);
         }
 
         var (state, body) = await GetAsync(() => http.GetUsageAsync(found.AccessToken, ct), ct).ConfigureAwait(false);
@@ -134,7 +153,7 @@ public sealed class UsageService(
             return new AccountUsage(UsageState.Error, cached);
         }
 
-        Store(account.Id, snapshot);
+        Store(account.Id, generation, snapshot);
         return new AccountUsage(UsageState.Ok, snapshot);
     }
 
@@ -142,6 +161,7 @@ public sealed class UsageService(
     /// <returns>The profile with <see cref="UsageState.Ok"/>, otherwise no profile and the state of the failure.</returns>
     private async Task<(UsageState State, AccountProfile? Profile)> ProfileAsync(
         string accountId,
+        int generation,
         string accessToken,
         CancellationToken ct)
     {
@@ -167,7 +187,10 @@ public sealed class UsageService(
 
         lock (_gate)
         {
-            _owners[accountId] = new CheckedToken(tokenHash, profile);
+            if (IsCurrent(accountId, generation))
+            {
+                _owners[accountId] = new CheckedToken(tokenHash, profile);
+            }
         }
 
         return (UsageState.Ok, profile);
@@ -216,31 +239,57 @@ public sealed class UsageService(
         }
     }
 
-    private void Store(string id, UsageSnapshot snapshot)
+    /// <summary>
+    /// The history append stays under <see cref="_gate"/> too, so Forget cannot slip in between the check and the
+    /// write; the history store never calls back into this class.
+    /// </summary>
+    private void Store(string id, int generation, UsageSnapshot snapshot)
     {
         lock (_gate)
         {
+            if (!IsCurrent(id, generation))
+            {
+                return;
+            }
+
             var snapshots = Snapshots();
             snapshots[id] = snapshot;
             cache.Save(snapshots);
+            history.Append(id, UsageHistoryPoint.From(snapshot));
         }
-
-        history.Append(id, UsageHistoryPoint.From(snapshot));
     }
 
-    /// <summary>Writes the file only when the profile changed, since every refresh of a known token passes here.</summary>
-    private void StoreProfile(string id, AccountProfile profile)
+    /// <summary>
+    /// Writes the file only when the profile changed, since every refresh of a known token passes here. A failed
+    /// write is logged: the profile must never cost the refresh its limits, and the memory keeps it for the page.
+    /// </summary>
+    private void StoreProfile(string id, int generation, AccountProfile profile)
     {
         lock (_gate)
         {
             var known = Profiles();
-            if (Equals(known.GetValueOrDefault(id), profile))
+            if (!IsCurrent(id, generation) || Equals(known.GetValueOrDefault(id), profile))
             {
                 return;
             }
 
             known[id] = profile;
-            profiles.Save(known);
+            BestEffort($"Storing the profile of '{id}' failed.", () => profiles.Save(known));
+        }
+    }
+
+    /// <summary>Call under <see cref="_gate"/>: false once the account was forgotten after the refresh began.</summary>
+    private bool IsCurrent(string id, int generation) => _generations.GetValueOrDefault(id) == generation;
+
+    private void BestEffort(string failure, Action write)
+    {
+        try
+        {
+            write();
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            _log.Warn(failure, e);
         }
     }
 

@@ -174,7 +174,16 @@ internal sealed class FakeUsageProvider : IUsageProvider
     public IReadOnlyList<UsageHistoryPoint> GetHistory(Account account, DateTimeOffset since) =>
         History.TryGetValue(account.Id, out var points) ? points.Where(point => point.At >= since).ToList() : [];
 
-    public void Forget(Account account) => Forgotten.Add(account.Id);
+    public Exception? ThrowOnForget { get; set; }
+
+    public void Forget(Account account)
+    {
+        Forgotten.Add(account.Id);
+        if (ThrowOnForget is { } error)
+        {
+            throw error;
+        }
+    }
 }
 
 internal sealed class FakeLoginReader : ILoginInfoReader
