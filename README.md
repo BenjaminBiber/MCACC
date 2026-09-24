@@ -108,6 +108,16 @@ Standardmäßig verschwindet der Account nur aus der Liste, die Daten bleiben li
 vorher an. Läuft Claude Desktop noch mit diesem Account, wird das Löschen abgelehnt. Der
 Account „Standard“ lässt sich nicht entfernen, und seine Daten werden nie gelöscht.
 
+### Info & Statistik
+
+Im ⋮-Menü einer Kachel öffnet **Info & Statistik** eine Seite mit allem, was sich über den Account auslesen lässt:
+
+- **Konto:** E-Mail, Name, Plan, Organisation, Abrechnung, Rate-Limit-Stufe, Ablauf des Tokens, Claude-Code-Starts und seit wann Claude Desktop läuft.
+- **Limits:** 5h, Woche und weitere Fenster als Ringe, dazu der Verlauf der letzten 24 Stunden oder 7 Tage. MCACC fragt die Limits alle 5 Minuten ab, solange es offen ist; der Verlauf wächst nur in dieser Zeit.
+- **Claude Code Nutzung:** Tokens, Sessions, Nachrichten und aktive Tage aus den lokalen Session-Logs (`<claude-dir>/projects/**/*.jsonl`), als Tagesbalken nach Modell, nach Token-Art, nach Projekt und als Modelltabelle, für 7, 30 oder 90 Tage.
+
+Die Kosten sind eine **Schätzung** zu API-Listenpreisen („≈“). Mit einem Abo zahlst du sie nicht; sie zeigen nur, was dieselbe Nutzung über die API gekostet hätte. Der erste Aufruf liest alle Logs und kann bei großen Verzeichnissen einige Sekunden dauern; danach liest MCACC nur, was neu hinzugekommen ist.
+
 ### Einstellungen
 
 - **Terminal für Claude Code** — nur tatsächlich installierte werden angeboten.
@@ -121,6 +131,9 @@ Account „Standard“ lässt sich nicht entfernen, und seine Daten werden nie g
 ~/.mcacc/                        (Windows: %USERPROFILE%\.mcacc)
   config.json                    Accounts und Einstellungen (+ .bak)
   usage-cache.json               zuletzt bekannte Limits, ohne Tokens
+  profile-cache.json             Profil je Account (E-Mail, Plan, Organisation), ohne Tokens
+  usage-history/<id>.jsonl       Verlauf der Limits, 90 Tage
+  stats/<id>.json                Index der gelesenen Claude-Code-Logs
   profiles/<id>/desktop/         --user-data-dir von Claude Desktop
   profiles/<id>/claude/          CLAUDE_CONFIG_DIR von Claude Code
   launch/<id>.cmd | .command     bei jedem Start neu erzeugt
