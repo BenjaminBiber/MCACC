@@ -90,4 +90,33 @@ public class ThemeTests
 
         glyphs.Distinct().Count().ShouldBe(glyphs.Count);
     }
+
+    [AvaloniaTheory]
+    [InlineData("Light")]
+    [InlineData("Dark")]
+    public void Every_chart_color_resolves_to_a_brush(string variantName)
+    {
+        var variant = Variants.Single(v => v.Key.ToString() == variantName);
+        var application = Application.Current.ShouldNotBeNull();
+
+        foreach (var color in Enum.GetValues<ChartColor>())
+        {
+            application.TryGetResource(ChartControl.KeyOf(color), variant, out var value).ShouldBeTrue(color.ToString());
+            value.ShouldBeOfType<SolidColorBrush>();
+        }
+    }
+
+    [AvaloniaFact]
+    public void The_six_series_colors_differ_from_each_other()
+    {
+        var application = Application.Current.ShouldNotBeNull();
+
+        foreach (var variant in Variants)
+        {
+            var colors = ThemeKeys.Series
+                .Select(key => application.TryGetResource(key, variant, out var value) ? ((SolidColorBrush)value!).Color : default)
+                .ToList();
+            colors.Distinct().Count().ShouldBe(6);
+        }
+    }
 }

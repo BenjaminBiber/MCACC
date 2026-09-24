@@ -21,6 +21,12 @@
       <Color x:Key="Mcacc.AccentSubtleColor">#F5E1D8</Color>
       <Color x:Key="Mcacc.DangerColor">#B53333</Color>
       <Color x:Key="Mcacc.ScrimColor">#66000000</Color>
+      <Color x:Key="Mcacc.Series1Color">#D97757</Color>
+      <Color x:Key="Mcacc.Series2Color">#6A9BCC</Color>
+      <Color x:Key="Mcacc.Series3Color">#788C5D</Color>
+      <Color x:Key="Mcacc.Series4Color">#C9A34E</Color>
+      <Color x:Key="Mcacc.Series5Color">#A07CB8</Color>
+      <Color x:Key="Mcacc.Series6Color">#87867F</Color>
 
       <SolidColorBrush x:Key="Mcacc.Bg" Color="#FAF9F5" />
       <SolidColorBrush x:Key="Mcacc.Surface" Color="#FFFFFF" />
@@ -35,6 +41,12 @@
       <SolidColorBrush x:Key="Mcacc.AccentSubtle" Color="#F5E1D8" />
       <SolidColorBrush x:Key="Mcacc.Danger" Color="#B53333" />
       <SolidColorBrush x:Key="Mcacc.Scrim" Color="#66000000" />
+      <SolidColorBrush x:Key="Mcacc.Series1" Color="#D97757" />
+      <SolidColorBrush x:Key="Mcacc.Series2" Color="#6A9BCC" />
+      <SolidColorBrush x:Key="Mcacc.Series3" Color="#788C5D" />
+      <SolidColorBrush x:Key="Mcacc.Series4" Color="#C9A34E" />
+      <SolidColorBrush x:Key="Mcacc.Series5" Color="#A07CB8" />
+      <SolidColorBrush x:Key="Mcacc.Series6" Color="#87867F" />
     </ResourceDictionary>
 
     <ResourceDictionary x:Key="Dark">
@@ -51,6 +63,12 @@
       <Color x:Key="Mcacc.AccentSubtleColor">#4A3129</Color>
       <Color x:Key="Mcacc.DangerColor">#E5716F</Color>
       <Color x:Key="Mcacc.ScrimColor">#99000000</Color>
+      <Color x:Key="Mcacc.Series1Color">#E08A6D</Color>
+      <Color x:Key="Mcacc.Series2Color">#86B2DD</Color>
+      <Color x:Key="Mcacc.Series3Color">#9DB27E</Color>
+      <Color x:Key="Mcacc.Series4Color">#D9B660</Color>
+      <Color x:Key="Mcacc.Series5Color">#B997CC</Color>
+      <Color x:Key="Mcacc.Series6Color">#9C9A92</Color>
 
       <SolidColorBrush x:Key="Mcacc.Bg" Color="#262624" />
       <SolidColorBrush x:Key="Mcacc.Surface" Color="#30302E" />
@@ -65,6 +83,12 @@
       <SolidColorBrush x:Key="Mcacc.AccentSubtle" Color="#4A3129" />
       <SolidColorBrush x:Key="Mcacc.Danger" Color="#E5716F" />
       <SolidColorBrush x:Key="Mcacc.Scrim" Color="#99000000" />
+      <SolidColorBrush x:Key="Mcacc.Series1" Color="#E08A6D" />
+      <SolidColorBrush x:Key="Mcacc.Series2" Color="#86B2DD" />
+      <SolidColorBrush x:Key="Mcacc.Series3" Color="#9DB27E" />
+      <SolidColorBrush x:Key="Mcacc.Series4" Color="#D9B660" />
+      <SolidColorBrush x:Key="Mcacc.Series5" Color="#B997CC" />
+      <SolidColorBrush x:Key="Mcacc.Series6" Color="#9C9A92" />
     </ResourceDictionary>
 
   </ResourceDictionary.ThemeDictionaries>
