@@ -71,7 +71,7 @@ public static class CompositionRoot
                 platform.UsageHttp,
                 new UsageCache(platform.Paths),
                 new ProfileCache(platform.Paths),
-                new UsageHistoryStore(platform.Paths),
+                new UsageHistoryStore(platform.Paths, log: log),
                 resolver),
             login,
             platform.CreateDetector(),

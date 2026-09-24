@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Mcacc.Core.Config;
+using Mcacc.Core.Logging;
 using Mcacc.Core.Paths;
 using Mcacc.Core.Tests.TestSupport;
 using Mcacc.Core.Usage;
@@ -130,5 +131,36 @@ public sealed class UsageHistoryStoreTests : IDisposable
         var snapshot = new UsageSnapshot(new UsageWindow(42, resets), new UsageWindow(null, null), Now);
 
         UsageHistoryPoint.From(snapshot).ShouldBe(new UsageHistoryPoint(Now, 42, resets, null, null));
+    }
+
+    [Fact]
+    public void A_failing_append_is_logged()
+    {
+        var log = new RecordingLog();
+        var store = new UsageHistoryStore(Paths, _time, log);
+        store.Append("privat", Point(Now)); // succeeds, so pruning already ran for today and will not read again
+
+        using (new FileStream(File, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            store.Append("privat", Point(Now));
+        }
+
+        var warning = log.Warnings.ShouldHaveSingleItem();
+        warning.Exception.ShouldNotBeNull();
+    }
+
+    private sealed class RecordingLog : ILog
+    {
+        public List<(string Message, Exception? Exception)> Warnings { get; } = [];
+
+        public void Info(string message)
+        {
+        }
+
+        public void Warn(string message, Exception? exception = null) => Warnings.Add((message, exception));
+
+        public void Error(string message, Exception? exception = null)
+        {
+        }
     }
 }

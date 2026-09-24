@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Mcacc.Core.Config;
+using Mcacc.Core.Logging;
 using Mcacc.Core.Paths;
 
 namespace Mcacc.Core.Usage;
@@ -8,11 +9,12 @@ namespace Mcacc.Core.Usage;
 /// The limit history of each account, one json object per line. Lines are only ever appended; the first append of a
 /// UTC day also drops the points older than <see cref="Retention"/>.
 /// </summary>
-public sealed class UsageHistoryStore(McaccPaths paths, TimeProvider? time = null)
+public sealed class UsageHistoryStore(McaccPaths paths, TimeProvider? time = null, ILog? log = null)
 {
     public static readonly TimeSpan Retention = TimeSpan.FromDays(90);
 
     private readonly TimeProvider _time = time ?? TimeProvider.System;
+    private readonly ILog _log = log ?? NullLog.Instance;
     private readonly Lock _gate = new();
     private readonly Dictionary<string, DateOnly> _prunedOn = [];
 
@@ -31,6 +33,7 @@ public sealed class UsageHistoryStore(McaccPaths paths, TimeProvider? time = nul
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
                 // The next refresh appends again; a gap in the history is all that is lost.
+                _log.Warn($"Appending a usage history point for '{accountId}' failed.", e);
             }
         }
     }
@@ -39,7 +42,7 @@ public sealed class UsageHistoryStore(McaccPaths paths, TimeProvider? time = nul
     {
         lock (_gate)
         {
-            return ReadAll(paths.UsageHistoryFile(accountId))
+            return ReadAll(accountId, paths.UsageHistoryFile(accountId))
                 .Where(point => point.At >= since)
                 .OrderBy(point => point.At)
                 .ToList();
@@ -69,7 +72,7 @@ public sealed class UsageHistoryStore(McaccPaths paths, TimeProvider? time = nul
         }
 
         _prunedOn[accountId] = today;
-        var all = ReadAll(file);
+        var all = ReadAll(accountId, file);
         var kept = all.Where(point => point.At >= now - Retention).ToList();
         if (kept.Count == all.Count)
         {
@@ -82,7 +85,7 @@ public sealed class UsageHistoryStore(McaccPaths paths, TimeProvider? time = nul
     }
 
     /// <summary>A broken line, e.g. from a crash mid-write, is skipped; a missing file reads as empty.</summary>
-    private static List<UsageHistoryPoint> ReadAll(string file)
+    private List<UsageHistoryPoint> ReadAll(string accountId, string file)
     {
         var points = new List<UsageHistoryPoint>();
         try
@@ -109,9 +112,14 @@ public sealed class UsageHistoryStore(McaccPaths paths, TimeProvider? time = nul
                 }
             }
         }
+        catch (FileNotFoundException)
+        {
+            // No history yet; that is the normal state of a fresh account, not a failure worth logging.
+        }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
             // Whatever was read so far stands.
+            _log.Warn($"Reading the usage history of '{accountId}' failed.", e);
         }
 
         return points;
