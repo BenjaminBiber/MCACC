@@ -15,7 +15,7 @@ public static class UsageResponseParser
             var root = document.RootElement;
             return root.ValueKind != JsonValueKind.Object
                 ? null
-                : new UsageSnapshot(Window(root, "five_hour"), Window(root, "seven_day"), fetchedAt);
+                : new UsageSnapshot(Window(root, "five_hour"), Window(root, "seven_day"), fetchedAt, Extra(root));
         }
         catch (JsonException)
         {
@@ -41,4 +41,23 @@ public static class UsageResponseParser
         && DateTimeOffset.TryParse(value.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var resetsAt)
             ? resetsAt
             : null;
+
+    private const string SevenDayPrefix = "seven_day_";
+
+    /// <summary>Every <c>seven_day_*</c> object besides <c>seven_day</c>; a null window means the plan has none.</summary>
+    private static Dictionary<string, UsageWindow>? Extra(JsonElement root)
+    {
+        Dictionary<string, UsageWindow>? extra = null;
+        foreach (var property in root.EnumerateObject())
+        {
+            if (property.Name.StartsWith(SevenDayPrefix, StringComparison.Ordinal)
+                && property.Value.ValueKind == JsonValueKind.Object)
+            {
+                extra ??= new Dictionary<string, UsageWindow>(StringComparer.Ordinal);
+                extra[property.Name] = new UsageWindow(Utilization(property.Value), ResetsAt(property.Value));
+            }
+        }
+
+        return extra;
+    }
 }

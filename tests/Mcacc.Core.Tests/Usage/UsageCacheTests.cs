@@ -69,4 +69,18 @@ public sealed class UsageCacheTests : IDisposable
 
         File.ReadAllText(Paths.UsageCacheFile).ShouldNotContain("oken");
     }
+
+    [Fact]
+    public void The_extra_windows_survive_the_round_trip()
+    {
+        var snapshot = new UsageSnapshot(
+            null,
+            null,
+            new DateTimeOffset(2026, 9, 24, 8, 0, 0, TimeSpan.Zero),
+            new Dictionary<string, UsageWindow> { ["seven_day_opus"] = new(12, null) });
+
+        new UsageCache(Paths).Save(new Dictionary<string, UsageSnapshot> { ["privat"] = snapshot });
+
+        new UsageCache(Paths).Load()["privat"].Extra!["seven_day_opus"].ShouldBe(new UsageWindow(12, null));
+    }
 }

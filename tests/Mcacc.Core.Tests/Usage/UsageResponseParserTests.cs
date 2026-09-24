@@ -64,4 +64,32 @@ public class UsageResponseParserTests
     {
         UsageResponseParser.Parse(json, FetchedAt).ShouldBeNull();
     }
+
+    [Fact]
+    public void Reads_the_other_seven_day_windows_as_extra()
+    {
+        var json = """
+            {
+              "five_hour": { "utilization": 1, "resets_at": null },
+              "seven_day": { "utilization": 2, "resets_at": null },
+              "seven_day_opus": { "utilization": 55.5, "resets_at": "2026-09-27T09:00:00Z" },
+              "seven_day_sonnet": { "utilization": null, "resets_at": null },
+              "seven_day_oauth_apps": null,
+              "extra_usage": { "utilization": 99 }
+            }
+            """;
+
+        var extra = UsageResponseParser.Parse(json, FetchedAt)!.Extra;
+
+        extra.ShouldNotBeNull();
+        extra.Keys.Order().ShouldBe(["seven_day_opus", "seven_day_sonnet"]);
+        extra["seven_day_opus"].ShouldBe(new UsageWindow(55.5, new DateTimeOffset(2026, 9, 27, 9, 0, 0, TimeSpan.Zero)));
+        extra["seven_day_sonnet"].ShouldBe(new UsageWindow(null, null));
+    }
+
+    [Fact]
+    public void Without_extra_windows_extra_stays_null()
+    {
+        UsageResponseParser.Parse(FixtureFiles.ReadAllText("usage-ok.json"), FetchedAt)!.Extra.ShouldBeNull();
+    }
 }
