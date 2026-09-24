@@ -14,6 +14,9 @@ public sealed class McaccPaths
         ProfilesDir = style.Join(root, "profiles");
         LaunchDir = style.Join(root, "launch");
         LogsDir = style.Join(root, "logs");
+        ProfileCacheFile = style.Join(root, "profile-cache.json");
+        UsageHistoryDir = style.Join(root, "usage-history");
+        StatsDir = style.Join(root, "stats");
     }
 
     public string Root { get; }
@@ -32,6 +35,12 @@ public sealed class McaccPaths
 
     public string LogsDir { get; }
 
+    public string ProfileCacheFile { get; }
+
+    public string UsageHistoryDir { get; }
+
+    public string StatsDir { get; }
+
     public static McaccPaths FromEnvironment(PlatformInfo info, Func<string, string?> getEnv)
     {
         var overridden = getEnv(HomeVariable);
@@ -46,4 +55,8 @@ public sealed class McaccPaths
     public string DesktopDataDir(string id) => Style.Join(ProfileDir(id), "desktop");
 
     public string ClaudeConfigDir(string id) => Style.Join(ProfileDir(id), "claude");
+
+    public string UsageHistoryFile(string id) => Style.Join(UsageHistoryDir, id + ".jsonl");
+
+    public string StatsFile(string id) => Style.Join(StatsDir, id + ".json");
 }

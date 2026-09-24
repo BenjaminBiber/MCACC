@@ -18,4 +18,5 @@ namespace Mcacc.Core.Config;
     ])]
 [JsonSerializable(typeof(AppConfig))]
 [JsonSerializable(typeof(Dictionary<string, UsageSnapshot>), TypeInfoPropertyName = "DictionaryStringUsageSnapshot")]
+[JsonSerializable(typeof(Dictionary<string, AccountProfile>), TypeInfoPropertyName = "DictionaryStringAccountProfile")]
 public sealed partial class McaccJsonContext : JsonSerializerContext;

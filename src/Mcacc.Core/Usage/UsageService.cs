@@ -124,7 +124,7 @@ public sealed class UsageService(
             return (state, null);
         }
 
-        if (body is null || TokenOwnerParser.Parse(body) is not { } owner)
+        if (body is null || ProfileParser.Parse(body)?.ToOwner() is not { } owner)
         {
             return (UsageState.Error, null);
         }

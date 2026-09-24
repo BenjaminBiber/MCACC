@@ -28,6 +28,11 @@ public class McaccPathsTests
         paths.ProfileDir("privat").ShouldBe(@"C:\Users\ben\.mcacc\profiles\privat");
         paths.DesktopDataDir("privat").ShouldBe(@"C:\Users\ben\.mcacc\profiles\privat\desktop");
         paths.ClaudeConfigDir("privat").ShouldBe(@"C:\Users\ben\.mcacc\profiles\privat\claude");
+        paths.ProfileCacheFile.ShouldBe(@"C:\Users\ben\.mcacc\profile-cache.json");
+        paths.UsageHistoryDir.ShouldBe(@"C:\Users\ben\.mcacc\usage-history");
+        paths.StatsDir.ShouldBe(@"C:\Users\ben\.mcacc\stats");
+        paths.UsageHistoryFile("privat").ShouldBe(@"C:\Users\ben\.mcacc\usage-history\privat.jsonl");
+        paths.StatsFile("privat").ShouldBe(@"C:\Users\ben\.mcacc\stats\privat.json");
     }
 
     [Fact]
@@ -43,6 +48,9 @@ public class McaccPathsTests
         paths.LogsDir.ShouldBe("/Users/ben/.mcacc/logs");
         paths.DesktopDataDir("privat").ShouldBe("/Users/ben/.mcacc/profiles/privat/desktop");
         paths.ClaudeConfigDir("privat").ShouldBe("/Users/ben/.mcacc/profiles/privat/claude");
+        paths.ProfileCacheFile.ShouldBe("/Users/ben/.mcacc/profile-cache.json");
+        paths.UsageHistoryFile("privat").ShouldBe("/Users/ben/.mcacc/usage-history/privat.jsonl");
+        paths.StatsFile("privat").ShouldBe("/Users/ben/.mcacc/stats/privat.json");
     }
 
     [Fact]
