@@ -386,16 +386,37 @@ public sealed class AccountInfoViewModelTests : IDisposable
     }
 
     [Fact]
-    public async Task Leaving_the_page_cancels_the_scan()
+    public async Task Leaving_the_page_stops_the_updates_but_the_scan_runs_to_completion()
     {
         _services.Stats.Gate = new TaskCompletionSource();
         var page = Page();
         var activation = page.ActivateAsync(Ct);
+        var kpis = page.Kpis;
 
         page.Deactivate();
+        _services.Stats.Buckets.Add(Bucket("claude-opus-4-5", 1_000));
+        _services.Stats.Gate.SetResult();
         await activation;
 
-        page.IsScanning.ShouldBeFalse();
+        _services.Stats.LoadToken.IsCancellationRequested.ShouldBeFalse();
+        _services.Stats.Completed.ShouldBe(1);
+        page.HasSessions.ShouldBeFalse();
+        page.Kpis.ShouldBeSameAs(kpis);
+        page.StatsError.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task A_scan_that_fails_after_the_page_was_left_shows_no_error()
+    {
+        _services.Stats.Gate = new TaskCompletionSource();
+        _services.Stats.ThrowOnLoad = new IOException("locked");
+        var page = Page();
+        var activation = page.ActivateAsync(Ct);
+
+        page.Deactivate();
+        _services.Stats.Gate.SetResult();
+        await activation;
+
         page.StatsError.ShouldBeNull();
     }
 

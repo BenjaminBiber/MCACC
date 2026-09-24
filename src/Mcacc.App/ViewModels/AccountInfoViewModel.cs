@@ -221,7 +221,7 @@ public sealed partial class AccountInfoViewModel : PageViewModel
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _life.Token);
         await Task.WhenAll(
                 RefreshLimitsAsync(linked.Token),
-                LoadStatsAsync(linked.Token),
+                LoadStatsAsync(_life.Token),
                 LoadAccountAsync(linked.Token))
             .ConfigureAwait(true);
     }
@@ -361,29 +361,47 @@ public sealed partial class AccountInfoViewModel : PageViewModel
                 Texts.HistoryTooltip(point.At, point.FiveHour, point.SevenDay)))
             .ToList());
 
-    private async Task LoadStatsAsync(CancellationToken ct)
+    /// <summary>
+    /// The scan itself is not canceled with the page: a first scan of a large log folder would otherwise start over
+    /// each time and its index would never be saved. <paramref name="life"/> only stops a left page from being
+    /// updated; opening the page again waits for the running scan and then finds the index up to date.
+    /// </summary>
+    private async Task LoadStatsAsync(CancellationToken life)
     {
         IsScanning = true;
         StatsError = null;
         ScanText = Texts.InfoScanning;
-        var progress = new Progress<double>(value => ScanText = Texts.InfoScanProgress(value));
+        var progress = new Progress<double>(value =>
+        {
+            if (!life.IsCancellationRequested)
+            {
+                ScanText = Texts.InfoScanProgress(value);
+            }
+        });
         try
         {
-            _buckets = await _services.Stats.LoadAsync(Account, progress, ct).ConfigureAwait(true);
-            ShowStats();
-        }
-        catch (OperationCanceledException)
-        {
-            // The page was left.
+            var buckets = await _services.Stats.LoadAsync(Account, progress, CancellationToken.None).ConfigureAwait(true);
+            if (!life.IsCancellationRequested)
+            {
+                _buckets = buckets;
+                ShowStats();
+            }
         }
         catch (Exception e)
         {
             _services.Log.Warn($"Reading the Claude Code logs of '{Account.Id}' failed.", e);
-            StatsError = Texts.InfoScanFailed;
+            if (!life.IsCancellationRequested)
+            {
+                StatsError = Texts.InfoScanFailed;
+            }
         }
         finally
         {
-            IsScanning = false;
+            // A page opened again runs its own scan; this one must not clear that one's flag.
+            if (!life.IsCancellationRequested)
+            {
+                IsScanning = false;
+            }
         }
     }
 

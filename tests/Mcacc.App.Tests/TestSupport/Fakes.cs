@@ -290,6 +290,11 @@ internal sealed class FakeClaudeStatsProvider : IClaudeStatsProvider
 
     public List<string> Loaded { get; } = [];
 
+    /// <summary>The token of the last load, to see whether leaving the page reached the scan.</summary>
+    public CancellationToken LoadToken { get; private set; }
+
+    public int Completed { get; private set; }
+
     public List<string> Forgotten { get; } = [];
 
     /// <summary>Holds a load until it is completed, to look at the page while it scans.</summary>
@@ -303,6 +308,7 @@ internal sealed class FakeClaudeStatsProvider : IClaudeStatsProvider
         CancellationToken ct)
     {
         Loaded.Add(account.Id);
+        LoadToken = ct;
         if (Gate is { } gate)
         {
             await gate.Task.WaitAsync(ct).ConfigureAwait(true);
@@ -313,6 +319,7 @@ internal sealed class FakeClaudeStatsProvider : IClaudeStatsProvider
             throw error;
         }
 
+        Completed++;
         return Buckets.ToList();
     }
 
