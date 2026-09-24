@@ -1,7 +1,7 @@
 namespace Mcacc.App.Localization;
 
 /// <summary>Every string the user sees. Core returns enums and result types, never German text.</summary>
-public static class Texts
+public static partial class Texts
 {
     // Account picker
     public const string AccountPickerTitle = "Mit welchem Account?";
