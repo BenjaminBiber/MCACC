@@ -9,6 +9,10 @@ public sealed class ClaudeStatsProvider(StatsIndexStore store, AccountPathResolv
 {
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _gates = new();
 
+    // Forget's delete and a scan's post-scan write touch the same file; without this they could interleave so a
+    // scan that checks in just before Forget still finishes its write afterwards, bringing the deleted index back.
+    private readonly Lock _writeGate = new();
+
     /// <summary>One scan per account at a time; a second caller waits and then finds the index up to date.</summary>
     public async Task<IReadOnlyList<TokenBucket>> LoadAsync(
         Account account,
@@ -30,8 +34,11 @@ public sealed class ClaudeStatsProvider(StatsIndexStore store, AccountPathResolv
 
     public void Forget(Account account)
     {
-        _gates.TryRemove(account.Id, out _);
-        store.Delete(account.Id);
+        lock (_writeGate)
+        {
+            _gates.TryRemove(account.Id, out _);
+            store.Delete(account.Id);
+        }
     }
 
     private IReadOnlyList<TokenBucket> Scan(
@@ -43,16 +50,23 @@ public sealed class ClaudeStatsProvider(StatsIndexStore store, AccountPathResolv
     {
         var result = ClaudeLogScanner.Update(claudeDir, store.Load(accountId), progress, ct);
 
-        // A forgotten account has lost its gate; writing now would bring its index back.
-        if (result.Changed && _gates.TryGetValue(accountId, out var current) && ReferenceEquals(current, gate))
+        // A forgotten account has lost its gate; writing now would bring its index back. The check and the write
+        // share _writeGate with Forget so the two can never interleave (see the field's comment).
+        if (result.Changed)
         {
-            try
+            lock (_writeGate)
             {
-                store.Save(accountId, result.Index);
-            }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-            {
-                // The numbers are still right; the next load just scans the same bytes again.
+                if (_gates.TryGetValue(accountId, out var current) && ReferenceEquals(current, gate))
+                {
+                    try
+                    {
+                        store.Save(accountId, result.Index);
+                    }
+                    catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                    {
+                        // The numbers are still right; the next load just scans the same bytes again.
+                    }
+                }
             }
         }
 

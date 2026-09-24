@@ -92,4 +92,37 @@ public sealed class ClaudeStatsProviderTests : IDisposable
     {
         (await Provider().LoadAsync(Privat, null, Ct)).ShouldBeEmpty();
     }
+
+    [Fact]
+    public async Task Forget_racing_the_post_scan_write_never_leaves_the_index_behind()
+    {
+        Log(LogLines.Assistant("msg_1"));
+        var provider = Provider();
+
+        // The window between the post-scan check and the write is a handful of instructions; repeating the race
+        // hammers it until the scheduler lands Forget's delete inside it (it does, reliably, within a few tries).
+        for (var i = 0; i < 200; i++)
+        {
+            Task? forget = null;
+            await provider.LoadAsync(Privat, new RacingProgress(() => forget = Task.Run(() => provider.Forget(Privat))), Ct);
+            if (forget is not null)
+            {
+                await forget;
+            }
+
+            File.Exists(Paths.StatsFile("privat")).ShouldBeFalse();
+        }
+    }
+
+    /// <summary>Fires an action off the scan thread right after its last report, i.e. just before the post-scan write.</summary>
+    private sealed class RacingProgress(Action onFinalReport) : IProgress<double>
+    {
+        public void Report(double value)
+        {
+            if (value >= 1)
+            {
+                onFinalReport();
+            }
+        }
+    }
 }
