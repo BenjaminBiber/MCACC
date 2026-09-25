@@ -26,6 +26,9 @@ public sealed record PlatformServices(
     /// <summary>The Dock icon on macOS; the other platforms have none.</summary>
     public IDockIcon Dock { get; init; } = NoDockIcon.Instance;
 
+    /// <summary>The entry that starts MCACC at login; none where MCACC does not know how.</summary>
+    public ILoginItem LoginItem { get; init; } = NoLoginItem.Instance;
+
     /// <exception cref="PlatformNotSupportedException">MCACC runs on Windows and macOS only.</exception>
     public static PlatformServices Create()
     {
@@ -47,7 +50,10 @@ public sealed record PlatformServices(
                 executables,
                 new WindowsShellIntegration(runner),
                 new FileCredentialSource(),
-                new UsageHttpClient());
+                new UsageHttpClient())
+            {
+                LoginItem = new WindowsLoginItem(),
+            };
         }
 
         if (!OperatingSystem.IsMacOS())
@@ -70,6 +76,7 @@ public sealed record PlatformServices(
             new UsageHttpClient())
         {
             Dock = new MacDockIcon(),
+            LoginItem = new MacLoginItem(Path.Join(info.HomeDir, "Library", "LaunchAgents")),
         };
     }
 
