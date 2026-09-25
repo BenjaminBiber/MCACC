@@ -24,10 +24,15 @@ Seit MCA-0010 läuft MCACC im Infobereich weiter, wenn das Fenster geschlossen w
 Eine reine Funktion in `Mcacc.Core.Usage`:
 
 ```csharp
-public static IReadOnlyList<(DateTimeOffset At, double Value)> Bridge(
-    DateTimeOffset aAt, double aValue, DateTimeOffset? aResetsAt,
-    DateTimeOffset bAt, double bValue, DateTimeOffset? bResetsAt,
+public readonly record struct UsageValue(DateTimeOffset At, double Value);
+
+public static IReadOnlyList<UsageValue> Bridge(
+    UsageValue a, DateTimeOffset? aResetsAt,
+    UsageValue b, DateTimeOffset? bResetsAt,
     TimeSpan window);
+
+/// <summary>The part of a line from start on; the crossing is interpolated.</summary>
+public static IReadOnlyList<UsageValue> From(IReadOnlyList<UsageValue> line, DateTimeOffset start);
 ```
 
 `window` ist die Fensterlänge der Reihe: `UsageGapEstimate.FiveHour` (5 h) bzw. `UsageGapEstimate.SevenDay` (7 Tage). Innerhalb eines Fensters steigt die Auslastung nur; das neue Fenster von b begann bei `bStart = bResetsAt − window`.
@@ -42,7 +47,7 @@ Eckpunkte mit gleichem Zeitpunkt und Wert wie ihr Vorgänger fallen weg, damit k
 
 ### ViewModel
 
-- `LoadHistory` liest zusätzlich den letzten Punkt vor dem Anfang des Zeitraums (`UsageHistoryStore.Read` bekommt dafür `includePrevious`), damit die Brücke auch vom linken Rand her kommt. Der Punkt selbst wird nicht als Messpunkt gezeichnet, nur als Anfang der Brücke; die Brücke wird am linken Rand abgeschnitten.
+- `LoadHistory` liest eine Spanne weiter zurück (`start − span`), damit die Brücke auch vom linken Rand her kommt. Punkte vor `start` werden nicht als Messpunkte gezeichnet, nur als Anfang einer Brücke; `UsageGapEstimate.From` schneidet die Brücke am linken Rand ab. `IUsageProvider` bleibt unverändert.
 - Für jedes Paar aufeinanderfolgender Punkte einer Reihe, das weiter als `HistoryGap` auseinanderliegt, entsteht eine Brücke. Enger liegende Paare verbindet weiter die durchgezogene Linie.
 - `LineSeries` bekommt `IReadOnlyList<IReadOnlyList<ChartPoint>> Estimated` (Standard leer).
 
@@ -98,12 +103,13 @@ Aus Notiz n4 (MCA-0009), Punkt 2: `UsagePoller.RunAsync` endet heute still, wenn
 
 - **Core:**
   - `UsageGapEstimate`: der echte Fall vom 24.09. (12:08 97 %, Reset 12:40, neues Fenster 13:10, 13:15 5 %), kein Reset in der Lücke, `aResetsAt` fehlt, `bResetsAt` fehlt, Fensterbeginn vor dem Reset und nach `bAt` wird begrenzt, Wochenfenster.
-  - `UsageHistoryStore.Read` mit `includePrevious`.
+  - `UsageGapEstimate.From`: Schnitt mitten in einem Stück, an einer senkrechten Kante, alles vor bzw. nach dem Start.
   - JSON: `launchAtLogin` im Round-Trip; ohne Schlüssel `true`.
 - **App:**
   - `AccountInfoViewModel`: Brücken nur über `HistoryGap`, Brücke vom linken Rand, Legende nur mit Brücke.
   - `LoginItemSync` mit einem Fake-`ILoginItem`: an, aus, Umschalten, übersprungen bei `MCACC_HOME`.
   - `LaunchAgentPlist.For`: Inhalt und XML-Escaping des Pfads.
-  - Headless: Start mit `--hidden` zeigt kein Fenster, das Tray ist da.
+  - `StartupArgs.IsHidden` und der zweite Start mit `--hidden`. Dass kein Fenster erscheint, prüft ein Start des Release-Builds von Hand, weil `App.Start` die echte Plattform anlegt.
+  - Screenshot (`MCACC_SHOTS`): Info-Seite mit dem Verlauf vom 24.09.
   - `UsagePoller`: ein werfender Handler beendet die Schleife nicht.
 - **Von Hand (Benjamin):** Autostart nach Ab- und Anmelden unter Windows und macOS.
