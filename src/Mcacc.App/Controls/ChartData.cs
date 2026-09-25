@@ -21,7 +21,11 @@ public sealed record ChartPoint(double X, double Y, string? Tooltip = null);
 /// <summary>A labeled mark on the x axis of a line chart, with a faint grid line above it.</summary>
 public sealed record AxisTick(double X, string Label);
 
-public sealed record LineSeries(string Name, ChartColor Color, IReadOnlyList<ChartPoint> Points);
+public sealed record LineSeries(string Name, ChartColor Color, IReadOnlyList<ChartPoint> Points)
+{
+    /// <summary>Guessed stretches where nothing was measured, drawn dashed; they carry no tooltips.</summary>
+    public IReadOnlyList<IReadOnlyList<ChartPoint>> Estimated { get; init; } = [];
+}
 
 public sealed record BarSegment(double Value, ChartColor Color);
 

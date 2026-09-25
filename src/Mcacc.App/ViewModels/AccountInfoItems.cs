@@ -9,7 +9,8 @@ public sealed record InfoFieldViewModel(string Label, string Value);
 /// <param name="Caption">A note under the value, e.g. that the cost is an estimate.</param>
 public sealed record KpiViewModel(string Label, string Value, string? Caption = null);
 
-public sealed record LegendItemViewModel(string Label, ChartColor Color, string? Value = null);
+/// <param name="Dashed">The entry stands for a dashed line rather than a color.</param>
+public sealed record LegendItemViewModel(string Label, ChartColor Color, string? Value = null, bool Dashed = false);
 
 public sealed record ModelRowViewModel(string Name, string Tokens, string Share, string Cost, ChartColor Color);
 

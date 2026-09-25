@@ -38,6 +38,13 @@ public sealed class AccountInfoViewModelTests : IDisposable
     private static UsageHistoryPoint Point(double hoursAgo, double? fiveHour, double? sevenDay) =>
         new(DateTimeOffset.Now.AddHours(-hoursAgo), fiveHour, null, sevenDay, null);
 
+    private static UsageHistoryPoint Point(double hoursAgo, double fiveHour, double? fiveHourResetsInHours, double sevenDay)
+    {
+        var at = DateTimeOffset.Now.AddHours(-hoursAgo);
+        return new UsageHistoryPoint(
+            at, fiveHour, fiveHourResetsInHours is { } hours ? at.AddHours(hours) : null, sevenDay, null);
+    }
+
     private static TokenBucket Bucket(string model, long input, string session = "s1", string project = "/code/shop") =>
         new(DateTimeOffset.Now.AddHours(-1), model, project, session, new TokenCounts(input, 0, 0, 0, 0), Messages: 1);
 
@@ -238,6 +245,76 @@ public sealed class AccountInfoViewModelTests : IDisposable
         ticks.Select(tick => tick.Label)
             .ShouldBe(["Fr 18.09.", "Sa 19.09.", "So 20.09.", "Mo 21.09.", "Di 22.09.", "Mi 23.09.", "Do 24.09."]);
         ticks[0].X.ShouldBe(9 + 40 / 60d, tolerance: 1e-9);
+    }
+
+    [Fact]
+    public void A_gap_wider_than_the_day_gap_gets_a_dashed_bridge()
+    {
+        _services.Usage.History["privat"] = [Point(10, 20, 10), Point(2, 30, 10)];
+
+        var page = Page();
+
+        var bridge = page.HistorySeries[1].Estimated.ShouldHaveSingleItem();
+        bridge.Select(p => p.Y).ShouldBe([10, 10]);
+        bridge[0].X.ShouldBe(14, tolerance: 0.01);
+        bridge[^1].X.ShouldBe(22, tolerance: 0.01);
+        bridge.ShouldAllBe(p => p.Tooltip == null);
+    }
+
+    [Fact]
+    public void A_reset_in_the_gap_draws_the_stair_with_the_five_hour_resets()
+    {
+        // 97 % four hours ago, reset half an hour later; 5 % now, in a window that began 20 minutes ago.
+        _services.Usage.History["privat"] = [Point(4, 97, 0.5, 30), Point(0, 5, 4 + 40 / 60d, 31)];
+
+        var page = Page();
+
+        page.HistorySeries[0].Estimated.ShouldHaveSingleItem().Select(p => p.Y).ShouldBe([97, 97, 0, 0, 5]);
+    }
+
+    [Fact]
+    public void Points_closer_than_the_gap_get_no_bridge()
+    {
+        _services.Usage.History["privat"] = [Point(1, 20, 10), Point(0.9, 21, 10)];
+
+        var page = Page();
+
+        page.HistorySeries.ShouldAllBe(series => series.Estimated.Count == 0);
+        page.HistoryLegend.Select(item => item.Label).ShouldBe([Texts.UsageFiveHour, Texts.UsageSevenDay]);
+    }
+
+    [Fact]
+    public void A_bridge_comes_in_from_the_left_edge_but_the_older_point_is_not_drawn()
+    {
+        _services.Usage.History["privat"] = [Point(30, 50, null, 5), Point(2, 60, null, 5)];
+
+        var page = Page();
+
+        page.HistorySeries[0].Points.ShouldHaveSingleItem().Y.ShouldBe(60);
+        var bridge = page.HistorySeries[0].Estimated.ShouldHaveSingleItem();
+        bridge[0].X.ShouldBe(0, tolerance: 0.01);
+        bridge[0].Y.ShouldBe(50 + 10 * (6 / 28d), tolerance: 0.1);
+        bridge[^1].X.ShouldBe(22, tolerance: 0.01);
+    }
+
+    [Fact]
+    public void Only_a_bridge_puts_the_estimate_into_the_legend()
+    {
+        _services.Usage.History["privat"] = [Point(10, 20, 10), Point(2, 30, 10)];
+
+        var page = Page();
+
+        page.HistoryLegend.Select(item => item.Label)
+            .ShouldBe([Texts.UsageFiveHour, Texts.UsageSevenDay, Texts.InfoHistoryEstimated]);
+        page.HistoryLegend[^1].Dashed.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void History_only_before_the_range_shows_no_series()
+    {
+        _services.Usage.History["privat"] = [Point(30, 50, 10), Point(28, 60, 10)];
+
+        Page().HistorySeries.ShouldBeEmpty();
     }
 
     [Fact]

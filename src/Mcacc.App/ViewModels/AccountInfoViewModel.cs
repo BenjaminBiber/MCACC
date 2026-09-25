@@ -132,13 +132,16 @@ public sealed partial class AccountInfoViewModel : PageViewModel
 
     public string KindsCaption => Texts.InfoTokens;
 
-    public IReadOnlyList<LegendItemViewModel> HistoryLegend { get; } =
+    public Func<double, string> TokenAxis { get; } = value => Texts.TokenAmount((long)Math.Round(value));
+
+    private static readonly IReadOnlyList<LegendItemViewModel> MeasuredLegend =
     [
         new(Texts.UsageFiveHour, ChartColor.Series1),
         new(Texts.UsageSevenDay, ChartColor.Series2),
     ];
 
-    public Func<double, string> TokenAxis { get; } = value => Texts.TokenAmount((long)Math.Round(value));
+    private static readonly LegendItemViewModel EstimatedLegend =
+        new(Texts.InfoHistoryEstimated, ChartColor.Muted, Dashed: true);
 
     // Account
 
@@ -185,6 +188,10 @@ public sealed partial class AccountInfoViewModel : PageViewModel
 
     [ObservableProperty]
     public partial IReadOnlyList<AxisTick> HistoryTicks { get; private set; } = [];
+
+    /// <summary>The two lines, and the dashed estimate once the history has a gap.</summary>
+    [ObservableProperty]
+    public partial IReadOnlyList<LegendItemViewModel> HistoryLegend { get; private set; } = MeasuredLegend;
 
     // Claude Code usage
 
@@ -397,17 +404,24 @@ public sealed partial class AccountInfoViewModel : PageViewModel
     {
         var span = IsHistoryWeek ? TimeSpan.FromDays(7) : TimeSpan.FromHours(24);
         var start = DateTimeOffset.Now - span;
-        var points = _services.Usage.GetHistory(Account, start);
+        // One span further back: a point before the start lets a bridge come in from the left edge.
+        var points = _services.Usage.GetHistory(Account, start - span);
+        var gap = IsHistoryWeek ? HistoryWeekGap : HistoryDayGap;
         HistoryMax = span.TotalHours;
-        HistoryGap = IsHistoryWeek ? HistoryWeekGap : HistoryDayGap;
+        HistoryGap = gap;
         HistoryTicks = TicksFor(start, span, IsHistoryWeek, TimeZoneInfo.Local);
-        HistorySeries = points.Count == 0
-            ? []
-            :
+        HistorySeries = points.Any(point => point.At >= start)
+            ?
             [
-                Line(Texts.UsageFiveHour, ChartColor.Series1, points, start, point => point.FiveHour),
-                Line(Texts.UsageSevenDay, ChartColor.Series2, points, start, point => point.SevenDay),
-            ];
+                Line(Texts.UsageFiveHour, ChartColor.Series1, points, start, gap, UsageGapEstimate.FiveHour,
+                    point => point.FiveHour, point => point.FiveHourResetsAt),
+                Line(Texts.UsageSevenDay, ChartColor.Series2, points, start, gap, UsageGapEstimate.SevenDay,
+                    point => point.SevenDay, point => point.SevenDayResetsAt),
+            ]
+            : [];
+        HistoryLegend = HistorySeries.Any(series => series.Estimated.Count > 0)
+            ? [.. MeasuredLegend, EstimatedLegend]
+            : MeasuredLegend;
     }
 
     /// <summary>Marks at full local clock hours, in hours since <paramref name="start"/>.</summary>
@@ -430,19 +444,51 @@ public sealed partial class AccountInfoViewModel : PageViewModel
         }
     }
 
+    /// <summary>
+    /// The measured points from <paramref name="start"/> on, and a dashed bridge over each gap wider than
+    /// <paramref name="gap"/> hours; a point before the start only anchors a bridge from the left edge.
+    /// </summary>
     private static LineSeries Line(
         string name,
         ChartColor color,
         IReadOnlyList<UsageHistoryPoint> points,
         DateTimeOffset start,
-        Func<UsageHistoryPoint, double?> value) =>
-        new(name, color, points
-            .Where(point => value(point) is not null)
+        double gap,
+        TimeSpan window,
+        Func<UsageHistoryPoint, double?> value,
+        Func<UsageHistoryPoint, DateTimeOffset?> resetsAt)
+    {
+        var valued = points.Where(point => value(point) is not null).ToList();
+        var bridges = new List<IReadOnlyList<ChartPoint>>();
+        for (var i = 1; i < valued.Count; i++)
+        {
+            var (a, b) = (valued[i - 1], valued[i]);
+            if (b.At < start || (b.At - a.At).TotalHours <= gap)
+            {
+                continue;
+            }
+
+            var bridge = UsageGapEstimate.From(
+                UsageGapEstimate.Bridge(
+                    new UsageValue(a.At, value(a)!.Value), resetsAt(a),
+                    new UsageValue(b.At, value(b)!.Value), resetsAt(b),
+                    window),
+                start);
+            if (bridge.Count >= 2)
+            {
+                bridges.Add([.. bridge.Select(corner => new ChartPoint((corner.At - start).TotalHours, corner.Value))]);
+            }
+        }
+
+        var measured = valued
+            .Where(point => point.At >= start)
             .Select(point => new ChartPoint(
                 (point.At - start).TotalHours,
                 value(point)!.Value,
                 Texts.HistoryTooltip(point.At, point.FiveHour, point.SevenDay)))
-            .ToList());
+            .ToList();
+        return new LineSeries(name, color, measured) { Estimated = bridges };
+    }
 
     /// <summary>
     /// The scan itself is not canceled with the page: a first scan of a large log folder would otherwise start over
