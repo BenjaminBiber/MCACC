@@ -23,6 +23,9 @@ public sealed record PlatformServices(
     ICredentialSource Credentials,
     IUsageHttp UsageHttp)
 {
+    /// <summary>The Dock icon on macOS; the other platforms have none.</summary>
+    public IDockIcon Dock { get; init; } = NoDockIcon.Instance;
+
     /// <exception cref="PlatformNotSupportedException">MCACC runs on Windows and macOS only.</exception>
     public static PlatformServices Create()
     {
@@ -64,7 +67,10 @@ public sealed record PlatformServices(
             executables,
             new MacShellIntegration(runner),
             new MacKeychainCredentialSource(runner),
-            new UsageHttpClient());
+            new UsageHttpClient())
+        {
+            Dock = new MacDockIcon(),
+        };
     }
 
     public AccountPathResolver CreateResolver() => new(Paths, Info);
