@@ -25,7 +25,8 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// MCACC lives in the tray: the window comes and goes, and only the tray's quit or Cmd+Q ends the process.
+    /// MCACC lives in the tray: the window comes and goes, and only the tray's quit or Cmd+Q ends the process. A start
+    /// at login (<see cref="StartupArgs.IsHidden"/>) leaves the window hidden until the tray or a second start asks for it.
     /// </summary>
     private void Start(IClassicDesktopStyleApplicationLifetime desktop)
     {
@@ -35,7 +36,15 @@ public partial class App : Application
         var (shell, services) = CompositionRoot.Create(platform, lifetime);
         var window = new MainWindow { DataContext = shell, Lifetime = lifetime };
         lifetime.Window = window;
-        desktop.MainWindow = window;
+        if (StartupArgs.IsHidden(desktop.Args))
+        {
+            // Without a main window the lifetime shows none; the tray and the poller run all the same.
+            platform.Dock.SetVisible(false);
+        }
+        else
+        {
+            desktop.MainWindow = window;
+        }
 
         var tray = new TrayController(this, services, shell);
         lifetime.Shown += () =>

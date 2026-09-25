@@ -22,7 +22,11 @@ internal static class Program
         using var single = SingleInstance.Acquire();
         if (!single.IsOnlyInstance)
         {
-            SingleInstance.SignalExisting();
+            if (StartupArgs.ShouldSignalExisting(args))
+            {
+                SingleInstance.SignalExisting();
+            }
+
             return 0;
         }
 
