@@ -69,4 +69,48 @@ public class LoginItemSyncTests
     {
         LoginItemSync.IsActive(debug, home).ShouldBe(expected);
     }
+
+    [Fact]
+    public void An_exe_started_from_inside_a_temp_dir_is_transient()
+    {
+        LoginItemSync.IsTransient(@"C:\Temp\Temp1_MCACC.zip\MCACC.exe", [@"C:\Temp"]).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void An_app_under_mac_os_app_translocation_is_transient()
+    {
+        LoginItemSync.IsTransient(
+            "/private/var/folders/x/AppTranslocation/y/MCACC.app/Contents/MacOS/MCACC",
+            []).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void An_exe_in_a_normal_install_folder_is_not_transient()
+    {
+        LoginItemSync.IsTransient(@"C:\Tools\MCACC.exe", [@"C:\Temp"]).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void An_exe_under_a_folder_that_only_shares_the_temp_dir_prefix_is_not_transient()
+    {
+        LoginItemSync.IsTransient(@"C:\TempTools\MCACC.exe", [@"C:\Temp"]).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void A_trailing_separator_on_the_temp_dir_still_matches()
+    {
+        LoginItemSync.IsTransient(@"C:\Temp\x\MCACC.exe", [@"C:\Temp\"]).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void A_start_from_a_transient_path_leaves_the_login_entry_as_it_is()
+    {
+        var log = new FakeLog();
+        var sync = LoginItemSync.ForProcess(_item, log, @"C:\Temp\Temp1_MCACC.zip\MCACC.exe", [@"C:\Temp"]);
+
+        sync.Apply(launchAtLogin: true);
+
+        _item.Calls.ShouldBeEmpty();
+        log.InfoMessages.ShouldHaveSingleItem();
+    }
 }

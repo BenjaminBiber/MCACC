@@ -6,6 +6,7 @@ using Mcacc.Core.ClaudeCode;
 using Mcacc.Core.Config;
 using Mcacc.Core.ConfigCopy;
 using Mcacc.Core.Desktop;
+using Mcacc.Core.Logging;
 using Mcacc.Core.Model;
 using Mcacc.Core.Paths;
 using Mcacc.Core.Stats;
@@ -354,6 +355,22 @@ internal sealed class FakeCredentialSource : ICredentialSource
         Task.FromResult(Results.GetValueOrDefault(
             account.Id,
             new CredentialReadResult(CredentialReadStatus.NotLoggedIn, null)));
+}
+
+/// <summary>Records what was logged, to check a warning or an info message without touching the real log.</summary>
+internal sealed class FakeLog : ILog
+{
+    public List<string> InfoMessages { get; } = [];
+
+    public List<string> WarnMessages { get; } = [];
+
+    public List<string> ErrorMessages { get; } = [];
+
+    public void Info(string message) => InfoMessages.Add(message);
+
+    public void Warn(string message, Exception? exception = null) => WarnMessages.Add(message);
+
+    public void Error(string message, Exception? exception = null) => ErrorMessages.Add(message);
 }
 
 internal sealed class FakeLoginItem : ILoginItem
