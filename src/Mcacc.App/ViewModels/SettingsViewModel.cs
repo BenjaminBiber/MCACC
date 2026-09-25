@@ -40,6 +40,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         SelectedTerminal = Terminals.FirstOrDefault(choice => choice.Option?.Id == settings.Terminal) ?? Terminals[0];
         SelectedShell = Shells.FirstOrDefault(choice => choice.Shell == settings.WindowsTerminalShell) ?? Shells[0];
         CloseAfterLaunch = settings.CloseAfterLaunch;
+        LaunchAtLogin = settings.LaunchAtLogin;
         _isLoading = false;
     }
 
@@ -54,6 +55,10 @@ public sealed partial class SettingsViewModel : PageViewModel
     public string CloseAfterLaunchText => Texts.SettingsCloseAfterLaunch;
 
     public string TrayHint => Texts.SettingsTrayHint(_services.Platform.Os);
+
+    public string LaunchAtLoginText => Texts.SettingsLaunchAtLogin;
+
+    public string LaunchAtLoginHint => Texts.SettingsLaunchAtLoginHint(_services.Platform.Os);
 
     public string DataFolderLabel => Texts.SettingsDataFolder;
 
@@ -79,6 +84,9 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     [ObservableProperty]
     public partial bool CloseAfterLaunch { get; set; }
+
+    [ObservableProperty]
+    public partial bool LaunchAtLogin { get; set; }
 
     public string ProjectsLabel => Texts.SettingsProjects;
 
@@ -164,6 +172,14 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     partial void OnCloseAfterLaunchChanged(bool value) => Save(settings => settings with { CloseAfterLaunch = value });
 
+    partial void OnLaunchAtLoginChanged(bool value)
+    {
+        if (Save(settings => settings with { LaunchAtLogin = value }))
+        {
+            _services.LoginItems.Apply(value);
+        }
+    }
+
     /// <summary>
     /// Reads the logs of every account through the stats index, like the info page, and does not cancel the scan
     /// with the page for the same reason; <paramref name="life"/> only keeps a left page from being updated. An
@@ -230,21 +246,24 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     private string? SelectedOrDefaultTerminalId() => SelectedTerminal?.Option?.Id ?? _services.Terminals.PlatformDefaultId;
 
-    private void Save(Func<AppSettings, AppSettings> change)
+    /// <returns>False while loading and when the file could not be written.</returns>
+    private bool Save(Func<AppSettings, AppSettings> change)
     {
         if (_isLoading)
         {
-            return;
+            return false;
         }
 
         try
         {
             _services.Accounts.UpdateSettings(change);
+            return true;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
             _services.Log.Error("Saving the settings failed.", e);
             _services.Shell.ShowError(e.Message);
+            return false;
         }
     }
 }

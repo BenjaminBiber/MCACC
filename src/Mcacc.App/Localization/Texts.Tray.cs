@@ -20,6 +20,10 @@ public static partial class Texts
         ? "MCACC bleibt in der Menüleiste. Beenden über das Menüleisten-Symbol oder ⌘Q."
         : "MCACC bleibt im Infobereich der Taskleiste. Beenden über das Symbol dort.";
 
+    public static string SettingsLaunchAtLoginHint(OsKind os) => os == OsKind.MacOS
+        ? "MCACC startet dann versteckt in der Menüleiste und zeichnet die Limits auf."
+        : "MCACC startet dann versteckt im Infobereich und zeichnet die Limits auf.";
+
     /// <summary>The line of an account in the tray menu, e.g. <c>Privat · 5h 42 % · Woche 10 % · läuft</c>.</summary>
     public static string TrayAccountHeader(string name, double? fiveHour, double? sevenDay, bool isRunning)
     {

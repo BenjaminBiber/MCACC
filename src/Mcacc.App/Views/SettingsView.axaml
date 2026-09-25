@@ -51,6 +51,13 @@
         <TextBlock Classes="caption muted" Text="{Binding TrayHint}" TextWrapping="Wrap" />
       </StackPanel>
 
+      <StackPanel Spacing="2">
+        <ToggleSwitch IsChecked="{Binding LaunchAtLogin}"
+                      OnContent="{Binding LaunchAtLoginText}"
+                      OffContent="{Binding LaunchAtLoginText}" />
+        <TextBlock Classes="caption muted" Text="{Binding LaunchAtLoginHint}" TextWrapping="Wrap" />
+      </StackPanel>
+
       <StackPanel Spacing="6" MaxWidth="640" HorizontalAlignment="Left">
         <TextBlock Classes="body" Text="{Binding ProjectsLabel}" />
         <TextBlock Classes="caption muted" Text="{Binding ProjectsHint}" TextWrapping="Wrap" />

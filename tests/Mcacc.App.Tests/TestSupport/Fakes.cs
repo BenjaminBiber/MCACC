@@ -11,6 +11,7 @@ using Mcacc.Core.Paths;
 using Mcacc.Core.Stats;
 using Mcacc.Core.Terminal;
 using Mcacc.Core.Usage;
+using Mcacc.Platform;
 
 namespace Mcacc.App.Tests.TestSupport;
 
@@ -353,4 +354,36 @@ internal sealed class FakeCredentialSource : ICredentialSource
         Task.FromResult(Results.GetValueOrDefault(
             account.Id,
             new CredentialReadResult(CredentialReadStatus.NotLoggedIn, null)));
+}
+
+internal sealed class FakeLoginItem : ILoginItem
+{
+    /// <summary>The path of the last enable, null after a disable or before any call.</summary>
+    public string? Enabled { get; private set; }
+
+    public List<string> Calls { get; } = [];
+
+    public Exception? ThrowOnApply { get; set; }
+
+    public void Enable(string executablePath)
+    {
+        Calls.Add("enable");
+        if (ThrowOnApply is { } error)
+        {
+            throw error;
+        }
+
+        Enabled = executablePath;
+    }
+
+    public void Disable()
+    {
+        Calls.Add("disable");
+        if (ThrowOnApply is { } error)
+        {
+            throw error;
+        }
+
+        Enabled = null;
+    }
 }

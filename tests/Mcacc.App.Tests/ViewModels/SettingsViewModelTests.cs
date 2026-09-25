@@ -165,6 +165,37 @@ public sealed class SettingsViewModelTests : IDisposable
     }
 
     [Fact]
+    public void Launch_at_login_starts_from_the_saved_setting()
+    {
+        _services.Accounts.UpdateSettings(settings => settings with { LaunchAtLogin = false });
+
+        Page().LaunchAtLogin.ShouldBeFalse();
+        _services.LoginItem.Calls.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Loading_the_page_leaves_the_entry_alone()
+    {
+        Page().LaunchAtLogin.ShouldBeTrue();
+
+        _services.LoginItem.Calls.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Switching_launch_at_login_saves_it_and_updates_the_entry()
+    {
+        var page = Page();
+
+        page.LaunchAtLogin = false;
+        _services.Accounts.Config.Settings.LaunchAtLogin.ShouldBeFalse();
+        _services.LoginItem.Calls.ShouldBe(["disable"]);
+
+        page.LaunchAtLogin = true;
+        _services.Accounts.Config.Settings.LaunchAtLogin.ShouldBeTrue();
+        _services.LoginItem.Enabled.ShouldBe(TestServices.ExecutablePath);
+    }
+
+    [Fact]
     public void The_data_folder_is_the_mcacc_root()
     {
         Page().DataFolder.ShouldBe(_services.Paths.Root);

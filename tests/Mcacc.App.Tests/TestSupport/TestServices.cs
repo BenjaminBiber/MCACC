@@ -10,6 +10,8 @@ namespace Mcacc.App.Tests.TestSupport;
 /// <summary>An <see cref="AppServices"/> made of fakes, with a temp data root so nothing touches the real one.</summary>
 internal sealed class TestServices : IDisposable
 {
+    public const string ExecutablePath = @"C:\Tools\MCACC.exe";
+
     private readonly TempDirectory _temp = new();
 
     public TestServices(OsKind os = OsKind.Windows, params Account[] accounts)
@@ -49,6 +51,7 @@ internal sealed class TestServices : IDisposable
             Platform,
             Integration,
             Lifetime,
+            new LoginItemSync(LoginItem, ExecutablePath, isActive: true, NullLog.Instance),
             NullLog.Instance,
             Navigator,
             Dialogs,
@@ -88,6 +91,8 @@ internal sealed class TestServices : IDisposable
     public FakeShellIntegration Integration { get; } = new();
 
     public FakeAppLifetime Lifetime { get; } = new();
+
+    public FakeLoginItem LoginItem { get; } = new();
 
     public FakeDialogService Dialogs { get; } = new();
 

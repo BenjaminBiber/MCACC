@@ -51,6 +51,9 @@ public static class CompositionRoot
             log: log);
         var poller = new UsagePoller(accounts, usage, log);
 
+        var loginItems = LoginItemSync.ForProcess(platform.LoginItem, log);
+        loginItems.Apply(accounts.Config.Settings.LaunchAtLogin);
+
         var services = new AppServices(
             accounts,
             new DesktopLaunchService(
@@ -90,6 +93,7 @@ public static class CompositionRoot
             platform.Info,
             platform.Shell,
             lifetime,
+            loginItems,
             log,
             navigator,
             dialogs,

@@ -89,6 +89,7 @@ public static partial class Texts
     public const string SettingsShellWindowsPowerShell = "Windows PowerShell";
     public const string SettingsShellCmd = "Eingabeaufforderung";
     public const string SettingsCloseAfterLaunch = "Nach dem Start ausblenden";
+    public const string SettingsLaunchAtLogin = "Bei der Anmeldung starten";
     public const string SettingsDataFolder = "Datenordner";
     public const string SettingsProjects = "Projekte in der Statistik";
     public const string SettingsProjectsHint =

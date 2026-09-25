@@ -27,6 +27,7 @@ public sealed record AppServices(
     PlatformInfo Platform,
     IShellIntegration Integration,
     IAppLifetime Lifetime,
+    LoginItemSync LoginItems,
     ILog Log,
     INavigator Navigator,
     IDialogService Dialogs,
