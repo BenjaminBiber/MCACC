@@ -90,6 +90,13 @@ public static partial class Texts
     public const string SettingsShellCmd = "Eingabeaufforderung";
     public const string SettingsCloseAfterLaunch = "Nach dem Start ausblenden";
     public const string SettingsDataFolder = "Datenordner";
+    public const string SettingsProjects = "Projekte in der Statistik";
+    public const string SettingsProjectsHint =
+        "Abgehakte Projekte zählen auf der Info-Seite mit, für alle Accounts. Ein Projekt ist das Repository, in dem die Session lief.";
+    public const string SettingsProjectsLoading = "Projekte werden gelesen …";
+    public const string SettingsProjectsFailed = "Die Projekte ließen sich nicht lesen.";
+    public const string SettingsProjectsNone = "In den Claude-Code-Logs ist noch kein Projekt zu finden.";
+    public const string SettingsProjectGone = "nicht mehr in den Logs";
     public const string RevealInExplorer = "Im Explorer öffnen";
     public const string RevealInFinder = "Im Finder öffnen";
 

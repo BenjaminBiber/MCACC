@@ -191,6 +191,11 @@ public static partial class Texts
         ? "1 Tag (durchgestrichen) ist aus der Claude-Statistik geschätzt, seine Logs sind gelöscht."
         : $"{days} Tage (durchgestrichen) sind aus der Claude-Statistik geschätzt, ihre Logs sind gelöscht.";
 
+    /// <summary>Under the usage header when the settings leave projects of this account out.</summary>
+    public static string InfoExcludedProjects(int projects) => projects == 1
+        ? "Ohne 1 ausgeschlossenes Projekt (Einstellungen)"
+        : $"Ohne {projects} ausgeschlossene Projekte (Einstellungen)";
+
     /// <summary>"Sept", "März": the short month name without its abbreviation dot.</summary>
     public static string MonthLabel(DateOnly day) => day.ToString("MMM", De).TrimEnd('.');
 

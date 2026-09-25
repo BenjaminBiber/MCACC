@@ -359,6 +359,58 @@ public sealed class AccountInfoViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task An_excluded_project_counts_nowhere()
+    {
+        _services.Stats.Buckets.AddRange(
+        [
+            Bucket("claude-opus-4-5", 1_000_000),
+            Bucket("claude-haiku-4-5", 2_000, "s2", project: "/code/lab"),
+        ]);
+        _services.Accounts.UpdateSettings(settings => settings with { ExcludedProjects = ["/CODE/LAB/"] });
+        var page = Page();
+
+        await page.ActivateAsync(Ct);
+
+        page.Kpis.Select(kpi => kpi.Value).ShouldBe(["1 M", "≈ 5,00 $", "1", "1", "1 von 30"]);
+        page.Models.ShouldHaveSingleItem().Name.ShouldBe("Opus 4.5");
+        page.Projects.ShouldHaveSingleItem().Label.ShouldBe("shop");
+        page.CalendarDays.Sum(day => day.Value).ShouldBe(1_000_000);
+        page.ExcludedNote.ShouldBe(Texts.InfoExcludedProjects(1));
+    }
+
+    [Fact]
+    public async Task An_excluded_project_of_another_account_is_not_mentioned()
+    {
+        _services.Stats.Buckets.Add(Bucket("claude-opus-4-5", 1_000));
+        _services.Accounts.UpdateSettings(settings => settings with { ExcludedProjects = ["/code/elsewhere"] });
+        var page = Page();
+
+        await page.ActivateAsync(Ct);
+
+        page.ExcludedNote.ShouldBeNull();
+        page.Kpis[0].Value.ShouldBe(Texts.TokenAmount(1_000));
+    }
+
+    [Fact]
+    public async Task Back_from_the_settings_the_page_counts_with_the_new_list()
+    {
+        _services.Stats.Buckets.AddRange([Bucket("claude-opus-4-5", 1_000), Bucket("claude-opus-4-5", 2_000, project: "/code/lab")]);
+        var page = Page();
+        await page.ActivateAsync(Ct);
+        page.Kpis[0].Value.ShouldBe(Texts.TokenAmount(3_000));
+        _services.Stats.Gate = new TaskCompletionSource();
+
+        _services.Accounts.UpdateSettings(settings => settings with { ExcludedProjects = ["/code/lab"] });
+        var again = page.ActivateAsync(Ct);
+
+        // Before the logs are read again.
+        page.Kpis[0].Value.ShouldBe(Texts.TokenAmount(1_000));
+        page.ExcludedNote.ShouldBe(Texts.InfoExcludedProjects(1));
+        _services.Stats.Gate.SetResult();
+        await again;
+    }
+
+    [Fact]
     public async Task The_token_kinds_make_the_donut()
     {
         _services.Stats.Buckets.Add(new TokenBucket(

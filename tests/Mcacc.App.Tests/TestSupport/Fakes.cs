@@ -300,6 +300,9 @@ internal sealed class FakeClaudeStatsProvider : IClaudeStatsProvider
 {
     public List<TokenBucket> Buckets { get; } = [];
 
+    /// <summary>The buckets of one account; the others get <see cref="Buckets"/>.</summary>
+    public Dictionary<string, List<TokenBucket>> ByAccount { get; } = [];
+
     public List<string> Loaded { get; } = [];
 
     /// <summary>The token of the last load, to see whether leaving the page reached the scan.</summary>
@@ -332,7 +335,7 @@ internal sealed class FakeClaudeStatsProvider : IClaudeStatsProvider
         }
 
         Completed++;
-        return Buckets.ToList();
+        return ByAccount.TryGetValue(account.Id, out var own) ? own.ToList() : Buckets.ToList();
     }
 
     public List<ClaudeDailyTokens> Summary { get; } = [];

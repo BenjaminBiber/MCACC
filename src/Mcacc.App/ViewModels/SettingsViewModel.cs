@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using Mcacc.App.Localization;
 using Mcacc.App.Services;
 using Mcacc.Core.Model;
+using Mcacc.Core.Stats;
 using Mcacc.Core.Terminal;
 
 namespace Mcacc.App.ViewModels;
@@ -18,6 +19,7 @@ public sealed partial class SettingsViewModel : PageViewModel
 {
     private readonly AppServices _services;
     private readonly bool _isLoading;
+    private CancellationTokenSource? _life;
 
     public SettingsViewModel(AppServices services)
     {
@@ -77,6 +79,28 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     [ObservableProperty]
     public partial bool CloseAfterLaunch { get; set; }
+
+    public string ProjectsLabel => Texts.SettingsProjects;
+
+    public string ProjectsHint => Texts.SettingsProjectsHint;
+
+    /// <summary>Every project the logs of any account mention, the largest first; excluded ones no log knows last.</summary>
+    [ObservableProperty]
+    public partial IReadOnlyList<ProjectChoiceViewModel> Projects { get; private set; } = [];
+
+    /// <summary>What stands in place of the list: loading, failed or empty; null once there is a list.</summary>
+    [ObservableProperty]
+    public partial string? ProjectsStatus { get; private set; } = Texts.SettingsProjectsLoading;
+
+    public override async Task ActivateAsync(CancellationToken ct)
+    {
+        _life?.Cancel();
+        _life?.Dispose();
+        _life = new CancellationTokenSource();
+        await LoadProjectsAsync(_life.Token).ConfigureAwait(true);
+    }
+
+    public override void Deactivate() => _life?.Cancel();
 
     [RelayCommand]
     public void Back() => _services.Navigator.Back();
@@ -139,6 +163,70 @@ public sealed partial class SettingsViewModel : PageViewModel
     });
 
     partial void OnCloseAfterLaunchChanged(bool value) => Save(settings => settings with { CloseAfterLaunch = value });
+
+    /// <summary>
+    /// Reads the logs of every account through the stats index, like the info page, and does not cancel the scan
+    /// with the page for the same reason; <paramref name="life"/> only keeps a left page from being updated. An
+    /// account whose logs fail is logged and left out.
+    /// </summary>
+    private async Task LoadProjectsAsync(CancellationToken life)
+    {
+        ProjectsStatus = Projects.Count == 0 ? Texts.SettingsProjectsLoading : null;
+        var buckets = new List<TokenBucket>();
+        var failed = false;
+        foreach (var account in _services.Accounts.Config.Accounts)
+        {
+            try
+            {
+                buckets.AddRange(await _services.Stats.LoadAsync(account, null, CancellationToken.None).ConfigureAwait(true));
+            }
+            catch (Exception e)
+            {
+                _services.Log.Warn($"Reading the Claude Code logs of '{account.Id}' for the settings failed.", e);
+                failed = true;
+            }
+        }
+
+        var roots = await Task.Run(() => ProjectRoot.Resolve(buckets.Select(bucket => bucket.Project)), CancellationToken.None)
+            .ConfigureAwait(true);
+        if (life.IsCancellationRequested)
+        {
+            return;
+        }
+
+        var excluded = _services.Accounts.Config.Settings.ExcludedProjects ?? [];
+        var known = buckets
+            .Where(bucket => bucket.Project.Length > 0)
+            .GroupBy(bucket => ProjectFilter.Normalize(roots[bucket.Project]), ProjectFilter.Comparer)
+            .Select(group => (Path: group.Key, Tokens: (long?)group.Sum(bucket => bucket.Tokens.Total)))
+            .OrderByDescending(project => project.Tokens)
+            .ThenBy(project => project.Path, ProjectFilter.Comparer)
+            .ToList();
+        var gone = excluded
+            .Select(ProjectFilter.Normalize)
+            .Distinct(ProjectFilter.Comparer)
+            .Where(path => !known.Any(project => ProjectFilter.Comparer.Equals(project.Path, path)))
+            .Order(ProjectFilter.Comparer)
+            .Select(path => (Path: path, Tokens: (long?)null));
+        Projects =
+        [
+            .. known.Concat(gone).Select(project => new ProjectChoiceViewModel(
+                project.Path,
+                project.Tokens,
+                !ProjectFilter.Contains(excluded, project.Path),
+                SaveExcludedProjects)),
+        ];
+        ProjectsStatus = Projects.Count > 0 ? null
+            : failed ? Texts.SettingsProjectsFailed
+            : Texts.SettingsProjectsNone;
+    }
+
+    /// <summary>Stores the whole list, so an excluded project the logs no longer know is kept as long as it is shown.</summary>
+    private void SaveExcludedProjects()
+    {
+        var excluded = Projects.Where(project => !project.IsCounted).Select(project => project.Path).ToList();
+        Save(settings => settings with { ExcludedProjects = excluded.Count > 0 ? excluded : null });
+    }
 
     private string? SelectedOrDefaultTerminalId() => SelectedTerminal?.Option?.Id ?? _services.Terminals.PlatformDefaultId;
 

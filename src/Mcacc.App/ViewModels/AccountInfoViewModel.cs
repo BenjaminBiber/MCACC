@@ -230,6 +230,10 @@ public sealed partial class AccountInfoViewModel : PageViewModel
     [ObservableProperty]
     public partial string? CalendarNote { get; private set; }
 
+    /// <summary>How many projects of this account the settings leave out; null when none.</summary>
+    [ObservableProperty]
+    public partial string? ExcludedNote { get; private set; }
+
     [ObservableProperty]
     public partial IReadOnlyList<ChartSlice> KindSlices { get; private set; } = [];
 
@@ -255,6 +259,9 @@ public sealed partial class AccountInfoViewModel : PageViewModel
         _life?.Cancel();
         _life?.Dispose();
         _life = new CancellationTokenSource();
+
+        // Back from the settings the excluded projects may have changed; the logs read before still hold.
+        ShowStats();
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _life.Token);
         await Task.WhenAll(
                 RefreshLimitsAsync(linked.Token),
@@ -491,13 +498,20 @@ public sealed partial class AccountInfoViewModel : PageViewModel
     private void ShowStats()
     {
         var now = DateTimeOffset.Now;
-        var stats = AccountStatsQuery.Compute(
-            _buckets,
-            now,
-            UsageDays,
-            TimeZoneInfo.Local,
-            projectOf: cwd => _projects.TryGetValue(cwd, out var project) ? project : ProjectRoot.Of(cwd));
-        var calendar = CalendarBackfill.Fill(AccountStatsQuery.Daily(_buckets, now, CalendarSpan, TimeZoneInfo.Local), _summary);
+        string ProjectOf(string cwd) => _projects.TryGetValue(cwd, out var project) ? project : ProjectRoot.Of(cwd);
+        var excluded = _services.Accounts.Config.Settings.ExcludedProjects;
+        var counted = ProjectFilter.Without(_buckets, ProjectOf, excluded);
+        var left = _buckets
+            .Select(bucket => ProjectOf(bucket.Project))
+            .Distinct(ProjectFilter.Comparer)
+            .Count(project => ProjectFilter.Contains(excluded, project));
+        ExcludedNote = left > 0 ? Texts.InfoExcludedProjects(left) : null;
+
+        var stats = AccountStatsQuery.Compute(counted, now, UsageDays, TimeZoneInfo.Local, projectOf: ProjectOf);
+        var calendar = CalendarBackfill.Fill(
+            AccountStatsQuery.Daily(_buckets, now, CalendarSpan, TimeZoneInfo.Local),
+            _summary,
+            ReferenceEquals(counted, _buckets) ? null : AccountStatsQuery.Daily(counted, now, CalendarSpan, TimeZoneInfo.Local));
         CalendarDays = calendar
             .Select(day => new CalendarDay(
                 day.Day,

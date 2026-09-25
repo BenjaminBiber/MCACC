@@ -108,9 +108,25 @@ public sealed class ScreenshotTests : IDisposable
     }
 
     [AvaloniaFact]
-    public void Settings()
+    public async Task Settings()
     {
-        Save(Window(new SettingsViewModel(_services.Services), ThemeVariant.Light), "settings");
+        var hour = DateTimeOffset.Now.AddHours(-1);
+        TokenBucket Bucket(string project, long input) =>
+            new(hour, "claude-opus-4-5", project, "s1", new TokenCounts(input, 0, 0, 0, 0), 1);
+        _services.Stats.Buckets.AddRange(
+        [
+            Bucket(@"C:\Users\ben\RiderProjects\MCACC", 48_000_000),
+            Bucket(@"C:\Users\ben\RiderProjects\Shop", 12_500_000),
+            Bucket(@"C:\Users\ben\Spielwiese", 3_200_000),
+        ]);
+        _services.Accounts.UpdateSettings(settings => settings with
+        {
+            ExcludedProjects = [@"C:\Users\ben\Spielwiese", @"C:\Users\ben\alt\Prototyp"],
+        });
+        var page = new SettingsViewModel(_services.Services);
+        await page.ActivateAsync(CancellationToken.None);
+
+        Save(Window(page, ThemeVariant.Light, height: 860), "settings");
     }
 
     [AvaloniaFact]

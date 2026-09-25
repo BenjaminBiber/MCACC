@@ -142,6 +142,11 @@ Die Kosten sind eine **Schätzung** zu API-Listenpreisen („≈“). Mit einem 
 - **Terminal für Claude Code** — nur tatsächlich installierte werden angeboten.
 - **Shell im Windows Terminal** — PowerShell 7, Windows PowerShell oder Eingabeaufforderung.
 - **Nach dem Start ausblenden** — MCACC bleibt im Infobereich bzw. in der Menüleiste.
+- **Projekte in der Statistik** — alle Projekte aus den Claude-Code-Logs aller Accounts, nach
+  Tokens sortiert. Ein Projekt ohne Häkchen zählt auf der Info-Seite nirgends mit: nicht in Tokens,
+  Kosten, Sessions, Tagesbalken, Modellen, Top-Projekten und Kalender. Geschätzte Kalendertage
+  werden anteilig gekürzt, weil Claudes Zusammenfassung keine Projekte kennt. Die Info-Seite nennt,
+  wie viele Projekte des Accounts ausgeschlossen sind.
 - **Datenordner** mit Knopf zum Öffnen im Explorer bzw. Finder.
 
 ## Datenablage

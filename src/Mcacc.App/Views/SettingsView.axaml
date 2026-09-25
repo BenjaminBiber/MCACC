@@ -51,6 +51,38 @@
         <TextBlock Classes="caption muted" Text="{Binding TrayHint}" TextWrapping="Wrap" />
       </StackPanel>
 
+      <StackPanel Spacing="6" MaxWidth="640" HorizontalAlignment="Left">
+        <TextBlock Classes="body" Text="{Binding ProjectsLabel}" />
+        <TextBlock Classes="caption muted" Text="{Binding ProjectsHint}" TextWrapping="Wrap" />
+        <TextBlock Classes="caption muted"
+                   Text="{Binding ProjectsStatus}"
+                   IsVisible="{Binding ProjectsStatus, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        <ItemsControl ItemsSource="{Binding Projects}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Spacing="4" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ProjectChoiceViewModel">
+              <Grid ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Path}">
+                <CheckBox IsChecked="{Binding IsCounted}">
+                  <StackPanel>
+                    <TextBlock Classes="body" Text="{Binding Name}" />
+                    <TextBlock Classes="caption muted" Text="{Binding Path}" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                </CheckBox>
+                <TextBlock Grid.Column="1"
+                           Classes="caption muted"
+                           Text="{Binding TokensText}"
+                           VerticalAlignment="Center"
+                           Margin="16,0,0,0" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+
       <StackPanel Spacing="6">
         <TextBlock Classes="body" Text="{Binding DataFolderLabel}" />
         <TextBlock Classes="mono" Text="{Binding DataFolder}" />

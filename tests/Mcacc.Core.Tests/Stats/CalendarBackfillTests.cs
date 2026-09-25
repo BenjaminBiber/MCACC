@@ -47,6 +47,39 @@ public class CalendarBackfillTests
     }
 
     [Fact]
+    public void A_day_that_only_lost_an_excluded_project_is_not_estimated()
+    {
+        // Day 2 keeps 20 of 300 tokens once a project is out; the full count still says its logs are there.
+        var days = CalendarBackfill.Fill(
+            [Own(0, 100), Own(1, 100), Own(2, 300)],
+            [Claude(0, 1), Claude(1, 1), Claude(2, 3)],
+            [Own(0, 100), Own(1, 100), Own(2, 20)]);
+
+        days.ShouldAllBe(day => !day.Estimated);
+        days.Select(day => day.Tokens).ShouldBe([100L, 100L, 20L]);
+        days[2].Own.Total.ShouldBe(20);
+    }
+
+    [Fact]
+    public void An_estimate_is_scaled_by_the_share_of_the_counted_projects()
+    {
+        // The counted projects hold 150 of the 200 tokens of the days with logs: three quarters.
+        var days = CalendarBackfill.Fill(
+            [Own(0, 100), Own(1, 100), Own(2, 0)],
+            [Claude(0, 1), Claude(1, 1), Claude(2, 4)],
+            [Own(0, 100), Own(1, 50), Own(2, 0)]);
+
+        days[2].Estimated.ShouldBeTrue();
+        days[2].Tokens.ShouldBe(300);
+    }
+
+    [Fact]
+    public void Counted_days_must_match_the_own_ones()
+    {
+        Should.Throw<ArgumentException>(() => CalendarBackfill.Fill([Own(0, 1), Own(1, 1)], [], [Own(0, 1)]));
+    }
+
+    [Fact]
     public void Days_only_in_the_summary_but_outside_the_range_are_left_out()
     {
         var days = CalendarBackfill.Fill([Own(0, 100)], [Claude(0, 1), Claude(-5, 7)]);

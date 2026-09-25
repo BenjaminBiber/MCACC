@@ -175,8 +175,12 @@
       <Border Classes="card">
         <StackPanel Spacing="14">
           <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Classes="h2" Text="{Binding UsageHeader}" />
-            <Border Grid.Column="1" Classes="chip" Padding="2">
+            <StackPanel Spacing="2" VerticalAlignment="Center">
+              <TextBlock Classes="h2" Text="{Binding UsageHeader}" />
+              <TextBlock Classes="muted" FontSize="11" Text="{Binding ExcludedNote}"
+                         IsVisible="{Binding ExcludedNote, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </StackPanel>
+            <Border Grid.Column="1" Classes="chip" Padding="2" VerticalAlignment="Center">
               <StackPanel Orientation="Horizontal">
                 <Button Classes="segment" Classes.selected="{Binding IsDays7}" Content="{Binding Days7Text}"
                         Command="{Binding ShowDaysCommand}" CommandParameter="7" />

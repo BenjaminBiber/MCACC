@@ -99,6 +99,24 @@ public class McaccJsonContextTests
     }
 
     [Fact]
+    public void Excluded_projects_survive_a_round_trip()
+    {
+        var plain = DefaultConfigFactory.Create();
+        var config = plain with { Settings = plain.Settings with { ExcludedProjects = [@"C:\Repos\Spielwiese", "/tmp/x"] } };
+
+        var json = Serialize(config);
+
+        json.ShouldContain("\"excludedProjects\": [");
+        Deserialize(json).Settings.ExcludedProjects.ShouldBe([@"C:\Repos\Spielwiese", "/tmp/x"]);
+    }
+
+    [Fact]
+    public void A_config_without_excluded_projects_loads_none()
+    {
+        Deserialize(FullJson).Settings.ExcludedProjects.ShouldBeNull();
+    }
+
+    [Fact]
     public void Unknown_top_level_fields_survive_a_round_trip()
     {
         var config = Deserialize("""
