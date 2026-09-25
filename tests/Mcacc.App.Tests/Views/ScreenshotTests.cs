@@ -189,6 +189,27 @@ public sealed class ScreenshotTests : IDisposable
         Save(window, $"info-wide-{view}");
     }
 
+    /// <summary>The limit history with the gaps of 2026-09-24: a lone point before a reset, and a night without MCACC.</summary>
+    [AvaloniaFact]
+    public async Task Info_page_with_gaps_in_the_history()
+    {
+        var page = InfoPage();
+        var now = DateTimeOffset.Now;
+        UsageHistoryPoint At(double hoursAgo, double fiveHour, double resetsInHours, double sevenDay) =>
+            new(now.AddHours(-hoursAgo), fiveHour, now.AddHours(-hoursAgo + resetsInHours), sevenDay, now.AddDays(6));
+        _services.Usage.History["privat"] =
+        [
+            At(23.4, 97, 0.53, 31),
+            .. Enumerable.Range(0, 40).Select(i => At(22.3 - i * 0.08, 5 + i * 1.3, 4.9 - i * 0.08, 32 + i * 0.15)),
+            .. Enumerable.Range(0, 36).Select(i => At(3 - i * 0.08, 6 + i * 1.3, 4.9 - i * 0.08, 2 + i * 0.15)),
+        ];
+        page.ShowLimitsViewCommand.Execute("history");
+
+        var window = Window(page, ThemeVariant.Light, width: 1300, height: 1400);
+        await page.ActivateAsync(TestContext.Current.CancellationToken);
+        Save(window, "info-history-gaps");
+    }
+
     /// <summary>The tokens per day as a calendar, in the default and in a wide window.</summary>
     [AvaloniaTheory]
     [InlineData(760)]

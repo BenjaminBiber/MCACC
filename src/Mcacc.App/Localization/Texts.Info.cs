@@ -39,7 +39,7 @@ public static partial class Texts
     public const string InfoHistory = "Verlauf";
     public const string InfoHistoryDay = "24 h";
     public const string InfoHistoryWeek = "7 Tage";
-    public const string InfoNoHistory = "Noch kein Verlauf – er wächst, solange MCACC offen ist.";
+    public const string InfoNoHistory = "Noch kein Verlauf – er wächst, solange MCACC läuft.";
     public const string InfoHistoryEstimated = "nicht gemessen";
     public const string InfoNow = "jetzt";
 

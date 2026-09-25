@@ -7,7 +7,8 @@ namespace Mcacc.App.Controls;
 
 /// <summary>
 /// Lines over a value axis from <see cref="Minimum"/> to <see cref="Maximum"/>, with an optional dashed threshold.
-/// A line breaks where two points lie further apart than <see cref="MaxGap"/>, e.g. while the app was closed.
+/// A line breaks where two points lie further apart than <see cref="MaxGap"/>, e.g. while the app was closed; a
+/// series may bridge such a gap with a dashed estimate of its own (<see cref="LineSeries.Estimated"/>).
 /// </summary>
 public sealed class LineChart : ChartControl
 {
@@ -227,6 +228,12 @@ public sealed class LineChart : ChartControl
     private void DrawSeries(DrawingContext context, LineSeries series, Rect plot)
     {
         var brush = Brush(series.Color);
+        var dashed = new Pen(brush, 1.5, new DashStyle([4, 3], 0), PenLineCap.Round, PenLineJoin.Round);
+        foreach (var estimate in series.Estimated)
+        {
+            DrawLine(context, [.. estimate.Select(p => new Point(X(p.X, plot), Y(p.Y, plot)))], dashed);
+        }
+
         var pen = new Pen(brush, 2, lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
         var points = series.Points.OrderBy(p => p.X).ToList();
         var run = new List<Point>();
@@ -253,7 +260,12 @@ public sealed class LineChart : ChartControl
             return;
         }
 
-        if (run.Count < 2)
+        DrawLine(context, run, pen);
+    }
+
+    private static void DrawLine(DrawingContext context, List<Point> line, Pen pen)
+    {
+        if (line.Count < 2)
         {
             return;
         }
@@ -261,8 +273,8 @@ public sealed class LineChart : ChartControl
         var geometry = new StreamGeometry();
         using (var figure = geometry.Open())
         {
-            figure.BeginFigure(run[0], isFilled: false);
-            foreach (var point in run.Skip(1))
+            figure.BeginFigure(line[0], isFilled: false);
+            foreach (var point in line.Skip(1))
             {
                 figure.LineTo(point);
             }

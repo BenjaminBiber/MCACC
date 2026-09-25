@@ -8,7 +8,7 @@
   <UserControl.DataTemplates>
     <DataTemplate DataType="vm:LegendItemViewModel">
       <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,14,4">
-        <controls:ChartSwatch Color="{Binding Color}" VerticalAlignment="Center" />
+        <controls:ChartSwatch Color="{Binding Color}" Dashed="{Binding Dashed}" VerticalAlignment="Center" />
         <TextBlock Classes="caption" Text="{Binding Label}" VerticalAlignment="Center" />
         <TextBlock Classes="muted" Text="{Binding Value}" FontSize="12" VerticalAlignment="Center"
                    IsVisible="{Binding Value, Converter={x:Static ObjectConverters.IsNotNull}}" />
