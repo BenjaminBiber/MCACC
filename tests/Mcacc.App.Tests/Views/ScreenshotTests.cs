@@ -189,19 +189,20 @@ public sealed class ScreenshotTests : IDisposable
         Save(window, $"info-wide-{view}");
     }
 
-    /// <summary>The limit history with the gaps of 2026-09-24: a lone point before a reset, and a night without MCACC.</summary>
+    /// <summary>The limit history with the gaps of 2026-09-24: a lone point before a reset, and a night without
+    /// MCACC, with the week resetting during that night.</summary>
     [AvaloniaFact]
     public async Task Info_page_with_gaps_in_the_history()
     {
         var page = InfoPage();
         var now = DateTimeOffset.Now;
-        UsageHistoryPoint At(double hoursAgo, double fiveHour, double resetsInHours, double sevenDay) =>
-            new(now.AddHours(-hoursAgo), fiveHour, now.AddHours(-hoursAgo + resetsInHours), sevenDay, now.AddDays(6));
+        UsageHistoryPoint At(double hoursAgo, double fiveHour, double resetsInHours, double sevenDay, DateTimeOffset weekResetsAt) =>
+            new(now.AddHours(-hoursAgo), fiveHour, now.AddHours(-hoursAgo + resetsInHours), sevenDay, weekResetsAt);
         _services.Usage.History["privat"] =
         [
-            At(23.4, 97, 0.53, 31),
-            .. Enumerable.Range(0, 40).Select(i => At(22.3 - i * 0.08, 5 + i * 1.3, 4.9 - i * 0.08, 32 + i * 0.15)),
-            .. Enumerable.Range(0, 36).Select(i => At(3 - i * 0.08, 6 + i * 1.3, 4.9 - i * 0.08, 2 + i * 0.15)),
+            At(23.4, 97, 0.53, 31, now.AddHours(-10)),
+            .. Enumerable.Range(0, 40).Select(i => At(22.3 - i * 0.08, 5 + i * 1.3, 4.9 - i * 0.08, 32 + i * 0.15, now.AddHours(-10))),
+            .. Enumerable.Range(0, 36).Select(i => At(3 - i * 0.08, 6 + i * 1.3, 4.9 - i * 0.08, 2 + i * 0.15, now.AddDays(7).AddHours(-5))),
         ];
         page.ShowLimitsViewCommand.Execute("history");
 
