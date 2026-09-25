@@ -30,7 +30,8 @@ public class McaccJsonContextTests
             "windowsTerminalShell": "windowsPowerShell",
             "closeAfterLaunch": false,
             "lastAccountId": "privat",
-            "lastTarget": "desktop"
+            "lastTarget": "desktop",
+            "launchAtLogin": false
           }
         }
         """;
@@ -43,7 +44,8 @@ public class McaccJsonContextTests
             WindowsTerminalShell: WindowsTerminalShell.WindowsPowerShell,
             CloseAfterLaunch: false,
             LastAccountId: "privat",
-            LastTarget: LaunchTarget.Desktop));
+            LastTarget: LaunchTarget.Desktop,
+            LaunchAtLogin: false));
 
     private static string Serialize(AppConfig config) =>
         JsonSerializer.Serialize(config, McaccJsonContext.Default.AppConfig);
@@ -73,7 +75,8 @@ public class McaccJsonContextTests
               ],
               "settings": {
                 "windowsTerminalShell": "auto",
-                "closeAfterLaunch": true
+                "closeAfterLaunch": true,
+                "launchAtLogin": true
               }
             }
             """);
@@ -117,6 +120,13 @@ public class McaccJsonContextTests
     }
 
     [Fact]
+    public void A_config_without_launch_at_login_starts_at_login()
+    {
+        Deserialize("""{ "version": 1, "accounts": [], "settings": { "closeAfterLaunch": false } }""")
+            .Settings.LaunchAtLogin.ShouldBeTrue();
+    }
+
+    [Fact]
     public void Unknown_top_level_fields_survive_a_round_trip()
     {
         var config = Deserialize("""
@@ -130,7 +140,8 @@ public class McaccJsonContextTests
               "accounts": [],
               "settings": {
                 "windowsTerminalShell": "auto",
-                "closeAfterLaunch": true
+                "closeAfterLaunch": true,
+                "launchAtLogin": true
               },
               "future": {
                 "x": [
