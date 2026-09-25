@@ -52,6 +52,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase, IShellPresenter
         Dialog?.Cancel();
     }
 
+    /// <summary>
+    /// A start at login begins hidden: the first show opens the start page afresh, as after a hide, so it reads its data
+    /// when it is seen. Unlike <see cref="OnHidden"/> it keeps a banner the start set.
+    /// </summary>
+    public void OnStartedHidden() => _startOver = true;
+
     /// <summary>After a hide the window opens on the start page, as after a restart, unless a start still runs.</summary>
     public void OnShown(Func<PageViewModel> startPage)
     {

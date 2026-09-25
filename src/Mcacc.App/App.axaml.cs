@@ -39,6 +39,7 @@ public partial class App : Application
         if (StartupArgs.IsHidden(desktop.Args))
         {
             // Without a main window the lifetime shows none; the tray and the poller run all the same.
+            shell.OnStartedHidden();
             platform.Dock.SetVisible(false);
         }
         else

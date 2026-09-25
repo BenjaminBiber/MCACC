@@ -76,4 +76,28 @@ public sealed class MainWindowViewModelTests : IDisposable
         Shell.OnShown(Picker);
         Shell.Navigator.CurrentPage.ShouldBeOfType<AccountPickerViewModel>();
     }
+
+    [Fact]
+    public void A_start_at_login_opens_a_fresh_start_page_on_the_first_show()
+    {
+        var settings = new SettingsViewModel(_services.Services);
+        _services.Navigator.Reset(settings);
+
+        Shell.OnStartedHidden();
+        Shell.OnShown(Picker);
+
+        Shell.Navigator.CurrentPage.ShouldBeOfType<AccountPickerViewModel>();
+        Shell.Navigator.CanGoBack.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void A_start_at_login_keeps_the_banner_of_the_start()
+    {
+        Shell.ShowError("x");
+
+        Shell.OnStartedHidden();
+        Shell.OnShown(Picker);
+
+        Shell.ErrorBanner.ShouldBe("x");
+    }
 }
