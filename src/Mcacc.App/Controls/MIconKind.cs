@@ -19,4 +19,5 @@ public enum MIconKind
     SwapHoriz,
     Logout,
     Insights,
+    SwitchAccount,
 }

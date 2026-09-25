@@ -69,7 +69,7 @@ public static partial class Texts
     public const string ErrorTerminalStartFailed = "Das Terminal konnte nicht gestartet werden.";
     public const string HintLoginWatch =
         "Claude Desktop läuft. Meldest du dich über den Browser an, leitet MCACC die Anmeldung auf dieses Profil "
-        + "um und schließt sich danach von selbst.";
+        + "um und blendet sich danach von selbst aus.";
     public const string ErrorLoginRedirectFailed =
         "Die Anmeldung konnte nicht auf dieses Profil umgeleitet werden. Bitte in Claude Desktop erneut anmelden.";
     public const string HintClaudeCliMissing =
@@ -88,7 +88,7 @@ public static partial class Texts
     public const string SettingsShellPwsh = "PowerShell 7";
     public const string SettingsShellWindowsPowerShell = "Windows PowerShell";
     public const string SettingsShellCmd = "Eingabeaufforderung";
-    public const string SettingsCloseAfterLaunch = "Nach dem Start schließen";
+    public const string SettingsCloseAfterLaunch = "Nach dem Start ausblenden";
     public const string SettingsDataFolder = "Datenordner";
     public const string RevealInExplorer = "Im Explorer öffnen";
     public const string RevealInFinder = "Im Finder öffnen";

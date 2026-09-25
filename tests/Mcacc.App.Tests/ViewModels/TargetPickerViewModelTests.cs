@@ -105,7 +105,7 @@ public sealed class TargetPickerViewModelTests : IDisposable
         _services.Desktop.Launches.ShouldBe([false]);
         _services.Accounts.Config.Settings.LastAccountId.ShouldBe("privat");
         _services.Accounts.Config.Settings.LastTarget.ShouldBe(LaunchTarget.Desktop);
-        _services.Lifetime.Shutdowns.ShouldBe(1);
+        _services.Lifetime.Hides.ShouldBe(1);
     }
 
     [Fact]
@@ -116,7 +116,7 @@ public sealed class TargetPickerViewModelTests : IDisposable
 
         await page.LaunchDesktopCommand.ExecuteAsync(null);
 
-        _services.Lifetime.Shutdowns.ShouldBe(0);
+        _services.Lifetime.Hides.ShouldBe(0);
     }
 
     [Fact]
@@ -133,7 +133,7 @@ public sealed class TargetPickerViewModelTests : IDisposable
         await Page(Standard).LaunchDesktopCommand.ExecuteAsync(null);
 
         _services.Redirect.Watched.ShouldBeEmpty();
-        _services.Lifetime.Shutdowns.ShouldBe(1);
+        _services.Lifetime.Hides.ShouldBe(1);
     }
 
     [Fact]
@@ -145,13 +145,13 @@ public sealed class TargetPickerViewModelTests : IDisposable
         var launch = page.LaunchDesktopCommand.ExecuteAsync(null);
 
         _services.Window.ErrorBanner.ShouldBe(Texts.HintLoginWatch);
-        _services.Lifetime.Shutdowns.ShouldBe(0);
+        _services.Lifetime.Hides.ShouldBe(0);
 
         _services.Redirect.Gate.SetResult();
         await launch;
 
         _services.Window.ErrorBanner.ShouldBeNull();
-        _services.Lifetime.Shutdowns.ShouldBe(1);
+        _services.Lifetime.Hides.ShouldBe(1);
     }
 
     [Fact]
@@ -162,7 +162,7 @@ public sealed class TargetPickerViewModelTests : IDisposable
         await Page().LaunchDesktopCommand.ExecuteAsync(null);
 
         _services.Window.ErrorBanner.ShouldBeNull();
-        _services.Lifetime.Shutdowns.ShouldBe(1);
+        _services.Lifetime.Hides.ShouldBe(1);
     }
 
     [Fact]
@@ -173,7 +173,7 @@ public sealed class TargetPickerViewModelTests : IDisposable
         await Page().LaunchDesktopCommand.ExecuteAsync(null);
 
         _services.Window.ErrorBanner.ShouldBe(Texts.ErrorLoginRedirectFailed);
-        _services.Lifetime.Shutdowns.ShouldBe(0);
+        _services.Lifetime.Hides.ShouldBe(0);
     }
 
     [Fact]
@@ -185,7 +185,7 @@ public sealed class TargetPickerViewModelTests : IDisposable
         await Page().LaunchDesktopCommand.ExecuteAsync(null);
 
         _services.Window.ErrorBanner.ShouldBe(Texts.ErrorLoginRedirectFailed);
-        _services.Lifetime.Shutdowns.ShouldBe(0);
+        _services.Lifetime.Hides.ShouldBe(0);
     }
 
     [Fact]
@@ -196,7 +196,7 @@ public sealed class TargetPickerViewModelTests : IDisposable
         await Page().LaunchDesktopCommand.ExecuteAsync(null);
 
         _services.Redirect.Watched.ShouldBe([Privat]);
-        _services.Lifetime.Shutdowns.ShouldBe(0);
+        _services.Lifetime.Hides.ShouldBe(0);
     }
 
     [Fact]
@@ -213,7 +213,7 @@ public sealed class TargetPickerViewModelTests : IDisposable
         dialog.Text.ShouldBe(Texts.ConflictDialogText("Standard", "Privat"));
         _services.Desktop.Launches.ShouldBe([true]);
         _services.Dialogs.BusyTexts.ShouldBe([Texts.BusyQuitting]);
-        _services.Lifetime.Shutdowns.ShouldBe(1);
+        _services.Lifetime.Hides.ShouldBe(1);
     }
 
     [Fact]
@@ -225,7 +225,7 @@ public sealed class TargetPickerViewModelTests : IDisposable
         await page.LaunchDesktopCommand.ExecuteAsync(null);
 
         _services.Desktop.Launches.ShouldBeEmpty();
-        _services.Lifetime.Shutdowns.ShouldBe(0);
+        _services.Lifetime.Hides.ShouldBe(0);
         _services.Window.ErrorBanner.ShouldBeNull();
     }
 
@@ -252,7 +252,7 @@ public sealed class TargetPickerViewModelTests : IDisposable
         await page.LaunchDesktopCommand.ExecuteAsync(null);
 
         _services.Window.ErrorBanner.ShouldBe(Texts.ErrorQuitFailed);
-        _services.Lifetime.Shutdowns.ShouldBe(0);
+        _services.Lifetime.Hides.ShouldBe(0);
     }
 
     [Fact]
@@ -264,7 +264,7 @@ public sealed class TargetPickerViewModelTests : IDisposable
         await page.LaunchDesktopCommand.ExecuteAsync(null);
 
         _services.Window.ErrorBanner.ShouldBe(Texts.ErrorDesktopStartFailed);
-        _services.Lifetime.Shutdowns.ShouldBe(0);
+        _services.Lifetime.Hides.ShouldBe(0);
     }
 
     [Fact]
@@ -276,7 +276,7 @@ public sealed class TargetPickerViewModelTests : IDisposable
 
         _services.Code.Launched.ShouldBe([Privat]);
         _services.Accounts.Config.Settings.LastTarget.ShouldBe(LaunchTarget.Code);
-        _services.Lifetime.Shutdowns.ShouldBe(1);
+        _services.Lifetime.Hides.ShouldBe(1);
     }
 
     [Fact]
@@ -289,7 +289,7 @@ public sealed class TargetPickerViewModelTests : IDisposable
 
         _services.Window.ErrorBanner.ShouldBe(Texts.HintClaudeCliMissing);
         _services.Accounts.Config.Settings.LastTarget.ShouldBe(LaunchTarget.Code);
-        _services.Lifetime.Shutdowns.ShouldBe(0);
+        _services.Lifetime.Hides.ShouldBe(0);
     }
 
     [Fact]
@@ -301,7 +301,7 @@ public sealed class TargetPickerViewModelTests : IDisposable
         await page.LaunchCodeCommand.ExecuteAsync(null);
 
         _services.Window.ErrorBanner.ShouldBe(Texts.ErrorNoTerminal);
-        _services.Lifetime.Shutdowns.ShouldBe(0);
+        _services.Lifetime.Hides.ShouldBe(0);
     }
 
     [Fact]

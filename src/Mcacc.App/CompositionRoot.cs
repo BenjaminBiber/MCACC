@@ -19,7 +19,7 @@ namespace Mcacc.App;
 /// <summary>Wires everything by hand; MCACC is small enough that a container would only hide the graph.</summary>
 public static class CompositionRoot
 {
-    public static MainWindowViewModel Create(PlatformServices platform, IAppLifetime lifetime)
+    public static (MainWindowViewModel Shell, AppServices Services) Create(PlatformServices platform, IAppLifetime lifetime)
     {
         var log = new FileLog(platform.Paths);
         var resolver = platform.CreateResolver();
@@ -99,7 +99,7 @@ public static class CompositionRoot
         navigator.Navigated += page => Activate(page, log);
         navigator.Reset(new AccountPickerViewModel(services));
         poller.Start();
-        return shell;
+        return (shell, services);
     }
 
     public static string Version() =>

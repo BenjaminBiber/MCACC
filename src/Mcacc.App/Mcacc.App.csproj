@@ -25,6 +25,8 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
+    <!-- The exe icon doubles as the notification-area icon: it has the sharp 16 and 32 px sizes a tray needs. -->
+    <AvaloniaResource Include="..\..\assets\icon\mcacc.ico" Link="Assets\Icon\mcacc.ico" />
   </ItemGroup>
 
   <ItemGroup>

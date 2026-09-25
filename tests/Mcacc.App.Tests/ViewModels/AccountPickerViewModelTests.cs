@@ -211,11 +211,12 @@ public sealed class AccountPickerViewModelTests : IDisposable
     }
 
     [Fact]
-    public void Escape_closes_the_app()
+    public void Escape_hides_the_window()
     {
         Picker().OnKeyDown(Key.Escape, KeyModifiers.None).ShouldBeTrue();
 
-        _services.Lifetime.Shutdowns.ShouldBe(1);
+        _services.Lifetime.Hides.ShouldBe(1);
+        _services.Lifetime.Shutdowns.ShouldBe(0);
     }
 
     [Fact]

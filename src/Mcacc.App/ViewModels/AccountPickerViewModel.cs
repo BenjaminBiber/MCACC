@@ -203,7 +203,7 @@ public sealed partial class AccountPickerViewModel : PageViewModel
                 RemoveCommand.Execute(focused);
                 return true;
             case Key.Escape:
-                _services.Lifetime.Shutdown();
+                _services.Lifetime.HideWindow();
                 return true;
             case >= Key.D1 and <= Key.D9 when !command:
                 Select(Tiles.ElementAtOrDefault(key - Key.D1));
@@ -314,34 +314,13 @@ public sealed partial class AccountPickerViewModel : PageViewModel
 
     private async Task RefreshRunningAsync(CancellationToken ct)
     {
-        var instances = await DetectAsync(ct).ConfigureAwait(true);
-        var owners = instances
-            .Select(instance => _services.Matcher.Match(instance, _services.Accounts.Config.Accounts)?.Id)
-            .Where(id => id is not null)
-            .ToHashSet();
+        var owners = await RunningAccounts.DetectAsync(_services, ct).ConfigureAwait(true);
         foreach (var tile in Tiles)
         {
             tile.IsRunning = owners.Contains(tile.Id);
         }
     }
 
-    private async Task<bool> IsRunningAsync(Account account, CancellationToken ct)
-    {
-        var instances = await DetectAsync(ct).ConfigureAwait(true);
-        return instances.Any(instance =>
-            _services.Matcher.Match(instance, _services.Accounts.Config.Accounts)?.Id == account.Id);
-    }
-
-    private async Task<IReadOnlyList<DesktopInstance>> DetectAsync(CancellationToken ct)
-    {
-        try
-        {
-            return await _services.Detector.DetectAsync(ct).ConfigureAwait(true);
-        }
-        catch (Exception e) when (e is not OperationCanceledException)
-        {
-            _services.Log.Warn("Detecting the running instances failed.", e);
-            return [];
-        }
-    }
+    private async Task<bool> IsRunningAsync(Account account, CancellationToken ct) =>
+        (await RunningAccounts.DetectAsync(_services, ct).ConfigureAwait(true)).Contains(account.Id);
 }

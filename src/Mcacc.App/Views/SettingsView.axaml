@@ -44,9 +44,12 @@
       </StackPanel>
 
       <!-- The label sits beside the knob; the Fluent default would print an English On/Off there. -->
-      <ToggleSwitch IsChecked="{Binding CloseAfterLaunch}"
-                    OnContent="{Binding CloseAfterLaunchText}"
-                    OffContent="{Binding CloseAfterLaunchText}" />
+      <StackPanel Spacing="2">
+        <ToggleSwitch IsChecked="{Binding CloseAfterLaunch}"
+                      OnContent="{Binding CloseAfterLaunchText}"
+                      OffContent="{Binding CloseAfterLaunchText}" />
+        <TextBlock Classes="caption muted" Text="{Binding TrayHint}" TextWrapping="Wrap" />
+      </StackPanel>
 
       <StackPanel Spacing="6">
         <TextBlock Classes="body" Text="{Binding DataFolderLabel}" />

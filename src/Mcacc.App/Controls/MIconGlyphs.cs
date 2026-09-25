@@ -22,6 +22,7 @@ public static class MIconGlyphs
         [MIconKind.SwapHoriz] = "",
         [MIconKind.Logout] = "",
         [MIconKind.Insights] = "",
+        [MIconKind.SwitchAccount] = "",
     };
 
     /// <exception cref="ArgumentOutOfRangeException">The kind has no codepoint.</exception>

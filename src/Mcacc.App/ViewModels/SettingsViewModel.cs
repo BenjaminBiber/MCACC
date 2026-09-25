@@ -51,6 +51,8 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     public string CloseAfterLaunchText => Texts.SettingsCloseAfterLaunch;
 
+    public string TrayHint => Texts.SettingsTrayHint(_services.Platform.Os);
+
     public string DataFolderLabel => Texts.SettingsDataFolder;
 
     public string DataFolder => _services.Paths.Root;

@@ -245,7 +245,15 @@ internal sealed class FakeShellIntegration : IShellIntegration
 
 internal sealed class FakeAppLifetime : IAppLifetime
 {
+    public int Shows { get; private set; }
+
+    public int Hides { get; private set; }
+
     public int Shutdowns { get; private set; }
+
+    public void ShowWindow() => Shows++;
+
+    public void HideWindow() => Hides++;
 
     public void Shutdown() => Shutdowns++;
 }

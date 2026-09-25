@@ -13,14 +13,13 @@ namespace Mcacc.App.ViewModels;
 /// <summary>The second page: Claude Desktop or Claude Code, for the account picked before.</summary>
 public sealed partial class TargetPickerViewModel : PageViewModel
 {
-    private static readonly TimeSpan CloseDelay = TimeSpan.FromMilliseconds(400);
-
     private readonly AppServices _services;
-    private DesktopLaunchCheck _check = new DesktopLaunchCheck.Ready();
+    private readonly LaunchCoordinator _launcher;
 
     public TargetPickerViewModel(AppServices services, Account account)
     {
         _services = services;
+        _launcher = new LaunchCoordinator(services);
         Account = account;
         DesktopSubtitle = Texts.DesktopReady;
         CodeSubtitle = CodeSubtitleFor();
@@ -63,111 +62,10 @@ public sealed partial class TargetPickerViewModel : PageViewModel
     }
 
     [RelayCommand]
-    public async Task LaunchDesktopAsync()
-    {
-        var accounts = _services.Accounts.Config.Accounts;
-        var check = await PrepareAsync(CancellationToken.None).ConfigureAwait(true);
-        if (check is DesktopLaunchCheck.NotInstalled)
-        {
-            _services.Shell.ShowError(Texts.ErrorDesktopNotFound);
-            return;
-        }
-
-        var quitConflicts = false;
-        if (check is DesktopLaunchCheck.Conflict conflict)
-        {
-            var dialog = new ConfirmDialogViewModel(
-                Texts.ConflictDialogTitle,
-                Texts.ConflictDialogText(OwnerName(conflict), Account.Name),
-                Texts.ConflictDialogRestart);
-            if (await _services.Dialogs.ShowAsync(dialog).ConfigureAwait(true) != true)
-            {
-                return;
-            }
-
-            quitConflicts = true;
-        }
-
-        DesktopLaunchOutcome outcome;
-        using (_services.Dialogs.Busy(quitConflicts ? Texts.BusyQuitting : Texts.BusyStarting))
-        {
-            try
-            {
-                outcome = await _services.Desktop
-                    .LaunchAsync(Account, accounts, quitConflicts, CancellationToken.None)
-                    .ConfigureAwait(true);
-            }
-            catch (Exception e) when (e is not OperationCanceledException)
-            {
-                _services.Log.Error($"Launching Claude Desktop for '{Account.Id}' failed.", e);
-                outcome = DesktopLaunchOutcome.StartFailed;
-            }
-        }
-
-        switch (outcome)
-        {
-            case DesktopLaunchOutcome.Launched:
-                _services.Log.Info($"Claude Desktop started for '{Account.Id}'.");
-                if (Account.IsDefault)
-                {
-                    await FinishAsync(LaunchTarget.Desktop, autoClose: true).ConfigureAwait(true);
-                    return;
-                }
-
-                // A login through the browser comes back to the app default profile, so MCACC stays until it can
-                // put it on this account's profile instead.
-                await FinishAsync(LaunchTarget.Desktop, autoClose: false).ConfigureAwait(true);
-                await WatchLoginAsync().ConfigureAwait(true);
-                return;
-            case DesktopLaunchOutcome.NotInstalled:
-                _services.Shell.ShowError(Texts.ErrorDesktopNotFound);
-                return;
-            case DesktopLaunchOutcome.QuitFailed:
-                _services.Shell.ShowError(Texts.ErrorQuitFailed);
-                return;
-            case DesktopLaunchOutcome.ConflictNotResolved:
-                return;
-            default:
-                _services.Shell.ShowError(Texts.ErrorDesktopStartFailed);
-                return;
-        }
-    }
+    public Task LaunchDesktopAsync() => _launcher.LaunchDesktopAsync(Account);
 
     [RelayCommand]
-    public async Task LaunchCodeAsync()
-    {
-        CodeLaunchResult result;
-        try
-        {
-            result = _services.Code.Launch(Account, _services.Accounts.Config.Settings);
-        }
-        catch (Exception e)
-        {
-            _services.Log.Error($"Launching Claude Code for '{Account.Id}' failed.", e);
-            _services.Shell.ShowError(Texts.ErrorTerminalStartFailed);
-            return;
-        }
-
-        switch (result.Outcome)
-        {
-            case CodeLaunchOutcome.NoTerminal:
-                _services.Shell.ShowError(Texts.ErrorNoTerminal);
-                return;
-            case CodeLaunchOutcome.StartFailed:
-                _services.Shell.ShowError(Texts.ErrorTerminalStartFailed);
-                return;
-            default:
-                _services.Log.Info($"Claude Code started for '{Account.Id}' in '{result.Terminal?.Id}'.");
-                if (result.ClaudeCliNotFound)
-                {
-                    // The login shell may still find claude, so this is a hint and the switcher stays open.
-                    _services.Shell.ShowError(Texts.HintClaudeCliMissing);
-                }
-
-                await FinishAsync(LaunchTarget.Code, autoClose: !result.ClaudeCliNotFound).ConfigureAwait(true);
-                return;
-        }
-    }
+    public Task LaunchCodeAsync() => _launcher.LaunchCodeAsync(Account);
 
     [RelayCommand]
     public void Back() => _services.Navigator.Back();
@@ -191,62 +89,9 @@ public sealed partial class TargetPickerViewModel : PageViewModel
         }
     }
 
-    /// <summary>Keeps the window up while a browser login may still come back, and closes it afterwards.</summary>
-    private async Task WatchLoginAsync()
-    {
-        _services.Shell.ShowError(Texts.HintLoginWatch);
-        DesktopRedirectOutcome outcome;
-        try
-        {
-            outcome = await _services.Redirect.WatchAsync(Account, CancellationToken.None).ConfigureAwait(true);
-        }
-        catch (Exception e) when (e is not OperationCanceledException)
-        {
-            _services.Log.Warn($"Watching the Claude Desktop login for '{Account.Id}' failed.", e);
-            outcome = DesktopRedirectOutcome.Failed;
-        }
-
-        if (outcome == DesktopRedirectOutcome.Failed)
-        {
-            _services.Shell.ShowError(Texts.ErrorLoginRedirectFailed);
-            return;
-        }
-
-        _services.Shell.ClearError();
-        if (outcome == DesktopRedirectOutcome.Redirected)
-        {
-            _services.Log.Info($"Claude Desktop login handed to '{Account.Id}'.");
-        }
-
-        if (_services.Accounts.Config.Settings.CloseAfterLaunch)
-        {
-            _services.Lifetime.Shutdown();
-        }
-    }
-
-    private string OwnerName(DesktopLaunchCheck.Conflict conflict) =>
-        conflict.Conflicts.Select(c => c.Owner?.Name).FirstOrDefault(name => name is not null) ?? Account.Name;
-
-    private async Task<DesktopLaunchCheck> PrepareAsync(CancellationToken ct)
-    {
-        try
-        {
-            _check = await _services.Desktop
-                .PrepareAsync(Account, _services.Accounts.Config.Accounts, ct)
-                .ConfigureAwait(true);
-        }
-        catch (Exception e) when (e is not OperationCanceledException)
-        {
-            _services.Log.Warn("Checking the running instances failed.", e);
-            _check = new DesktopLaunchCheck.Ready();
-        }
-
-        return _check;
-    }
-
     private async Task RefreshDesktopStateAsync(CancellationToken ct)
     {
-        var check = await PrepareAsync(ct).ConfigureAwait(true);
+        var check = await _launcher.CheckDesktopAsync(Account, ct).ConfigureAwait(true);
         IsDesktopAvailable = check is not DesktopLaunchCheck.NotInstalled;
         DesktopSubtitle = check switch
         {
@@ -254,7 +99,7 @@ public sealed partial class TargetPickerViewModel : PageViewModel
             DesktopLaunchCheck.RunningSameAccount => Texts.DesktopRunningSameAccount,
             DesktopLaunchCheck.Conflict conflict => conflict.Conflicts.Any(c => c.Owner is null)
                 ? Texts.DesktopConflictUnknownOwner
-                : Texts.DesktopConflict(OwnerName(conflict)),
+                : Texts.DesktopConflict(LaunchCoordinator.OwnerName(conflict, Account)),
             _ => Texts.DesktopReady,
         };
     }
@@ -265,27 +110,5 @@ public sealed partial class TargetPickerViewModel : PageViewModel
         var settings = _services.Accounts.Config.Settings;
         var terminal = TerminalSelector.Select(settings.Terminal, installed, _services.Terminals.PlatformDefaultId);
         return terminal is null ? Texts.CodeNoTerminal : Texts.CodeInTerminal(terminal.DisplayName);
-    }
-
-    private async Task FinishAsync(LaunchTarget target, bool autoClose)
-    {
-        try
-        {
-            _services.Accounts.UpdateSettings(settings => settings with
-            {
-                LastAccountId = Account.Id,
-                LastTarget = target,
-            });
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidOperationException)
-        {
-            _services.Log.Warn("Saving the last choice failed.", e);
-        }
-
-        if (autoClose && _services.Accounts.Config.Settings.CloseAfterLaunch)
-        {
-            await Task.Delay(CloseDelay).ConfigureAwait(true);
-            _services.Lifetime.Shutdown();
-        }
     }
 }
