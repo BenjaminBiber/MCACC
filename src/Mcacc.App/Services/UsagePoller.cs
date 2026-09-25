@@ -14,7 +14,8 @@ public sealed class UsagePoller(
     IAccountService accounts,
     IUsageProvider usage,
     ILog log,
-    IReadOnlyList<TimeSpan>? recheckAfter = null) : IDisposable
+    IReadOnlyList<TimeSpan>? recheckAfter = null,
+    TimeSpan? interval = null) : IDisposable
 {
     public static readonly TimeSpan Interval = TimeSpan.FromMinutes(5);
 
@@ -25,6 +26,7 @@ public sealed class UsagePoller(
     public static readonly IReadOnlyList<TimeSpan> RecheckAfter = [TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(60)];
 
     private readonly IReadOnlyList<TimeSpan> _recheckAfter = recheckAfter ?? RecheckAfter;
+    private readonly TimeSpan _interval = interval ?? Interval;
     private readonly CancellationTokenSource _stop = new();
 
     /// <summary>Raised per account after a tick, on the thread that called <see cref="Start"/>.</summary>
@@ -91,14 +93,25 @@ public sealed class UsagePoller(
         _stop.Dispose();
     }
 
+    /// <summary>
+    /// MCACC lives on in the tray for days, so a tick that throws, e.g. in an <see cref="Updated"/> handler, is logged
+    /// and the next one comes all the same; only the own cancellation ends the loop.
+    /// </summary>
     private async Task RunAsync(CancellationToken ct)
     {
-        using var timer = new PeriodicTimer(Interval);
+        using var timer = new PeriodicTimer(_interval);
         try
         {
             while (await timer.WaitForNextTickAsync(ct).ConfigureAwait(true))
             {
-                await TickAsync(ct).ConfigureAwait(true);
+                try
+                {
+                    await TickAsync(ct).ConfigureAwait(true);
+                }
+                catch (Exception e) when (!ct.IsCancellationRequested)
+                {
+                    log.Warn("A poll of the limits failed.", e);
+                }
             }
         }
         catch (OperationCanceledException)

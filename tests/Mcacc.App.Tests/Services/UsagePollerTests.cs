@@ -135,4 +135,25 @@ public class UsagePollerTests
 
         Should.NotThrow(poller.Dispose);
     }
+
+    [Fact]
+    public async Task A_throwing_handler_does_not_end_the_polling()
+    {
+        using var poller = new UsagePoller(_accounts, _usage, NullLog.Instance, interval: TimeSpan.FromMilliseconds(10));
+        var calls = 0;
+        var again = new TaskCompletionSource();
+        poller.Updated += (_, _) =>
+        {
+            if (Interlocked.Increment(ref calls) == 1)
+            {
+                throw new InvalidOperationException("A page failed to show the limits.");
+            }
+
+            again.TrySetResult();
+        };
+
+        poller.Start();
+
+        await again.Task.WaitAsync(TimeSpan.FromSeconds(5), Ct);
+    }
 }
