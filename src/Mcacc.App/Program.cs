@@ -30,8 +30,15 @@ internal static class Program
             return 0;
         }
 
-        return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        return BuildAvaloniaApp().With(MacOptions(args)).StartWithClassicDesktopLifetime(args);
     }
+
+    /// <summary>
+    /// Avalonia.Native applies <see cref="MacOSPlatformOptions.ShowInDock"/> when the app finishes launching, which is
+    /// after <see cref="App.OnFrameworkInitializationCompleted"/> already ran. A start at login has to launch without
+    /// the Dock icon from the start, or Avalonia switches back to Regular and steals focus.
+    /// </summary>
+    internal static MacOSPlatformOptions MacOptions(string[] args) => new() { ShowInDock = !StartupArgs.IsHidden(args) };
 
     public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>()
         .UsePlatformDetect()

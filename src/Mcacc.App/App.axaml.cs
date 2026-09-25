@@ -40,6 +40,8 @@ public partial class App : Application
         {
             // Without a main window the lifetime shows none; the tray and the poller run all the same.
             shell.OnStartedHidden();
+            // Set the policy to Accessory before Avalonia compares it at launch (see Program.MacOptions), so it finds
+            // no mismatch and neither switches back to Regular nor activates the app.
             platform.Dock.SetVisible(false);
         }
         else

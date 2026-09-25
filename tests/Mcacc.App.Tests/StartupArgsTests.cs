@@ -32,3 +32,18 @@ public class StartupArgsTests
         StartupArgs.ShouldSignalExisting(["--hidden"]).ShouldBeFalse();
     }
 }
+
+public class ProgramTests
+{
+    [Fact]
+    public void A_start_at_login_launches_without_the_dock_icon()
+    {
+        Program.MacOptions(["--hidden"]).ShowInDock.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void A_normal_start_launches_with_the_dock_icon()
+    {
+        Program.MacOptions([]).ShowInDock.ShouldBeTrue();
+    }
+}
