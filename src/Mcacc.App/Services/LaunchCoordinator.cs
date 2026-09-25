@@ -125,6 +125,10 @@ public sealed class LaunchCoordinator(AppServices services)
                 return;
             default:
                 services.Log.Info($"Claude Code started for '{account.Id}' in '{result.Terminal?.Id}'.");
+
+                // Claude Code renews an expired token as it starts; without a recheck the tile would say expired
+                // until the next tick.
+                _ = services.Poller.RecheckAsync(account);
                 if (result.ClaudeCliNotFound)
                 {
                     // The login shell may still find claude, so this is a hint and the switcher stays open.

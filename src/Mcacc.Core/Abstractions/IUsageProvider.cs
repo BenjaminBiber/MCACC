@@ -10,6 +10,12 @@ public interface IUsageProvider
 
     Task<AccountUsage> RefreshAsync(Account account, CancellationToken ct);
 
+    /// <summary>
+    /// Lets the next refresh of the account ask the endpoint even within the guard interval: for a token that has
+    /// just been renewed, e.g. by a start of Claude Code.
+    /// </summary>
+    void Invalidate(Account account);
+
     /// <summary>The last profile the endpoint reported for the account's own token; null when none is known.</summary>
     AccountProfile? GetProfile(Account account);
 

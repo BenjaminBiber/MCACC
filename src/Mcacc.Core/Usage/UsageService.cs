@@ -105,6 +105,14 @@ public sealed class UsageService(
         return usage;
     }
 
+    public void Invalidate(Account account)
+    {
+        lock (_gate)
+        {
+            _attempts.Remove(account.Id);
+        }
+    }
+
     private async Task<AccountUsage> FetchAsync(Account account, int generation, DateTimeOffset now, CancellationToken ct)
     {
         var cached = Cached(account.Id);

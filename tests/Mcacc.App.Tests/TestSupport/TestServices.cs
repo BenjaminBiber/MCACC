@@ -13,6 +13,12 @@ internal sealed class TestServices : IDisposable
     private readonly TempDirectory _temp = new();
 
     public TestServices(OsKind os = OsKind.Windows, params Account[] accounts)
+        : this(null, os, accounts)
+    {
+    }
+
+    /// <param name="recheckAfter">The waits of <see cref="UsagePoller.RecheckAsync"/>; null keeps the real ones.</param>
+    public TestServices(IReadOnlyList<TimeSpan>? recheckAfter, OsKind os, params Account[] accounts)
     {
         Platform = new PlatformInfo(
             os,
@@ -24,7 +30,7 @@ internal sealed class TestServices : IDisposable
         var resolver = new AccountPathResolver(Paths, Platform);
         Navigator = new Navigator();
         Window = new MainWindowViewModel(Navigator);
-        Poller = new UsagePoller(Accounts, Usage, NullLog.Instance);
+        Poller = new UsagePoller(Accounts, Usage, NullLog.Instance, recheckAfter);
         Services = new AppServices(
             Accounts,
             Desktop,

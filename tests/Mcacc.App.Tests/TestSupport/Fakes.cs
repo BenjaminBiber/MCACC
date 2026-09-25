@@ -169,6 +169,10 @@ internal sealed class FakeUsageProvider : IUsageProvider
         return Task.FromResult(Fresh.GetValueOrDefault(account.Id, GetCached(account)));
     }
 
+    public List<string> Invalidated { get; } = [];
+
+    public void Invalidate(Account account) => Invalidated.Add(account.Id);
+
     public AccountProfile? GetProfile(Account account) => Profiles.GetValueOrDefault(account.Id);
 
     public IReadOnlyList<UsageHistoryPoint> GetHistory(Account account, DateTimeOffset since) =>

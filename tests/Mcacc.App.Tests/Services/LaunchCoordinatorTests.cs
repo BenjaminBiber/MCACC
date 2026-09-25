@@ -4,6 +4,7 @@ using Mcacc.App.Tests.TestSupport;
 using Mcacc.App.ViewModels;
 using Mcacc.Core.Desktop;
 using Mcacc.Core.Model;
+using Mcacc.Core.Terminal;
 using Shouldly;
 using Xunit;
 
@@ -11,7 +12,7 @@ namespace Mcacc.App.Tests.Services;
 
 /// <summary>
 /// The launch flow itself is covered through <see cref="TargetPickerViewModel"/>; these are about the window, since a
-/// start from the tray begins with the window hidden.
+/// start from the tray begins with the window hidden, and about the limits a start of Claude Code renews.
 /// </summary>
 public sealed class LaunchCoordinatorTests : IDisposable
 {
@@ -65,6 +66,38 @@ public sealed class LaunchCoordinatorTests : IDisposable
 
         _services.Lifetime.Shows.ShouldBe(1);
         _services.Window.ErrorBanner.ShouldBe(Texts.ErrorDesktopStartFailed);
+    }
+
+    [Fact]
+    public async Task Claude_code_rechecks_the_limits_of_its_account()
+    {
+        using var services = new TestServices([TimeSpan.Zero], OsKind.Windows, Standard, Privat);
+
+        await new LaunchCoordinator(services.Services).LaunchCodeAsync(Privat);
+
+        services.Usage.Invalidated.ShouldBe(["privat"]);
+        services.Usage.Refreshed.ShouldBe(["privat"]);
+    }
+
+    [Fact]
+    public async Task A_failed_claude_code_start_rechecks_nothing()
+    {
+        using var services = new TestServices([TimeSpan.Zero], OsKind.Windows, Standard, Privat);
+        services.Code.Result = services.Code.Result with { Outcome = CodeLaunchOutcome.StartFailed };
+
+        await new LaunchCoordinator(services.Services).LaunchCodeAsync(Privat);
+
+        services.Usage.Invalidated.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Claude_desktop_rechecks_nothing()
+    {
+        using var services = new TestServices([TimeSpan.Zero], OsKind.Windows, Standard, Privat);
+
+        await new LaunchCoordinator(services.Services).LaunchDesktopAsync(Standard);
+
+        services.Usage.Invalidated.ShouldBeEmpty();
     }
 
     [Fact]

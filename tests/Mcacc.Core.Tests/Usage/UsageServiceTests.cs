@@ -232,6 +232,39 @@ public sealed class UsageServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task A_token_renewed_within_60_s_shows_after_an_invalidate()
+    {
+        _credentials.Result = new CredentialReadResult(
+            CredentialReadStatus.Found,
+            new OAuthCredentials(Token, Now - TimeSpan.FromMinutes(1)));
+        var service = Service();
+        (await service.RefreshAsync(Privat, Ct)).State.ShouldBe(UsageState.Expired);
+        _credentials.Result = new CredentialReadResult(
+            CredentialReadStatus.Found,
+            new OAuthCredentials(Token, Now + TimeSpan.FromHours(8)));
+        _time.Advance(TimeSpan.FromSeconds(15));
+
+        service.Invalidate(Privat);
+        var usage = await service.RefreshAsync(Privat, Ct);
+
+        usage.State.ShouldBe(UsageState.Ok);
+        usage.Snapshot!.FetchedAt.ShouldBe(Now + TimeSpan.FromSeconds(15));
+    }
+
+    [Fact]
+    public async Task Invalidating_one_account_keeps_the_guard_of_the_others()
+    {
+        var service = Service();
+        await service.RefreshAsync(Privat, Ct);
+        await service.RefreshAsync(Arbeit, Ct);
+
+        service.Invalidate(Arbeit);
+        await service.RefreshAsync(Privat, Ct);
+
+        _http.Requests.Count.ShouldBe(2);
+    }
+
+    [Fact]
     public async Task The_minimum_interval_counts_per_account()
     {
         var service = Service();

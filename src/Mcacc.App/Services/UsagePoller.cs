@@ -7,12 +7,24 @@ namespace Mcacc.App.Services;
 
 /// <summary>
 /// Refreshes the limits of every account while the app is open, so the history grows even when nobody clicks.
-/// The one-minute guard in <see cref="IUsageProvider.RefreshAsync"/> still applies.
+/// The one-minute guard in <see cref="IUsageProvider.RefreshAsync"/> still applies, except for a
+/// <see cref="RecheckAsync"/>.
 /// </summary>
-public sealed class UsagePoller(IAccountService accounts, IUsageProvider usage, ILog log) : IDisposable
+public sealed class UsagePoller(
+    IAccountService accounts,
+    IUsageProvider usage,
+    ILog log,
+    IReadOnlyList<TimeSpan>? recheckAfter = null) : IDisposable
 {
     public static readonly TimeSpan Interval = TimeSpan.FromMinutes(5);
 
+    /// <summary>
+    /// Claude Code renews an expired token only once it runs, a moment after the terminal opened; a login through the
+    /// browser takes longer still. Measured from the start.
+    /// </summary>
+    public static readonly IReadOnlyList<TimeSpan> RecheckAfter = [TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(60)];
+
+    private readonly IReadOnlyList<TimeSpan> _recheckAfter = recheckAfter ?? RecheckAfter;
     private readonly CancellationTokenSource _stop = new();
 
     /// <summary>Raised per account after a tick, on the thread that called <see cref="Start"/>.</summary>
@@ -31,6 +43,45 @@ public sealed class UsagePoller(IAccountService accounts, IUsageProvider usage, 
             {
                 Updated?.Invoke(all[i], result);
             }
+        }
+    }
+
+    /// <summary>
+    /// After a start of Claude Code: reads the limits of the account again at each <see cref="RecheckAfter"/>, past
+    /// the one-minute guard, until one comes back fine. Stops when the account is gone or the poller disposed. Call on
+    /// the UI thread, like <see cref="Start"/>.
+    /// </summary>
+    public async Task RecheckAsync(Account account)
+    {
+        var ct = _stop.Token;
+        var waited = TimeSpan.Zero;
+        try
+        {
+            foreach (var at in _recheckAfter)
+            {
+                await Task.Delay(at - waited, ct).ConfigureAwait(true);
+                waited = at;
+                if (!accounts.Config.Accounts.Any(known => known.Id == account.Id))
+                {
+                    return;
+                }
+
+                usage.Invalidate(account);
+                if (await RefreshAsync(account, ct).ConfigureAwait(true) is not { } result)
+                {
+                    continue;
+                }
+
+                Updated?.Invoke(account, result);
+                if (result.State == UsageState.Ok)
+                {
+                    return;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Disposed.
         }
     }
 
