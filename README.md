@@ -60,7 +60,26 @@ xattr -dr com.apple.quarantine MCACC.app
    - **Claude Code** öffnet ein Terminal im Home-Ordner mit gesetztem `CLAUDE_CONFIG_DIR` und
      ruft `claude` auf. Nach `/exit` bleibt die Shell offen, die Variable bleibt gesetzt.
 
-Nach einem erfolgreichen Start schließt sich MCACC (abschaltbar in den Einstellungen).
+Nach einem erfolgreichen Start blendet sich MCACC aus (abschaltbar in den Einstellungen).
+
+### Infobereich und Menüleiste
+
+MCACC bleibt nach dem Start dauerhaft als Icon im Windows-Infobereich bzw. in der macOS-Menüleiste.
+Das Fenster zu schließen blendet es nur aus. Beendet wird MCACC erst über **MCACC beenden** im
+Menü des Icons oder mit Cmd+Q.
+
+- **Windows:** Linksklick öffnet das Fenster, Rechtsklick das Menü.
+- **macOS:** Ein Klick öffnet das Menü. Das Dock-Icon ist nur zu sehen, solange das Fenster offen
+  ist; ein Klick darauf öffnet es wieder.
+
+Das Menü enthält pro Account ein Untermenü mit den Limits (oder dem Hinweis, warum keine da sind)
+und den Punkten **Claude Desktop starten** und **Claude Code starten**; „läuft“ steht dabei, wenn
+Claude Desktop mit dem Account läuft. Ein Start von dort bleibt unsichtbar, solange keine Rückfrage
+nötig ist; bei einem Konflikt oder Fehler öffnet sich das Fenster. Dazu kommen **Limits
+aktualisieren** und **Einstellungen …**. Der Tooltip zeigt die Limits des zuletzt genutzten Accounts.
+
+Ein zweiter Start von MCACC öffnet nur das Fenster der laufenden Instanz. Nach dem Ausblenden
+beginnt das Fenster wieder bei der Account-Auswahl.
 
 ### Anmelden
 
@@ -72,7 +91,7 @@ Anmeldung deshalb im falschen Account.
 Darum bleibt MCACC nach dem Start eines Profil-Accounts bis zu drei Minuten offen und sagt das
 auch. Taucht in dieser Zeit so ein Start auf, beendet MCACC ihn, bevor er den einmaligen Code
 einlösen kann, und übergibt die Adresse an das Profil des gewählten Accounts. Danach schließt
-sich MCACC. Wer nicht warten will, schließt es einfach selbst.
+sich MCACC aus. Wer nicht warten will, schließt das Fenster einfach selbst.
 
 ### Tastatur
 
@@ -82,7 +101,7 @@ sich MCACC. Wer nicht warten will, schließt es einfach selbst.
 | Enter | Auswählen |
 | 1 – 9 | Den n-ten Account direkt wählen |
 | D / C | Auf der Zielseite: Desktop bzw. Code |
-| Esc / Backspace | Zurück, auf der ersten Seite: schließen |
+| Esc / Backspace | Zurück, auf der ersten Seite: ausblenden |
 | F2 | Den fokussierten Account umbenennen |
 | Entf | Den fokussierten Account entfernen |
 | Strg/Cmd + N | Neuen Account anlegen |
@@ -113,7 +132,7 @@ Account „Standard“ lässt sich nicht entfernen, und seine Daten werden nie g
 Im ⋮-Menü einer Kachel öffnet **Info & Statistik** eine Seite mit allem, was sich über den Account auslesen lässt:
 
 - **Konto:** E-Mail, Name, Plan, Organisation, Abrechnung, Rate-Limit-Stufe, Ablauf des Tokens, Claude-Code-Starts und seit wann Claude Desktop läuft.
-- **Limits:** 5h, Woche und weitere Fenster als Ringe, dazu der Verlauf der letzten 24 Stunden oder 7 Tage. MCACC fragt die Limits alle 5 Minuten ab, solange es offen ist; der Verlauf wächst nur in dieser Zeit.
+- **Limits:** 5h, Woche und weitere Fenster als Ringe, dazu der Verlauf der letzten 24 Stunden oder 7 Tage. MCACC fragt die Limits alle 5 Minuten ab, solange es läuft; der Verlauf wächst nur in dieser Zeit.
 - **Claude Code Nutzung:** Tokens, Sessions, Nachrichten und aktive Tage aus den lokalen Session-Logs (`<claude-dir>/projects/**/*.jsonl`), als Tagesbalken nach Modell, nach Token-Art, nach Projekt und als Modelltabelle, für 7, 30 oder 90 Tage.
 
 Die Kosten sind eine **Schätzung** zu API-Listenpreisen („≈“). Mit einem Abo zahlst du sie nicht; sie zeigen nur, was dieselbe Nutzung über die API gekostet hätte. Der erste Aufruf liest alle Logs und kann bei großen Verzeichnissen einige Sekunden dauern; danach liest MCACC nur, was neu hinzugekommen ist.
@@ -122,7 +141,7 @@ Die Kosten sind eine **Schätzung** zu API-Listenpreisen („≈“). Mit einem 
 
 - **Terminal für Claude Code** — nur tatsächlich installierte werden angeboten.
 - **Shell im Windows Terminal** — PowerShell 7, Windows PowerShell oder Eingabeaufforderung.
-- **Nach dem Start schließen**
+- **Nach dem Start ausblenden** — MCACC bleibt im Infobereich bzw. in der Menüleiste.
 - **Datenordner** mit Knopf zum Öffnen im Explorer bzw. Finder.
 
 ## Datenablage
