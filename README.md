@@ -87,7 +87,10 @@ wird. Unter Windows steht dafür der Wert `MCACC` unter
 `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, unter macOS
 `~/Library/LaunchAgents/de.benjaminbiber.mcacc.plist` (wirkt ab der nächsten Anmeldung). Ein Start
 mit `--hidden` holt das Fenster einer laufenden Instanz nicht nach vorne. Debug-Builds und Läufe mit
-`MCACC_HOME` legen keinen Eintrag an.
+`MCACC_HOME` legen keinen Eintrag an. macOS meldet den neuen Eintrag einmal als „Hintergrundobjekt
+hinzugefügt“. Läuft MCACC aus einem Zip heraus oder unter macOS noch aus dem Download-Ordner (App
+Translocation), legt es keinen Eintrag an. Vor dem Löschen von MCACC den Schalter ausschalten, sonst
+bleibt der Eintrag stehen.
 
 ### Anmelden
 
@@ -218,6 +221,8 @@ dotnet test MCACC.slnx
   einzige Stelle mit Process, WMI, libc, Keychain und HTTP) · `Mcacc.App` (Avalonia, MVVM).
 - Spezifikation und Plan liegen unter `docs/superpowers/`, die Spike-Fragen in
   `docs/spike-checklist.md` und deren Ergebnisse in `docs/spike-results.md`.
+- Ein Release-Build, der aus Rider oder `bin/Release` startet, biegt den Autostart-Eintrag auf sich
+  um, bis die installierte Kopie wieder startet; zum Ausprobieren `MCACC_HOME` setzen.
 
 ## Lizenzen der mitgelieferten Schriften
 
