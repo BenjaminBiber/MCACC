@@ -35,12 +35,11 @@ public static partial class Texts
     public const string InfoNoLimits = "Keine Limits verfügbar.";
     public const string InfoLimitsStale = "Aktualisierung fehlgeschlagen – angezeigt wird der letzte Stand.";
 
+    public const string InfoLimitsNow = "Aktuell";
     public const string InfoHistory = "Verlauf";
     public const string InfoHistoryDay = "24 h";
     public const string InfoHistoryWeek = "7 Tage";
     public const string InfoNoHistory = "Noch kein Verlauf – er wächst, solange MCACC offen ist.";
-    public const string InfoHistoryDayStart = "vor 24 h";
-    public const string InfoHistoryWeekStart = "vor 7 Tagen";
     public const string InfoNow = "jetzt";
 
     public const string InfoTokens = "Tokens";
@@ -51,6 +50,11 @@ public static partial class Texts
     public const string InfoActiveDays = "Aktive Tage";
 
     public const string InfoTokensPerDay = "Tokens pro Tag";
+    public const string InfoBars = "Balken";
+    public const string InfoCalendar = "Kalender";
+    public const string InfoLess = "Weniger";
+    public const string InfoMore = "Mehr";
+    public static readonly IReadOnlyList<string> InfoWeekdays = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
     public const string InfoTokenKinds = "Token-Arten";
     public const string InfoTopProjects = "Top-Projekte";
     public const string InfoModels = "Modelle";
@@ -178,6 +182,18 @@ public static partial class Texts
 
     public static string DayLabel(DateOnly day) => day.ToString("dd.MM.", De);
 
+    public static string EstimatedDayTooltip(DateOnly day, long tokens) =>
+        $"{day.ToString("dddd, dd.MM.", De)} · ≈ {TokenAmount(tokens)} {InfoTokens}\n"
+        + "Geschätzt aus der Claude-Statistik – die Logs dieses Tages sind ganz oder teilweise gelöscht.";
+
+    /// <summary>Under the calendar when some of its days are estimates.</summary>
+    public static string InfoCalendarEstimated(int days) => days == 1
+        ? "1 Tag (durchgestrichen) ist aus der Claude-Statistik geschätzt, seine Logs sind gelöscht."
+        : $"{days} Tage (durchgestrichen) sind aus der Claude-Statistik geschätzt, ihre Logs sind gelöscht.";
+
+    /// <summary>"Sept", "März": the short month name without its abbreviation dot.</summary>
+    public static string MonthLabel(DateOnly day) => day.ToString("MMM", De).TrimEnd('.');
+
     public static string DayTooltip(DailyUsage day)
     {
         var lines = day.TokensByModel
@@ -186,6 +202,12 @@ public static partial class Texts
             .Select(entry => $"{ModelName(entry.Key)}: {TokenAmount(entry.Value)}");
         return string.Join('\n', [$"{day.Day.ToString("dddd, dd.MM.", De)} · {TokenAmount(day.Total)} {InfoTokens}", .. lines]);
     }
+
+    /// <summary>The day view marks clock times and a new day by its date; the week view marks each day.</summary>
+    public static string HistoryTick(DateTime local, bool week) =>
+        week ? local.ToString("ddd dd.MM.", De)
+        : local.TimeOfDay == TimeSpan.Zero ? local.ToString("dd.MM.", De)
+        : local.ToString("HH:mm", De);
 
     public static string HistoryTooltip(DateTimeOffset at, double? fiveHour, double? sevenDay) =>
         $"{at.ToLocalTime().ToString("dd.MM. HH:mm", De)}\n"
@@ -198,9 +220,15 @@ public static partial class Texts
 
     /// <param name="project">The full working directory; the bar list shows only its last folder.</param>
     /// <param name="cost">Null when no model of the project has a price; the tooltip then names no amount.</param>
-    public static string ProjectTooltip(string project, long tokens, decimal? cost) =>
+    public static string ProjectTooltip(string project, long tokens, decimal? cost, int worktrees = 0) =>
         $"{(project.Length > 0 ? project : InfoNoProject)}\n{TokenAmount(tokens)} {InfoTokens}"
-        + (cost is { } usd ? $" · {Cost(usd)}" : "");
+        + (cost is { } usd ? $" · {Cost(usd)}" : "")
+        + worktrees switch
+        {
+            0 => "",
+            1 => "\ninkl. 1 Worktree",
+            _ => $"\ninkl. {worktrees} Worktrees",
+        };
 
     public static string InfoDays(int days) => $"{days} Tage";
 

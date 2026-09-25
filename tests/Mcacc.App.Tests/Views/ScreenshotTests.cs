@@ -151,6 +151,49 @@ public sealed class ScreenshotTests : IDisposable
     [InlineData("dark")]
     public async Task Info_page(string theme)
     {
+        var variant = theme == "dark" ? ThemeVariant.Dark : ThemeVariant.Light;
+        var page = InfoPage();
+
+        var window = Window(page, variant, height: 1750);
+        await page.ActivateAsync(TestContext.Current.CancellationToken);
+        Save(window, $"info-{theme}");
+    }
+
+    /// <summary>A wide window, where the account and the limits sit side by side; once per view of the limits.</summary>
+    [AvaloniaTheory]
+    [InlineData("now")]
+    [InlineData("history")]
+    public async Task Info_page_in_a_wide_window(string view)
+    {
+        var page = InfoPage();
+        page.ShowLimitsViewCommand.Execute(view);
+
+        var window = Window(page, ThemeVariant.Light, width: 1300, height: 1400);
+        await page.ActivateAsync(TestContext.Current.CancellationToken);
+        Save(window, $"info-wide-{view}");
+    }
+
+    /// <summary>The tokens per day as a calendar, in the default and in a wide window.</summary>
+    [AvaloniaTheory]
+    [InlineData(760)]
+    [InlineData(1300)]
+    public async Task Info_page_with_the_calendar(int width)
+    {
+        var page = InfoPage();
+        // Claude's summary knows the logged month and, in weekday bursts, the two months before it.
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        _services.Stats.Summary.AddRange(Enumerable.Range(0, 90)
+            .Where(i => i < 30 || today.AddDays(-i).DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday))
+            .Select(i => new ClaudeDailyTokens(today.AddDays(-i), 20_000 + 7_000 * (i % 4))));
+        page.ShowUsageViewCommand.Execute("calendar");
+
+        var window = Window(page, ThemeVariant.Light, width: width, height: 1750);
+        await page.ActivateAsync(TestContext.Current.CancellationToken);
+        Save(window, $"info-calendar-{width}");
+    }
+
+    private AccountInfoViewModel InfoPage()
+    {
         Seed();
         var now = DateTimeOffset.Now;
         _services.Usage.Profiles["privat"] = new AccountProfile(
@@ -169,11 +212,6 @@ public sealed class ScreenshotTests : IDisposable
             $"s{i / 4}",
             new TokenCounts(20_000 * (i % 5 + 1), 8_000 * (i % 3 + 1), 30_000, 5_000, 400_000 * (i % 4 + 1)),
             Messages: 10 + i % 7)));
-        var variant = theme == "dark" ? ThemeVariant.Dark : ThemeVariant.Light;
-        var page = new AccountInfoViewModel(_services.Services, Privat);
-
-        var window = Window(page, variant, height: 1750);
-        await page.ActivateAsync(TestContext.Current.CancellationToken);
-        Save(window, $"info-{theme}");
+        return new AccountInfoViewModel(_services.Services, Privat);
     }
 }

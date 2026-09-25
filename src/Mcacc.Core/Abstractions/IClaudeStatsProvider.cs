@@ -9,6 +9,9 @@ public interface IClaudeStatsProvider
     /// <param name="progress">0 to 1 over the bytes still to read; a first scan can take a while.</param>
     Task<IReadOnlyList<TokenBucket>> LoadAsync(Account account, IProgress<double>? progress, CancellationToken ct);
 
+    /// <summary>Claude Code's own daily summary of the account; it still knows days whose logs are gone.</summary>
+    IReadOnlyList<ClaudeDailyTokens> LoadSummary(Account account);
+
     /// <summary>For a removed account: deletes its index.</summary>
     void Forget(Account account);
 }

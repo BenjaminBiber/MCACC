@@ -21,7 +21,13 @@ public sealed partial class AccountInfoViewModel : PageViewModel
 
     internal const double HistoryWeekGap = 2;
 
+    /// <summary>In hours: the distance of the x axis marks in the day view; the week view marks each midnight.</summary>
+    internal const int HistoryDayTickStep = 3;
+
     private const int NamedModels = 5;
+
+    /// <summary>53 weeks: a year, whatever weekday it starts on; the calendar shows as many of them as fit.</summary>
+    internal const int CalendarSpan = 53 * 7;
 
     private static readonly ChartColor[] ModelColors =
         [ChartColor.Series1, ChartColor.Series2, ChartColor.Series3, ChartColor.Series4, ChartColor.Series5];
@@ -29,6 +35,8 @@ public sealed partial class AccountInfoViewModel : PageViewModel
     private readonly AppServices _services;
     private CancellationTokenSource? _life;
     private IReadOnlyList<TokenBucket> _buckets = [];
+    private IReadOnlyList<ClaudeDailyTokens> _summary = [];
+    private IReadOnlyDictionary<string, string> _projects = new Dictionary<string, string>();
     private AccountProfile? _profile;
     private ClaudeLoginInfo? _login;
     private CredentialFacts? _credentials;
@@ -66,11 +74,25 @@ public sealed partial class AccountInfoViewModel : PageViewModel
 
     public string LimitsHeader => Texts.InfoLimits;
 
+    public string LimitsNowText => Texts.InfoLimitsNow;
+
     public string HistoryHeader => Texts.InfoHistory;
 
     public string UsageHeader => Texts.InfoUsage;
 
     public string TokensPerDayHeader => Texts.InfoTokensPerDay;
+
+    public string BarsText => Texts.InfoBars;
+
+    public string CalendarText => Texts.InfoCalendar;
+
+    public string LessText => Texts.InfoLess;
+
+    public string MoreText => Texts.InfoMore;
+
+    public IReadOnlyList<string> Weekdays => Texts.InfoWeekdays;
+
+    public Func<DateOnly, string> MonthLabel { get; } = Texts.MonthLabel;
 
     public string KindsHeader => Texts.InfoTokenKinds;
 
@@ -142,6 +164,10 @@ public sealed partial class AccountInfoViewModel : PageViewModel
 
     // History
 
+    /// <summary>The limits card shows either the current rings or their history.</summary>
+    [ObservableProperty]
+    public partial bool IsLimitsHistory { get; private set; }
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsHistoryDay))]
     public partial bool IsHistoryWeek { get; private set; }
@@ -158,7 +184,7 @@ public sealed partial class AccountInfoViewModel : PageViewModel
     public partial double HistoryGap { get; private set; } = HistoryDayGap;
 
     [ObservableProperty]
-    public partial string HistoryStartLabel { get; private set; } = Texts.InfoHistoryDayStart;
+    public partial IReadOnlyList<AxisTick> HistoryTicks { get; private set; } = [];
 
     // Claude Code usage
 
@@ -192,6 +218,17 @@ public sealed partial class AccountInfoViewModel : PageViewModel
 
     [ObservableProperty]
     public partial IReadOnlyList<LegendItemViewModel> ModelLegend { get; private set; } = [];
+
+    /// <summary>The tokens per day as bars over the chosen range, or as a calendar over the last year.</summary>
+    [ObservableProperty]
+    public partial bool IsUsageCalendar { get; private set; }
+
+    [ObservableProperty]
+    public partial IReadOnlyList<CalendarDay> CalendarDays { get; private set; } = [];
+
+    /// <summary>Says how many calendar days are estimates from Claude's summary; null when none are.</summary>
+    [ObservableProperty]
+    public partial string? CalendarNote { get; private set; }
 
     [ObservableProperty]
     public partial IReadOnlyList<ChartSlice> KindSlices { get; private set; } = [];
@@ -238,6 +275,10 @@ public sealed partial class AccountInfoViewModel : PageViewModel
     [RelayCommand]
     public Task RefreshAsync() => RefreshLimitsAsync(_life?.Token ?? CancellationToken.None);
 
+    /// <param name="view">"now" or "history".</param>
+    [RelayCommand]
+    public void ShowLimitsView(string view) => IsLimitsHistory = view == "history";
+
     /// <param name="range">"24h" or "7d".</param>
     [RelayCommand]
     public void ShowHistory(string range)
@@ -245,6 +286,10 @@ public sealed partial class AccountInfoViewModel : PageViewModel
         IsHistoryWeek = range == "7d";
         LoadHistory();
     }
+
+    /// <param name="view">"bars" or "calendar".</param>
+    [RelayCommand]
+    public void ShowUsageView(string view) => IsUsageCalendar = view == "calendar";
 
     /// <param name="days">"7", "30" or "90".</param>
     [RelayCommand]
@@ -348,7 +393,7 @@ public sealed partial class AccountInfoViewModel : PageViewModel
         var points = _services.Usage.GetHistory(Account, start);
         HistoryMax = span.TotalHours;
         HistoryGap = IsHistoryWeek ? HistoryWeekGap : HistoryDayGap;
-        HistoryStartLabel = IsHistoryWeek ? Texts.InfoHistoryWeekStart : Texts.InfoHistoryDayStart;
+        HistoryTicks = TicksFor(start, span, IsHistoryWeek, TimeZoneInfo.Local);
         HistorySeries = points.Count == 0
             ? []
             :
@@ -356,6 +401,26 @@ public sealed partial class AccountInfoViewModel : PageViewModel
                 Line(Texts.UsageFiveHour, ChartColor.Series1, points, start, point => point.FiveHour),
                 Line(Texts.UsageSevenDay, ChartColor.Series2, points, start, point => point.SevenDay),
             ];
+    }
+
+    /// <summary>Marks at full local clock hours, in hours since <paramref name="start"/>.</summary>
+    internal static IReadOnlyList<AxisTick> TicksFor(DateTimeOffset start, TimeSpan span, bool week, TimeZoneInfo zone)
+    {
+        var step = week ? 24 : HistoryDayTickStep;
+        var ticks = new List<AxisTick>();
+        for (var local = TimeZoneInfo.ConvertTime(start, zone).Date; ; local = local.AddHours(step))
+        {
+            var x = (new DateTimeOffset(local, zone.GetUtcOffset(local)) - start).TotalHours;
+            if (x > span.TotalHours)
+            {
+                return ticks;
+            }
+
+            if (x >= 0)
+            {
+                ticks.Add(new AxisTick(x, Texts.HistoryTick(local, week)));
+            }
+        }
     }
 
     private static LineSeries Line(
@@ -392,9 +457,16 @@ public sealed partial class AccountInfoViewModel : PageViewModel
         try
         {
             var buckets = await _services.Stats.LoadAsync(Account, progress, CancellationToken.None).ConfigureAwait(true);
+            var summary = await Task.Run(() => _services.Stats.LoadSummary(Account), CancellationToken.None)
+                .ConfigureAwait(true);
+            // The repositories are looked up on disk once per path, not on each switch of the range.
+            var projects = await Task.Run(() => ProjectRoot.Resolve(buckets.Select(bucket => bucket.Project)), CancellationToken.None)
+                .ConfigureAwait(true);
             if (!life.IsCancellationRequested)
             {
                 _buckets = buckets;
+                _summary = summary;
+                _projects = projects;
                 ShowStats();
             }
         }
@@ -418,7 +490,23 @@ public sealed partial class AccountInfoViewModel : PageViewModel
 
     private void ShowStats()
     {
-        var stats = AccountStatsQuery.Compute(_buckets, DateTimeOffset.Now, UsageDays, TimeZoneInfo.Local);
+        var now = DateTimeOffset.Now;
+        var stats = AccountStatsQuery.Compute(
+            _buckets,
+            now,
+            UsageDays,
+            TimeZoneInfo.Local,
+            projectOf: cwd => _projects.TryGetValue(cwd, out var project) ? project : ProjectRoot.Of(cwd));
+        var calendar = CalendarBackfill.Fill(AccountStatsQuery.Daily(_buckets, now, CalendarSpan, TimeZoneInfo.Local), _summary);
+        CalendarDays = calendar
+            .Select(day => new CalendarDay(
+                day.Day,
+                day.Tokens,
+                day.Estimated ? Texts.EstimatedDayTooltip(day.Day, day.Tokens) : Texts.DayTooltip(day.Own),
+                day.Estimated))
+            .ToList();
+        var estimated = calendar.Count(day => day.Estimated);
+        CalendarNote = estimated > 0 ? Texts.InfoCalendarEstimated(estimated) : null;
         var total = stats.Tokens.Total;
         HasSessions = total > 0;
 
@@ -481,7 +569,7 @@ public sealed partial class AccountInfoViewModel : PageViewModel
                 project.Tokens,
                 Texts.TokenAmount(project.Tokens),
                 ChartColor.Accent,
-                Texts.ProjectTooltip(project.Project, project.Tokens, project.Cost)))
+                Texts.ProjectTooltip(project.Project, project.Tokens, project.Cost, project.Worktrees)))
             .ToList();
 
         Models = stats.Models

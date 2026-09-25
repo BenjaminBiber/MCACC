@@ -169,6 +169,19 @@ public sealed class AccountInfoViewModelTests : IDisposable
     // History
 
     [Fact]
+    public void The_limits_card_shows_the_rings_first_and_switches_to_the_history()
+    {
+        var page = Page();
+        page.IsLimitsHistory.ShouldBeFalse();
+
+        page.ShowLimitsViewCommand.Execute("history");
+        page.IsLimitsHistory.ShouldBeTrue();
+
+        page.ShowLimitsViewCommand.Execute("now");
+        page.IsLimitsHistory.ShouldBeFalse();
+    }
+
+    [Fact]
     public void The_history_shows_the_last_24_hours_first()
     {
         _services.Usage.History["privat"] = [Point(30, 80, 20), Point(2, 40, 10)];
@@ -178,7 +191,7 @@ public sealed class AccountInfoViewModelTests : IDisposable
         page.IsHistoryDay.ShouldBeTrue();
         page.HistoryMax.ShouldBe(24);
         page.HistoryGap.ShouldBe(AccountInfoViewModel.HistoryDayGap);
-        page.HistoryStartLabel.ShouldBe(Texts.InfoHistoryDayStart);
+        page.HistoryTicks.ShouldNotBeEmpty();
         page.HistorySeries.Select(series => series.Name).ShouldBe([Texts.UsageFiveHour, Texts.UsageSevenDay]);
         var point = page.HistorySeries[0].Points.ShouldHaveSingleItem();
         point.X.ShouldBe(22, tolerance: 0.01);
@@ -198,8 +211,33 @@ public sealed class AccountInfoViewModelTests : IDisposable
         page.IsHistoryDay.ShouldBeFalse();
         page.HistoryMax.ShouldBe(168);
         page.HistoryGap.ShouldBe(AccountInfoViewModel.HistoryWeekGap);
-        page.HistoryStartLabel.ShouldBe(Texts.InfoHistoryWeekStart);
+        page.HistoryTicks.Count.ShouldBeInRange(7, 8);
         page.HistorySeries[0].Points.Select(p => p.Y).ShouldBe([80, 40]);
+    }
+
+    [Fact]
+    public void The_day_view_marks_every_third_clock_hour_and_midnight_by_its_date()
+    {
+        var start = new DateTimeOffset(2026, 9, 23, 14, 20, 0, TimeSpan.Zero);
+
+        var ticks = AccountInfoViewModel.TicksFor(start, TimeSpan.FromHours(24), week: false, TimeZoneInfo.Utc);
+
+        ticks.Select(tick => tick.Label)
+            .ShouldBe(["15:00", "18:00", "21:00", "24.09.", "03:00", "06:00", "09:00", "12:00"]);
+        ticks[0].X.ShouldBe(40 / 60d, tolerance: 1e-9);
+        ticks[^1].X.ShouldBe(21 + 40 / 60d, tolerance: 1e-9);
+    }
+
+    [Fact]
+    public void The_week_view_marks_each_midnight_with_the_weekday()
+    {
+        var start = new DateTimeOffset(2026, 9, 17, 14, 20, 0, TimeSpan.Zero);
+
+        var ticks = AccountInfoViewModel.TicksFor(start, TimeSpan.FromDays(7), week: true, TimeZoneInfo.Utc);
+
+        ticks.Select(tick => tick.Label)
+            .ShouldBe(["Fr 18.09.", "Sa 19.09.", "So 20.09.", "Mo 21.09.", "Di 22.09.", "Mi 23.09.", "Do 24.09."]);
+        ticks[0].X.ShouldBe(9 + 40 / 60d, tolerance: 1e-9);
     }
 
     [Fact]
@@ -350,6 +388,59 @@ public sealed class AccountInfoViewModelTests : IDisposable
         page.IsDays30.ShouldBeFalse();
         page.DailyBars.Count.ShouldBe(7);
         page.Kpis[4].Value.ShouldBe("1 von 7");
+    }
+
+    [Fact]
+    public async Task The_calendar_covers_the_last_year_whatever_the_period()
+    {
+        _services.Stats.Buckets.Add(Bucket("claude-opus-4-5", 1_000));
+        var page = Page();
+        await page.ActivateAsync(Ct);
+        page.IsUsageCalendar.ShouldBeFalse();
+
+        page.ShowUsageViewCommand.Execute("calendar");
+        page.ShowDaysCommand.Execute("7");
+
+        page.IsUsageCalendar.ShouldBeTrue();
+        page.CalendarDays.Count.ShouldBe(AccountInfoViewModel.CalendarSpan);
+        page.CalendarDays[^1].Day.ShouldBe(DateOnly.FromDateTime(DateTime.Now));
+        page.CalendarDays.Sum(day => day.Value).ShouldBe(1_000);
+        page.CalendarDays.ShouldAllBe(day => day.Tooltip != null);
+
+        page.ShowUsageViewCommand.Execute("bars");
+        page.IsUsageCalendar.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task The_calendar_estimates_days_without_logs_from_the_claude_summary()
+    {
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        var gone = today.AddDays(-40);
+        _services.Stats.Buckets.Add(Bucket("claude-opus-4-5", 1_000));
+        _services.Stats.Summary.AddRange([new ClaudeDailyTokens(gone, 3), new ClaudeDailyTokens(today, 10)]);
+        var page = Page();
+
+        await page.ActivateAsync(Ct);
+
+        // Today both know it: 1 000 by MCACC's count against 10 by Claude's, a factor of 100.
+        var day = page.CalendarDays.Single(entry => entry.Day == gone);
+        day.Value.ShouldBe(300);
+        day.Estimated.ShouldBeTrue();
+        page.CalendarDays.Single(entry => entry.Day == today).Estimated.ShouldBeFalse();
+        day.Tooltip.ShouldBe(Texts.EstimatedDayTooltip(gone, 300));
+        page.CalendarNote.ShouldBe(Texts.InfoCalendarEstimated(1));
+        page.Kpis[0].Value.ShouldBe(Texts.TokenAmount(1_000));
+    }
+
+    [Fact]
+    public async Task Without_estimated_days_the_calendar_has_no_note()
+    {
+        _services.Stats.Buckets.Add(Bucket("claude-opus-4-5", 1_000));
+        var page = Page();
+
+        await page.ActivateAsync(Ct);
+
+        page.CalendarNote.ShouldBeNull();
     }
 
     [Fact]

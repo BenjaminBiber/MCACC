@@ -42,6 +42,24 @@ public class AccountStatsQueryTests
     }
 
     [Fact]
+    public void The_daily_totals_cover_every_local_day_of_the_range()
+    {
+        var days = AccountStatsQuery.Daily(
+            [Bucket("2026-09-01T10:00Z", input: 3), Bucket("2026-09-01T11:00Z", model: "claude-sonnet-4-5", input: 4)],
+            Now,
+            30,
+            PlusTwo);
+
+        days.Count.ShouldBe(30);
+        days[0].Day.ShouldBe(new DateOnly(2026, 8, 26));
+        days[^1].Day.ShouldBe(new DateOnly(2026, 9, 24));
+        var first = days.Single(day => day.Day == new DateOnly(2026, 9, 1));
+        first.Total.ShouldBe(7);
+        first.TokensByModel.Count.ShouldBe(2);
+        days.Where(day => day.Day != first.Day).ShouldAllBe(day => day.Total == 0);
+    }
+
+    [Fact]
     public void A_late_utc_hour_belongs_to_the_next_local_day()
     {
         var stats = Compute(Bucket("2026-09-19T21:00Z", input: 1), Bucket("2026-09-19T22:00Z", input: 2));
@@ -156,6 +174,22 @@ public class AccountStatsQueryTests
         stats.Projects.ShouldBe([
             new ProjectUsage(@"C:\B", 30, 0.00015m),
             new ProjectUsage(@"C:\C", 20, 0.0001m),
+        ]);
+    }
+
+    [Fact]
+    public void Sessions_in_worktrees_count_to_their_repository()
+    {
+        var stats = Compute(
+            Bucket("2026-09-20T08:00Z", project: @"C:\Code\Cows", input: 100),
+            Bucket("2026-09-20T08:00Z", project: @"C:\Code\Cows\.claude\worktrees\kpis-d4b9ad", input: 200),
+            Bucket("2026-09-20T09:00Z", project: @"C:\Code\Cows\.claude\worktrees\kpis-d4b9ad\src", input: 50),
+            Bucket("2026-09-20T08:00Z", project: @"C:\Code\Cows\.claude\worktrees\meds-f148d0", input: 25),
+            Bucket("2026-09-20T08:00Z", project: @"C:\Code\Azura\.claude\worktrees\pr-417", input: 10));
+
+        stats.Projects.ShouldBe([
+            new ProjectUsage(@"C:\Code\Cows", 375, 0.001875m, Worktrees: 2),
+            new ProjectUsage(@"C:\Code\Azura", 10, 0.00005m, Worktrees: 1),
         ]);
     }
 }

@@ -323,6 +323,10 @@ internal sealed class FakeClaudeStatsProvider : IClaudeStatsProvider
         return Buckets.ToList();
     }
 
+    public List<ClaudeDailyTokens> Summary { get; } = [];
+
+    public IReadOnlyList<ClaudeDailyTokens> LoadSummary(Account account) => Summary.ToList();
+
     public void Forget(Account account) => Forgotten.Add(account.Id);
 }
 

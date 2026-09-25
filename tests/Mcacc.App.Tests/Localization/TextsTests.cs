@@ -49,6 +49,8 @@ public class TextsTests
         Texts.ProjectTooltip("/home/ben/shop", 1_500, 0.5m).ShouldBe("/home/ben/shop\n1,5 k Tokens · ≈ 0,50 $");
         Texts.ProjectTooltip("", 1_500, 0.5m).ShouldStartWith(Texts.InfoNoProject);
         Texts.ProjectTooltip("/home/ben/shop", 1_500, null).ShouldBe("/home/ben/shop\n1,5 k Tokens");
+        Texts.ProjectTooltip("/home/ben/shop", 1_500, null, 1).ShouldBe("/home/ben/shop\n1,5 k Tokens\ninkl. 1 Worktree");
+        Texts.ProjectTooltip("/home/ben/shop", 1_500, null, 3).ShouldEndWith("\ninkl. 3 Worktrees");
     }
 
     [Theory]

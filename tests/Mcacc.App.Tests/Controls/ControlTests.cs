@@ -307,6 +307,7 @@ public class ControlTests
         Threshold = 90,
         StartLabel = "vor 24 h",
         EndLabel = "jetzt",
+        XTicks = [new AxisTick(0.5, "12:00"), new AxisTick(0.98, "23:00")],
         Series =
         [
             new LineSeries("5h", ChartColor.Series1, [new ChartPoint(0, 20, "a"), new ChartPoint(1, 95, "b")]),
@@ -337,8 +338,65 @@ public class ControlTests
         }));
         Rendered(Show(new DonutChart { Width = 120, Height = 120, Slices = [new ChartSlice("Input", 5, ChartColor.Series1)] }));
         Rendered(Show(new DonutChart { Width = 120, Height = 120, EmptyText = "leer" }));
+        Rendered(Show(Calendar()));
+        Rendered(Show(new CalendarHeatmap { Width = 360, EmptyText = "leer" }));
         Rendered(Show(new BarList { Width = 360, Items = [new BarListItem("Mcacc", 5, "5 k", ChartColor.Accent)] }));
         Rendered(Show(new ChartSwatch { Color = ChartColor.Series3 }));
+    }
+
+    /// <summary>Wednesday 2026-09-02 to Thursday 2026-09-24: four weeks, the first and the last one partly.</summary>
+    private static CalendarHeatmap Calendar() => new()
+    {
+        Width = 600,
+        WeekdayLabels = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"],
+        MonthFormatter = day => day.ToString("MMM", System.Globalization.CultureInfo.InvariantCulture),
+        LessText = "Weniger",
+        MoreText = "Mehr",
+        Days = Enumerable.Range(0, 23)
+            .Select(i => new CalendarDay(new DateOnly(2026, 9, 2).AddDays(i), i % 4, $"t{i}"))
+            .ToList(),
+    };
+
+    [AvaloniaFact]
+    public void A_calendar_tells_the_day_under_the_pointer_and_leaves_out_days_outside_its_range()
+    {
+        var chart = Calendar();
+        Show(chart);
+        chart.Bounds.Height.ShouldBeGreaterThan(7 * 14);
+
+        // Four weeks fill the width at the largest cells; the first column is the week of Monday 2026-08-31.
+        const double pitch = 22;
+        Point Cell(int week, int row) => new(
+            CalendarHeatmap.DayLabels + week * pitch + 5,
+            CalendarHeatmap.MonthLabels + row * pitch + 5);
+
+        chart.TooltipAt(Cell(0, 2)).ShouldBe("t0");
+        chart.TooltipAt(Cell(3, 3)).ShouldBe("t22");
+        chart.TooltipAt(Cell(0, 0)).ShouldBeNull();
+        chart.TooltipAt(Cell(3, 4)).ShouldBeNull();
+        chart.TooltipAt(new Point(2, 30)).ShouldBeNull();
+    }
+
+    [Fact]
+    public void The_calendar_shades_by_quartile_and_the_highest_day_darkest()
+    {
+        var scale = CalendarHeatmap.ScaleOf([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+
+        CalendarHeatmap.LevelOf(0, scale).ShouldBe(0);
+        CalendarHeatmap.LevelOf(1, scale).ShouldBe(1);
+        CalendarHeatmap.LevelOf(4, scale).ShouldBe(2);
+        CalendarHeatmap.LevelOf(6, scale).ShouldBe(3);
+        CalendarHeatmap.LevelOf(7, scale).ShouldBe(4);
+        CalendarHeatmap.LevelOf(8, scale).ShouldBe(4);
+        CalendarHeatmap.LevelOf(5, CalendarHeatmap.ScaleOf([5])).ShouldBe(4);
+    }
+
+    [Fact]
+    public void A_calendar_week_starts_on_monday()
+    {
+        CalendarHeatmap.MondayOf(new DateOnly(2026, 9, 24)).ShouldBe(new DateOnly(2026, 9, 21));
+        CalendarHeatmap.MondayOf(new DateOnly(2026, 9, 21)).ShouldBe(new DateOnly(2026, 9, 21));
+        CalendarHeatmap.MondayOf(new DateOnly(2026, 9, 27)).ShouldBe(new DateOnly(2026, 9, 21));
     }
 
     [AvaloniaFact]

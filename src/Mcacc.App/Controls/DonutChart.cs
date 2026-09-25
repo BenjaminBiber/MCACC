@@ -21,9 +21,21 @@ public sealed class DonutChart : ChartControl
     public static readonly StyledProperty<double> ThicknessProperty =
         AvaloniaProperty.Register<DonutChart, double>(nameof(Thickness), 14);
 
+    public static readonly StyledProperty<double> CenterTextSizeProperty =
+        AvaloniaProperty.Register<DonutChart, double>(nameof(CenterTextSize), 18);
+
+    public static readonly StyledProperty<double> CenterCaptionSizeProperty =
+        AvaloniaProperty.Register<DonutChart, double>(nameof(CenterCaptionSize), 11);
+
     static DonutChart()
     {
-        AffectsRender<DonutChart>(SlicesProperty, CenterTextProperty, CenterCaptionProperty, ThicknessProperty);
+        AffectsRender<DonutChart>(
+            SlicesProperty,
+            CenterTextProperty,
+            CenterCaptionProperty,
+            ThicknessProperty,
+            CenterTextSizeProperty,
+            CenterCaptionSizeProperty);
     }
 
     public IReadOnlyList<ChartSlice>? Slices
@@ -48,6 +60,18 @@ public sealed class DonutChart : ChartControl
     {
         get => GetValue(ThicknessProperty);
         set => SetValue(ThicknessProperty, value);
+    }
+
+    public double CenterTextSize
+    {
+        get => GetValue(CenterTextSizeProperty);
+        set => SetValue(CenterTextSizeProperty, value);
+    }
+
+    public double CenterCaptionSize
+    {
+        get => GetValue(CenterCaptionSizeProperty);
+        set => SetValue(CenterCaptionSizeProperty, value);
     }
 
     private double Total => Slices?.Where(slice => slice.Value > 0).Sum(slice => slice.Value) ?? 0;
@@ -106,7 +130,7 @@ public sealed class DonutChart : ChartControl
         var y = center.Y;
         if (CenterText is { } text)
         {
-            var label = Label(text, 18, ThemeKeys.Text, ring * 1.6, FontWeight.SemiBold);
+            var label = Label(text, CenterTextSize, ThemeKeys.Text, ring * 1.6, FontWeight.SemiBold);
             y -= CenterCaption is null ? label.Height / 2 : label.Height * 0.75;
             context.DrawText(label, new Point(center.X - label.Width / 2, y));
             y += label.Height;
@@ -114,7 +138,7 @@ public sealed class DonutChart : ChartControl
 
         if (CenterCaption is { } caption)
         {
-            var label = Label(caption, 11, maxWidth: ring * 1.6);
+            var label = Label(caption, CenterCaptionSize, maxWidth: ring * 1.6);
             context.DrawText(label, new Point(center.X - label.Width / 2, CenterText is null ? y - label.Height / 2 : y));
         }
     }

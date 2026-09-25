@@ -16,6 +16,7 @@ public sealed class LineChart : ChartControl
     private const double TopPadding = 6;
     private const double BottomLabels = 18;
     private const double HitDistance = 12;
+    private const double LabelGap = 8;
 
     public static readonly StyledProperty<IReadOnlyList<LineSeries>?> SeriesProperty =
         AvaloniaProperty.Register<LineChart, IReadOnlyList<LineSeries>?>(nameof(Series));
@@ -47,6 +48,9 @@ public sealed class LineChart : ChartControl
     public static readonly StyledProperty<string?> EndLabelProperty =
         AvaloniaProperty.Register<LineChart, string?>(nameof(EndLabel));
 
+    public static readonly StyledProperty<IReadOnlyList<AxisTick>?> XTicksProperty =
+        AvaloniaProperty.Register<LineChart, IReadOnlyList<AxisTick>?>(nameof(XTicks));
+
     static LineChart()
     {
         AffectsRender<LineChart>(
@@ -59,7 +63,8 @@ public sealed class LineChart : ChartControl
             MaxGapProperty,
             YSuffixProperty,
             StartLabelProperty,
-            EndLabelProperty);
+            EndLabelProperty,
+            XTicksProperty);
     }
 
     public IReadOnlyList<LineSeries>? Series
@@ -126,6 +131,16 @@ public sealed class LineChart : ChartControl
         set => SetValue(EndLabelProperty, value);
     }
 
+    /// <summary>
+    /// Marks between the ends of the x axis; a label that would run into the start or end label or into the one
+    /// before it is left out, its grid line stays.
+    /// </summary>
+    public IReadOnlyList<AxisTick>? XTicks
+    {
+        get => GetValue(XTicksProperty);
+        set => SetValue(XTicksProperty, value);
+    }
+
     protected override bool HasData => Series?.Any(series => series.Points.Count > 0) == true;
 
     public override string? TooltipAt(Point point)
@@ -154,6 +169,13 @@ public sealed class LineChart : ChartControl
             context.DrawText(label, new Point(plot.Left - 6 - label.Width, y - label.Height / 2));
         }
 
+        var ticks = (XTicks ?? []).Where(tick => tick.X >= XMin && tick.X <= XMax).OrderBy(tick => tick.X).ToList();
+        foreach (var tick in ticks)
+        {
+            var x = Math.Round(X(tick.X, plot)) + 0.5;
+            context.DrawLine(track, new Point(x, plot.Top), new Point(x, plot.Bottom));
+        }
+
         if (!double.IsNaN(Threshold))
         {
             var y = Y(Threshold, plot);
@@ -166,15 +188,39 @@ public sealed class LineChart : ChartControl
             DrawSeries(context, series, plot);
         }
 
+        DrawXLabels(context, ticks, plot);
+    }
+
+    private void DrawXLabels(DrawingContext context, List<AxisTick> ticks, Rect plot)
+    {
+        var top = plot.Bottom + 4;
+        var left = double.NegativeInfinity;
+        var right = double.PositiveInfinity;
         if (StartLabel is { } start)
         {
-            context.DrawText(Label(start, 10), new Point(plot.Left, plot.Bottom + 4));
+            var label = Label(start, 10);
+            context.DrawText(label, new Point(plot.Left, top));
+            left = plot.Left + label.Width;
         }
 
         if (EndLabel is { } end)
         {
             var label = Label(end, 10);
-            context.DrawText(label, new Point(plot.Right - label.Width, plot.Bottom + 4));
+            context.DrawText(label, new Point(plot.Right - label.Width, top));
+            right = plot.Right - label.Width;
+        }
+
+        foreach (var tick in ticks)
+        {
+            var label = Label(tick.Label, 10);
+            var x = Math.Clamp(X(tick.X, plot) - label.Width / 2, 0, Math.Max(0, Bounds.Width - label.Width));
+            if (x < left + LabelGap || x + label.Width > right - LabelGap)
+            {
+                continue;
+            }
+
+            context.DrawText(label, new Point(x, top));
+            left = x + label.Width;
         }
     }
 

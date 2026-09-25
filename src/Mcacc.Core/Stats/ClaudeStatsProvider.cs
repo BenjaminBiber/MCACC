@@ -32,6 +32,9 @@ public sealed class ClaudeStatsProvider(StatsIndexStore store, AccountPathResolv
         }
     }
 
+    public IReadOnlyList<ClaudeDailyTokens> LoadSummary(Account account) =>
+        ClaudeStatsCache.Read(resolver.Resolve(account).EffectiveClaudeDir);
+
     public void Forget(Account account)
     {
         lock (_writeGate)

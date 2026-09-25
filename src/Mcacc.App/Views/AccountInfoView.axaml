@@ -50,86 +50,126 @@
         <TextBlock Classes="caption" Text="{Binding Subtitle}" />
       </StackPanel>
 
-      <!-- Account -->
-      <Border Classes="card">
-        <StackPanel Spacing="10">
-          <TextBlock Classes="h2" Text="{Binding AccountHeader}" />
-          <TextBlock Classes="muted" Text="{Binding NoAccountDataText}" TextWrapping="Wrap"
-                     IsVisible="{Binding !HasAccountData}" />
-          <ItemsControl ItemsSource="{Binding Fields}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate DataType="vm:InfoFieldViewModel">
-                <Grid ColumnDefinitions="170,*" Margin="0,2">
-                  <TextBlock Classes="caption" Text="{Binding Label}" />
-                  <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" />
-                </Grid>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </StackPanel>
-      </Border>
+      <!-- Account and limits: side by side, stacked once the window is too narrow for two columns -->
+      <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="16"
+            Container.Name="overview" Container.Sizing="Width">
+        <Grid.Styles>
+          <!-- Placed by style, not locally: a local value would outrank the query below -->
+          <Style Selector="Border.overview.limits">
+            <Setter Property="Grid.Column" Value="1" />
+          </Style>
+          <ContainerQuery Name="overview" Query="max-width:880">
+            <Style Selector="Border.overview">
+              <Setter Property="Grid.ColumnSpan" Value="2" />
+            </Style>
+            <Style Selector="Border.overview.limits">
+              <Setter Property="Grid.Column" Value="0" />
+              <Setter Property="Grid.Row" Value="1" />
+              <Setter Property="Margin" Value="0,16,0,0" />
+            </Style>
+          </ContainerQuery>
+        </Grid.Styles>
 
-      <!-- Limits -->
-      <Border Classes="card">
-        <StackPanel Spacing="12">
-          <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Classes="h2" Text="{Binding LimitsHeader}" />
-            <TextBlock Grid.Column="1" Classes="muted" FontSize="12" Text="{Binding LimitsAsOf}"
-                       VerticalAlignment="Center" />
-          </Grid>
-          <Border Classes="banner" IsVisible="{Binding LimitsHint, Converter={x:Static ObjectConverters.IsNotNull}}">
-            <TextBlock Text="{Binding LimitsHint}" TextWrapping="Wrap" />
-          </Border>
-          <TextBlock Classes="muted" Text="{Binding NoLimitsText}" IsVisible="{Binding !HasRings}" />
-          <ItemsControl ItemsSource="{Binding Rings}">
-            <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate>
-                <WrapPanel />
-              </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate DataType="vm:LimitRingViewModel">
-                <StackPanel Width="120" Spacing="4" Margin="0,0,12,8">
-                  <controls:DonutChart Width="96" Height="96" Thickness="10"
-                                       Slices="{Binding Slices}"
-                                       CenterText="{Binding ValueText}"
-                                       CenterCaption="{Binding Label}" />
-                  <TextBlock Classes="muted" FontSize="12" Text="{Binding ResetText}" TextAlignment="Center" />
-                </StackPanel>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
+        <!-- Account -->
+        <Border Classes="card overview">
+          <StackPanel Spacing="10">
+            <TextBlock Classes="h2" Text="{Binding AccountHeader}" />
+            <TextBlock Classes="muted" Text="{Binding NoAccountDataText}" TextWrapping="Wrap"
+                       IsVisible="{Binding !HasAccountData}" />
+            <ItemsControl ItemsSource="{Binding Fields}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="vm:InfoFieldViewModel">
+                  <Grid ColumnDefinitions="140,*" Margin="0,2">
+                    <TextBlock Classes="caption" Text="{Binding Label}" />
+                    <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
 
-          <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Classes="caption" Text="{Binding HistoryHeader}" VerticalAlignment="Center" />
-            <Border Grid.Column="1" Classes="chip" Padding="2">
-              <StackPanel Orientation="Horizontal">
-                <Button Classes="segment" Classes.selected="{Binding IsHistoryDay}"
-                        Content="{Binding HistoryDayText}"
-                        Command="{Binding ShowHistoryCommand}" CommandParameter="24h" />
-                <Button Classes="segment" Classes.selected="{Binding IsHistoryWeek}"
-                        Content="{Binding HistoryWeekText}"
-                        Command="{Binding ShowHistoryCommand}" CommandParameter="7d" />
+        <!-- Limits: the current rings or their history, one at a time -->
+        <Border Classes="card overview limits">
+          <Grid RowDefinitions="Auto,Auto,*">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBlock Classes="h2" Text="{Binding LimitsHeader}" />
+                <TextBlock Classes="muted" FontSize="12" Text="{Binding LimitsAsOf}" VerticalAlignment="Center" />
               </StackPanel>
+              <Border Grid.Column="1" Classes="chip" Padding="2" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal">
+                  <Button Classes="segment" Classes.selected="{Binding !IsLimitsHistory}"
+                          Content="{Binding LimitsNowText}"
+                          Command="{Binding ShowLimitsViewCommand}" CommandParameter="now" />
+                  <Button Classes="segment" Classes.selected="{Binding IsLimitsHistory}"
+                          Content="{Binding HistoryHeader}"
+                          Command="{Binding ShowLimitsViewCommand}" CommandParameter="history" />
+                </StackPanel>
+              </Border>
+            </Grid>
+            <Border Grid.Row="1" Classes="banner" Margin="0,12,0,0"
+                    IsVisible="{Binding LimitsHint, Converter={x:Static ObjectConverters.IsNotNull}}">
+              <TextBlock Text="{Binding LimitsHint}" TextWrapping="Wrap" />
             </Border>
+
+            <!-- The rings sit in the middle of the height the account card leaves next to them -->
+            <Panel Grid.Row="2" Margin="0,12,0,0" IsVisible="{Binding !IsLimitsHistory}">
+              <TextBlock Classes="muted" Text="{Binding NoLimitsText}" IsVisible="{Binding !HasRings}" />
+              <ItemsControl ItemsSource="{Binding Rings}" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <WrapPanel HorizontalAlignment="Center" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate DataType="vm:LimitRingViewModel">
+                    <StackPanel Width="170" Spacing="8" Margin="12,0,12,8">
+                      <controls:DonutChart Width="150" Height="150" Thickness="14"
+                                           CenterTextSize="28" CenterCaptionSize="13"
+                                           Slices="{Binding Slices}"
+                                           CenterText="{Binding ValueText}"
+                                           CenterCaption="{Binding Label}" />
+                      <TextBlock Classes="muted" FontSize="13" Text="{Binding ResetText}" TextAlignment="Center" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Panel>
+
+            <!-- The chart takes the height the account card leaves next to it -->
+            <DockPanel Grid.Row="2" Margin="0,12,0,0" IsVisible="{Binding IsLimitsHistory}">
+              <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                <ItemsControl ItemsSource="{Binding HistoryLegend}" VerticalAlignment="Center">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                </ItemsControl>
+                <Border Grid.Column="1" Classes="chip" Padding="2" VerticalAlignment="Center">
+                  <StackPanel Orientation="Horizontal">
+                    <Button Classes="segment" Classes.selected="{Binding IsHistoryDay}"
+                            Content="{Binding HistoryDayText}"
+                            Command="{Binding ShowHistoryCommand}" CommandParameter="24h" />
+                    <Button Classes="segment" Classes.selected="{Binding IsHistoryWeek}"
+                            Content="{Binding HistoryWeekText}"
+                            Command="{Binding ShowHistoryCommand}" CommandParameter="7d" />
+                  </StackPanel>
+                </Border>
+              </Grid>
+              <controls:LineChart MinHeight="170"
+                                  Series="{Binding HistorySeries}"
+                                  XMax="{Binding HistoryMax}"
+                                  MaxGap="{Binding HistoryGap}"
+                                  Threshold="90"
+                                  XTicks="{Binding HistoryTicks}"
+                                  EndLabel="{Binding HistoryEndLabel}"
+                                  EmptyText="{Binding NoHistoryText}" />
+            </DockPanel>
           </Grid>
-          <controls:LineChart Height="170"
-                              Series="{Binding HistorySeries}"
-                              XMax="{Binding HistoryMax}"
-                              MaxGap="{Binding HistoryGap}"
-                              Threshold="90"
-                              StartLabel="{Binding HistoryStartLabel}"
-                              EndLabel="{Binding HistoryEndLabel}"
-                              EmptyText="{Binding NoHistoryText}" />
-          <ItemsControl ItemsSource="{Binding HistoryLegend}">
-            <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate>
-                <WrapPanel />
-              </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-          </ItemsControl>
-        </StackPanel>
-      </Border>
+        </Border>
+      </Grid>
 
       <!-- Claude Code usage -->
       <Border Classes="card">
@@ -184,15 +224,44 @@
             </ItemsControl>
 
             <StackPanel Spacing="6">
-              <TextBlock Classes="caption" Text="{Binding TokensPerDayHeader}" />
-              <controls:StackedBarChart Height="180" Bars="{Binding DailyBars}" AxisFormatter="{Binding TokenAxis}" />
-              <ItemsControl ItemsSource="{Binding ModelLegend}">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate>
-                    <WrapPanel />
-                  </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-              </ItemsControl>
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="caption" Text="{Binding TokensPerDayHeader}" VerticalAlignment="Center" />
+                <Border Grid.Column="1" Classes="chip" Padding="2">
+                  <StackPanel Orientation="Horizontal">
+                    <Button Classes="segment" Classes.selected="{Binding !IsUsageCalendar}"
+                            Content="{Binding BarsText}"
+                            Command="{Binding ShowUsageViewCommand}" CommandParameter="bars" />
+                    <Button Classes="segment" Classes.selected="{Binding IsUsageCalendar}"
+                            Content="{Binding CalendarText}"
+                            Command="{Binding ShowUsageViewCommand}" CommandParameter="calendar" />
+                  </StackPanel>
+                </Border>
+              </Grid>
+              <StackPanel Spacing="6" IsVisible="{Binding !IsUsageCalendar}">
+                <controls:StackedBarChart Height="180" Bars="{Binding DailyBars}" AxisFormatter="{Binding TokenAxis}" />
+                <ItemsControl ItemsSource="{Binding ModelLegend}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                </ItemsControl>
+              </StackPanel>
+              <!-- The last year, independent of the range above; as many weeks as the width holds -->
+              <controls:CalendarHeatmap IsVisible="{Binding IsUsageCalendar}"
+                                        Days="{Binding CalendarDays}"
+                                        WeekdayLabels="{Binding Weekdays}"
+                                        MonthFormatter="{Binding MonthLabel}"
+                                        LessText="{Binding LessText}"
+                                        MoreText="{Binding MoreText}" />
+              <TextBlock Classes="muted" FontSize="11" Text="{Binding CalendarNote}" TextWrapping="Wrap">
+                <TextBlock.IsVisible>
+                  <MultiBinding Converter="{x:Static BoolConverters.And}">
+                    <Binding Path="IsUsageCalendar" />
+                    <Binding Path="CalendarNote" Converter="{x:Static ObjectConverters.IsNotNull}" />
+                  </MultiBinding>
+                </TextBlock.IsVisible>
+              </TextBlock>
             </StackPanel>
 
             <Grid ColumnDefinitions="Auto,24,*">
