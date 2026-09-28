@@ -150,6 +150,20 @@ public sealed class ClaudeLogScannerTests : IDisposable
     }
 
     [Fact]
+    public void Only_jsonl_files_count()
+    {
+        var line = LogLines.Assistant("msg_1");
+        Log("p1/s1.jsonl", line);
+        File.WriteAllText(Path.Join(Claude, "projects", "p1", "notes.json"), line + "\n");
+        File.WriteAllText(Path.Join(Claude, "projects", "p1", "s1.jsonl.bak"), line + "\n");
+
+        var index = Scan().Index;
+
+        index.Files.ShouldHaveSingleItem().Path.ShouldBe(Path.Join("p1", "s1.jsonl"));
+        Messages(index).ShouldBe(1);
+    }
+
+    [Fact]
     public void Without_a_projects_folder_nothing_is_found()
     {
         var result = Scan();

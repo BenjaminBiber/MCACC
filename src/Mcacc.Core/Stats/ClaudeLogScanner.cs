@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.IO.Enumeration;
 
 namespace Mcacc.Core.Stats;
 
@@ -30,8 +31,7 @@ public static class ClaudeLogScanner
         var work = new List<WorkItem>();
         if (Directory.Exists(root))
         {
-            foreach (var log in new DirectoryInfo(root).EnumerateFiles("*.jsonl", AllLogs)
-                         .OrderBy(file => file.FullName, StringComparer.Ordinal))
+            foreach (var log in Logs(root).OrderBy(file => file.FullName, StringComparer.Ordinal))
             {
                 var path = Path.GetRelativePath(root, log.FullName);
                 var old = entries.GetValueOrDefault(path);
@@ -183,6 +183,16 @@ public static class ClaudeLogScanner
         return consumed;
     }
 
+    /// <summary>Iterates the log files, skipping any folder <see cref="LogFiles"/> cannot read.</summary>
+    private static IEnumerable<FileInfo> Logs(string root)
+    {
+        using var logs = new LogFiles(root);
+        while (logs.MoveNext())
+        {
+            yield return logs.Current;
+        }
+    }
+
     private static DateTimeOffset Hour(DateTimeOffset at) =>
         new(at.UtcTicks - at.UtcTicks % TimeSpan.TicksPerHour, TimeSpan.Zero);
 
@@ -192,6 +202,24 @@ public static class ClaudeLogScanner
     }
 
     private readonly record struct BucketKey(DateTimeOffset Hour, string Model, string Project, string Session);
+
+    /// <summary>
+    /// Enumerates <c>*.jsonl</c> files and keeps going past a folder the file system reports as unreadable
+    /// (e.g. a corrupt directory), instead of the default <see cref="IgnoreInaccessible"/> behavior, which
+    /// only swallows access-denied errors and still aborts the whole scan on anything else.
+    /// </summary>
+    private sealed class LogFiles(string root) : FileSystemEnumerator<FileInfo>(root, AllLogs)
+    {
+        protected override bool ShouldIncludeEntry(ref FileSystemEntry entry) =>
+            !entry.IsDirectory && entry.FileName.EndsWith(".jsonl", StringComparison.OrdinalIgnoreCase);
+
+        protected override FileInfo TransformEntry(ref FileSystemEntry entry) => (FileInfo)entry.ToFileSystemInfo();
+
+        // A folder that cannot be read, e.g. one the file system reports as corrupt, is skipped instead of
+        // failing the whole scan; the index keeps the counts of its files (as for deleted logs, since
+        // entries not seen stay).
+        protected override bool ContinueOnError(int error) => true;
+    }
 
     /// <summary>Reports every 8 MB, so a first scan of hundreds of megabytes moves the bar without flooding it.</summary>
     private sealed class ProgressCounter(long total, IProgress<double>? progress)
