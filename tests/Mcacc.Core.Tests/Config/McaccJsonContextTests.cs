@@ -16,13 +16,15 @@ public class McaccJsonContextTests
               "id": "standard",
               "name": "Standard",
               "color": "#D97757",
-              "isDefault": true
+              "isDefault": true,
+              "provider": "claude"
             },
             {
               "id": "privat",
               "name": "Privat",
               "color": "#6A9BCC",
-              "isDefault": false
+              "isDefault": false,
+              "provider": "claude"
             }
           ],
           "settings": {
@@ -64,13 +66,14 @@ public class McaccJsonContextTests
     {
         Serialize(DefaultConfigFactory.Create()).ShouldBe("""
             {
-              "version": 1,
+              "version": 2,
               "accounts": [
                 {
                   "id": "standard",
                   "name": "Standard",
                   "color": "#D97757",
-                  "isDefault": true
+                  "isDefault": true,
+                  "provider": "claude"
                 }
               ],
               "settings": {
@@ -126,6 +129,30 @@ public class McaccJsonContextTests
             .Settings.LaunchAtLogin.ShouldBeTrue();
     }
 
+    /// <summary>A config written before providers existed names none; every account in it belongs to Claude.</summary>
+    [Fact]
+    public void An_account_without_a_provider_belongs_to_Claude()
+    {
+        var config = Deserialize("""
+            { "version": 1, "accounts": [{ "id": "privat", "name": "Privat", "color": "#6A9BCC", "isDefault": false }], "settings": {} }
+            """);
+
+        config.Accounts.ShouldHaveSingleItem().Provider.ShouldBe(ProviderKind.Claude);
+    }
+
+    [Fact]
+    public void A_Codex_account_survives_a_round_trip()
+    {
+        var plain = DefaultConfigFactory.Create();
+        var codex = new Account("privat", "Privat", "#5E8C8A", IsDefault: false, ProviderKind.Codex);
+        var config = plain with { Accounts = [.. plain.Accounts, codex] };
+
+        var json = Serialize(config);
+
+        json.ShouldContain("\"provider\": \"codex\"");
+        Deserialize(json).Accounts.ShouldBe(config.Accounts);
+    }
+
     [Fact]
     public void Unknown_top_level_fields_survive_a_round_trip()
     {
@@ -152,5 +179,28 @@ public class McaccJsonContextTests
               "flag": true
             }
             """);
+    }
+
+    /// <summary>
+    /// A provider this version does not know must not cost the user their account list: the whole file would be
+    /// quarantined as corrupt instead of loading.
+    /// </summary>
+    [Theory]
+    [InlineData("\"gemini\"")]
+    [InlineData("\"\"")]
+    [InlineData("42")]
+    [InlineData("null")]
+    [InlineData("{ \"x\": 1 }")]
+    public void An_unrecognised_provider_reads_as_Claude_instead_of_throwing(string provider)
+    {
+        var config = Deserialize($$"""
+            {
+              "version": 2,
+              "accounts": [{ "id": "privat", "name": "Privat", "color": "#6A9BCC", "isDefault": false, "provider": {{provider}} }],
+              "settings": {}
+            }
+            """);
+
+        config.Accounts.ShouldHaveSingleItem().Provider.ShouldBe(ProviderKind.Claude);
     }
 }

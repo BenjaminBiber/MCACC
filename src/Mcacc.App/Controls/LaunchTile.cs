@@ -25,6 +25,9 @@ public sealed class LaunchTile : Button
     public static readonly StyledProperty<string?> BadgeProperty =
         AvaloniaProperty.Register<LaunchTile, string?>(nameof(Badge));
 
+    public static readonly StyledProperty<string?> ProviderBadgeProperty =
+        AvaloniaProperty.Register<LaunchTile, string?>(nameof(ProviderBadge));
+
     public static readonly StyledProperty<string?> AvatarTextProperty =
         AvaloniaProperty.Register<LaunchTile, string?>(nameof(AvatarText));
 
@@ -63,6 +66,13 @@ public sealed class LaunchTile : Button
     {
         get => GetValue(BadgeProperty);
         set => SetValue(BadgeProperty, value);
+    }
+
+    /// <summary>Which service the account belongs to; empty where that needs no saying.</summary>
+    public string? ProviderBadge
+    {
+        get => GetValue(ProviderBadgeProperty);
+        set => SetValue(ProviderBadgeProperty, value);
     }
 
     public string? AvatarText

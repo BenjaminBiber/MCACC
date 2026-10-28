@@ -172,7 +172,7 @@ public sealed class TargetPickerViewModelTests : IDisposable
 
         await Page().LaunchDesktopCommand.ExecuteAsync(null);
 
-        _services.Window.ErrorBanner.ShouldBe(Texts.ErrorLoginRedirectFailed);
+        _services.Window.ErrorBanner.ShouldBe(Texts.ErrorLoginRedirectFailed(ProviderKind.Claude));
         _services.Lifetime.Hides.ShouldBe(0);
     }
 
@@ -184,7 +184,7 @@ public sealed class TargetPickerViewModelTests : IDisposable
 
         await Page().LaunchDesktopCommand.ExecuteAsync(null);
 
-        _services.Window.ErrorBanner.ShouldBe(Texts.ErrorLoginRedirectFailed);
+        _services.Window.ErrorBanner.ShouldBe(Texts.ErrorLoginRedirectFailed(ProviderKind.Claude));
         _services.Lifetime.Hides.ShouldBe(0);
     }
 
@@ -209,10 +209,10 @@ public sealed class TargetPickerViewModelTests : IDisposable
         await page.LaunchDesktopCommand.ExecuteAsync(null);
 
         var dialog = _services.Dialogs.Shown.ShouldHaveSingleItem().ShouldBeOfType<ConfirmDialogViewModel>();
-        dialog.Title.ShouldBe(Texts.ConflictDialogTitle);
-        dialog.Text.ShouldBe(Texts.ConflictDialogText("Standard", "Privat"));
+        dialog.Title.ShouldBe(Texts.ConflictDialogTitle(ProviderKind.Claude));
+        dialog.Text.ShouldBe(Texts.ConflictDialogText(ProviderKind.Claude, "Standard", "Privat"));
         _services.Desktop.Launches.ShouldBe([true]);
-        _services.Dialogs.BusyTexts.ShouldBe([Texts.BusyQuitting]);
+        _services.Dialogs.BusyTexts.ShouldBe([Texts.BusyQuitting(ProviderKind.Claude)]);
         _services.Lifetime.Hides.ShouldBe(1);
     }
 
@@ -238,7 +238,7 @@ public sealed class TargetPickerViewModelTests : IDisposable
         await page.LaunchDesktopCommand.ExecuteAsync(null);
 
         _services.Desktop.Launches.ShouldBeEmpty();
-        _services.Window.ErrorBanner.ShouldBe(Texts.ErrorDesktopNotFound);
+        _services.Window.ErrorBanner.ShouldBe(Texts.ErrorDesktopNotFound(ProviderKind.Claude));
     }
 
     [Fact]
@@ -251,7 +251,7 @@ public sealed class TargetPickerViewModelTests : IDisposable
 
         await page.LaunchDesktopCommand.ExecuteAsync(null);
 
-        _services.Window.ErrorBanner.ShouldBe(Texts.ErrorQuitFailed);
+        _services.Window.ErrorBanner.ShouldBe(Texts.ErrorQuitFailed(ProviderKind.Claude));
         _services.Lifetime.Hides.ShouldBe(0);
     }
 
@@ -263,7 +263,7 @@ public sealed class TargetPickerViewModelTests : IDisposable
 
         await page.LaunchDesktopCommand.ExecuteAsync(null);
 
-        _services.Window.ErrorBanner.ShouldBe(Texts.ErrorDesktopStartFailed);
+        _services.Window.ErrorBanner.ShouldBe(Texts.ErrorDesktopStartFailed(ProviderKind.Claude));
         _services.Lifetime.Hides.ShouldBe(0);
     }
 
@@ -282,12 +282,12 @@ public sealed class TargetPickerViewModelTests : IDisposable
     [Fact]
     public async Task A_missing_claude_cli_only_warns_and_keeps_the_switcher_open()
     {
-        _services.Code.Result = _services.Code.Result with { ClaudeCliNotFound = true };
+        _services.Code.Result = _services.Code.Result with { CliNotFound = true };
         var page = Page();
 
         await page.LaunchCodeCommand.ExecuteAsync(null);
 
-        _services.Window.ErrorBanner.ShouldBe(Texts.HintClaudeCliMissing);
+        _services.Window.ErrorBanner.ShouldBe(Texts.HintCliMissing(ProviderKind.Claude));
         _services.Accounts.Config.Settings.LastTarget.ShouldBe(LaunchTarget.Code);
         _services.Lifetime.Hides.ShouldBe(0);
     }
@@ -347,5 +347,29 @@ public sealed class TargetPickerViewModelTests : IDisposable
     public void Without_a_last_used_target_the_desktop_is_preferred()
     {
         Page().PreferredTarget.ShouldBe(LaunchTarget.Desktop);
+    }
+
+    private static readonly Account CodexPrivat =
+        new("codex-privat", "Codex Privat", "#5E8C8A", IsDefault: false, ProviderKind.Codex);
+
+    /// <summary>The desktop app of a Codex account is called ChatGPT; the page must not promise "Claude Desktop".</summary>
+    [Fact]
+    public void A_Codex_account_names_its_own_programs()
+    {
+        var page = new TargetPickerViewModel(_services.Services, CodexPrivat);
+
+        page.DesktopTitle.ShouldBe("ChatGPT");
+        page.CodeTitle.ShouldBe("Codex");
+        page.Subtitle.ShouldContain("ChatGPT");
+        page.HasDesktopTarget.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void A_Claude_account_still_names_the_Claude_programs()
+    {
+        var page = new TargetPickerViewModel(_services.Services, Privat);
+
+        page.DesktopTitle.ShouldBe("Claude Desktop");
+        page.CodeTitle.ShouldBe("Claude Code");
     }
 }

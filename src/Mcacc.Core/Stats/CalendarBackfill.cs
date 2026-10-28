@@ -22,7 +22,7 @@ public static class CalendarBackfill
     /// </param>
     public static IReadOnlyList<CalendarDayUsage> Fill(
         IReadOnlyList<DailyUsage> own,
-        IReadOnlyList<ClaudeDailyTokens> summary,
+        IReadOnlyList<DailyTokens> summary,
         IReadOnlyList<DailyUsage>? counted = null)
     {
         counted ??= own;

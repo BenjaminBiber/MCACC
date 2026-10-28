@@ -12,7 +12,6 @@ namespace Mcacc.Platform;
 public sealed record PlatformServices(
     PlatformInfo Info,
     McaccPaths Paths,
-    DesktopProcessRules Rules,
     IProcessRunner Runner,
     IProcessSnapshotProvider Snapshots,
     IDesktopInstallationLocator InstallationLocator,
@@ -21,7 +20,8 @@ public sealed record PlatformServices(
     IExecutableLocator Executables,
     IShellIntegration Shell,
     ICredentialSource Credentials,
-    IUsageHttp UsageHttp)
+    IUsageHttp UsageHttp,
+    ICodexUsageHttp CodexUsageHttp)
 {
     /// <summary>The Dock icon on macOS; the other platforms have none.</summary>
     public IDockIcon Dock { get; init; } = NoDockIcon.Instance;
@@ -41,16 +41,16 @@ public sealed record PlatformServices(
             return new PlatformServices(
                 info,
                 paths,
-                DesktopProcessRules.ForOs(info.Os),
                 runner,
                 new WmiProcessSnapshotProvider(),
-                new WindowsDesktopInstallationLocator(info),
+                new WindowsDesktopInstallationLocator(info, runner),
                 new WindowsDesktopInstanceTerminator(),
                 new WindowsTerminalCatalog(info, executables),
                 executables,
                 new WindowsShellIntegration(runner),
                 new FileCredentialSource(),
-                new UsageHttpClient())
+                new UsageHttpClient(),
+                new CodexUsageHttpClient())
             {
                 LoginItem = new WindowsLoginItem(),
             };
@@ -64,7 +64,6 @@ public sealed record PlatformServices(
         return new PlatformServices(
             info,
             paths,
-            DesktopProcessRules.ForOs(info.Os),
             runner,
             new PsProcessSnapshotProvider(runner),
             new MacDesktopInstallationLocator(info, runner),
@@ -73,7 +72,8 @@ public sealed record PlatformServices(
             executables,
             new MacShellIntegration(runner),
             new MacKeychainCredentialSource(runner),
-            new UsageHttpClient())
+            new UsageHttpClient(),
+            new CodexUsageHttpClient())
         {
             Dock = new MacDockIcon(),
             LoginItem = new MacLoginItem(Path.Join(info.HomeDir, "Library", "LaunchAgents")),
@@ -82,5 +82,5 @@ public sealed record PlatformServices(
 
     public AccountPathResolver CreateResolver() => new(Paths, Info);
 
-    public IDesktopInstanceDetector CreateDetector() => new DesktopInstanceDetector(Snapshots, Rules);
+    public IDesktopInstanceDetector CreateDetector() => new DesktopInstanceDetector(Snapshots, Info);
 }

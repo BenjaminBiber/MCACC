@@ -4,11 +4,13 @@ using Mcacc.App.ViewModels;
 using Mcacc.Core.Abstractions;
 using Mcacc.Core.Accounts;
 using Mcacc.Core.ClaudeCode;
+using Mcacc.Core.Codex;
 using Mcacc.Core.Config;
 using Mcacc.Core.ConfigCopy;
 using Mcacc.Core.Desktop;
 using Mcacc.Core.Logging;
 using Mcacc.Core.Processes;
+using Mcacc.Core.Providers;
 using Mcacc.Core.Stats;
 using Mcacc.Core.Terminal;
 using Mcacc.Core.Usage;
@@ -31,7 +33,12 @@ public static class CompositionRoot
             new ProfileDataDeleter());
         LogLoad(log, accounts);
 
-        var login = new ClaudeJsonLoginInfoReader();
+        // One implementation per provider behind each seam; the routers keep every consumer on a single interface.
+        var claudeLogin = new ClaudeJsonLoginInfoReader();
+        var login = new RoutingLoginInfoReader(
+            ProviderMap<ILoginInfoReader>.Of(claudeLogin, new CodexLoginInfoReader()));
+        var credentials = new RoutingCredentialSource(
+            ProviderMap<ICredentialSource>.Of(platform.Credentials, new CodexCredentialSource()));
         var navigator = new Navigator();
         var shell = new MainWindowViewModel(navigator);
         var dialogs = new DialogService(shell);
@@ -40,15 +47,28 @@ public static class CompositionRoot
             shell.ShowError(Localization.Texts.ErrorConfigReadOnly);
         }
 
-        var usage = new UsageService(
+        var claudeUsage = new UsageService(
             platform.Credentials,
-            login,
+            claudeLogin,
             platform.UsageHttp,
             new UsageCache(platform.Paths),
             new ProfileCache(platform.Paths),
             new UsageHistoryStore(platform.Paths, log: log),
             resolver,
             log: log);
+        var codexUsage = new CodexUsageService(
+            platform.CodexUsageHttp,
+            new CodexRateLimitsReader(),
+            new UsageCache(platform.Paths),
+            new ProfileCache(platform.Paths),
+            new UsageHistoryStore(platform.Paths, log: log),
+            resolver,
+            log: log);
+        var usage = new RoutingUsageProvider(ProviderMap<IUsageProvider>.Of(claudeUsage, codexUsage));
+        var statsIndex = new StatsIndexStore(platform.Paths);
+        var stats = new RoutingStatsProvider(ProviderMap<IStatsProvider>.Of(
+            new ClaudeStatsProvider(statsIndex, resolver),
+            new CodexStatsProvider(statsIndex, resolver)));
         var poller = new UsagePoller(accounts, usage, log);
 
         var loginItems = LoginItemSync.ForProcess(platform.LoginItem, log);
@@ -82,8 +102,8 @@ public static class CompositionRoot
                 platform.Info),
             usage,
             poller,
-            new ClaudeStatsProvider(new StatsIndexStore(platform.Paths), resolver),
-            platform.Credentials,
+            stats,
+            credentials,
             login,
             platform.CreateDetector(),
             new DesktopInstanceMatcher(resolver, platform.Info.PathStyle),

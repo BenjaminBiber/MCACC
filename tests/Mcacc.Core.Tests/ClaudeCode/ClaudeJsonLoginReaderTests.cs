@@ -1,3 +1,4 @@
+using Mcacc.Core.Providers;
 using Mcacc.Core.ClaudeCode;
 using Mcacc.Core.Tests.TestSupport;
 using Shouldly;
@@ -30,7 +31,7 @@ public sealed class ClaudeJsonLoginReaderTests : IDisposable
     {
         var info = ClaudeJsonLoginReader.Read(WriteFixture("claude-json-duplicate-case-keys.json"));
 
-        info.ShouldBe(new ClaudeLoginInfo(
+        info.ShouldBe(new AccountLoginInfo(
             "max.muster@example.com",
             "Example GmbH",
             "Benjamin Biber",
@@ -70,7 +71,7 @@ public sealed class ClaudeJsonLoginReaderTests : IDisposable
     {
         var info = ClaudeJsonLoginReader.Read(Write("""{ "oauthAccount": { "emailAddress": "privat@example.com" } }"""));
 
-        info.ShouldBe(new ClaudeLoginInfo("privat@example.com", null, null));
+        info.ShouldBe(new AccountLoginInfo("privat@example.com", null, null));
     }
 
     [Fact]

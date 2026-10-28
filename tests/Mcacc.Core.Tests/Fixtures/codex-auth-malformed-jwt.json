@@ -1,0 +1,9 @@
+{
+  "OPENAI_API_KEY": null,
+  "tokens": {
+    "id_token": "not.a.jwt",
+    "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3OTMwMDAwMDAsInN1YiI6InVzZXItWFlaIn0.c2ln",
+    "account_id": "cff32eb3-0000-0000-0000-000000000000"
+  },
+  "auth_mode": "chatgpt"
+}

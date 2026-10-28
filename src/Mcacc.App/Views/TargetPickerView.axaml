@@ -38,6 +38,7 @@
                           IconKind="DesktopWindows"
                           Title="{Binding DesktopTitle}"
                           Subtitle="{Binding DesktopSubtitle}"
+                          IsVisible="{Binding HasDesktopTarget}"
                           Command="{Binding LaunchDesktopCommand}" />
 
       <controls:LaunchTile Name="CodeTile"

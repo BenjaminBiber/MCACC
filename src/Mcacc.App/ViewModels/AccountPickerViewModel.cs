@@ -127,7 +127,7 @@ public sealed partial class AccountPickerViewModel : PageViewModel
 
         if (result.DeleteData && await IsRunningAsync(tile.Account, CancellationToken.None).ConfigureAwait(true))
         {
-            _services.Shell.ShowError(Texts.ErrorRunningWithThisAccount);
+            _services.Shell.ShowError(Texts.ErrorRunningWithThisAccount(tile.Account.Provider));
             return;
         }
 
@@ -163,7 +163,7 @@ public sealed partial class AccountPickerViewModel : PageViewModel
 
         var paths = _services.Resolver.Resolve(tile.Account);
         var folder = paths.DesktopUserDataDir is null
-            ? paths.EffectiveClaudeDir
+            ? paths.EffectiveConfigDir
             : _services.Paths.ProfileDir(tile.Account.Id);
         try
         {
@@ -233,7 +233,7 @@ public sealed partial class AccountPickerViewModel : PageViewModel
             if (existing is null)
             {
                 var tile = new AccountTileViewModel(account);
-                tile.SetLogin(_services.Login.Read(_services.Resolver.Resolve(account))?.Email);
+                tile.SetLogin(_services.Login.Read(account, _services.Resolver.Resolve(account)));
                 tile.SetUsage(_services.Usage.GetCached(account));
                 Tiles.Insert(Math.Min(i, Tiles.Count), tile);
             }

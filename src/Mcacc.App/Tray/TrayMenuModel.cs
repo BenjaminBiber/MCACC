@@ -73,7 +73,7 @@ public static class TrayMenuModel
         var children = new List<TrayEntry>();
         AddUsageLine(children, Texts.UsageFiveHour, snapshot?.FiveHour);
         AddUsageLine(children, Texts.UsageSevenDay, snapshot?.SevenDay);
-        if ((usage is null ? null : AccountTileViewModel.HintFor(usage)) is { } hint)
+        if ((usage is null ? null : AccountTileViewModel.HintFor(account.Provider, usage)) is { } hint)
         {
             children.Add(new TrayEntry(hint, IsEnabled: false));
         }
@@ -83,8 +83,14 @@ public static class TrayMenuModel
         }
 
         children.Add(TrayEntry.Separator);
-        children.Add(new TrayEntry(Texts.TrayLaunchDesktop, TrayAction.LaunchDesktop, account.Id));
-        children.Add(new TrayEntry(Texts.TrayLaunchCode, TrayAction.LaunchCode, account.Id));
+
+        // A provider whose desktop app MCACC cannot start per profile gets no entry for it.
+        if (ProviderDescriptors.For(account).Desktop is not null)
+        {
+            children.Add(new TrayEntry(Texts.TrayLaunchDesktop(account.Provider), TrayAction.LaunchDesktop, account.Id));
+        }
+
+        children.Add(new TrayEntry(Texts.TrayLaunchCode(account.Provider), TrayAction.LaunchCode, account.Id));
 
         var header = Texts.TrayAccountHeader(
             account.Name,

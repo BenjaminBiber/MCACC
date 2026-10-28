@@ -36,7 +36,7 @@ public sealed class LaunchCoordinator(AppServices services)
         var check = await CheckDesktopAsync(account, CancellationToken.None).ConfigureAwait(true);
         if (check is DesktopLaunchCheck.NotInstalled)
         {
-            ShowError(Texts.ErrorDesktopNotFound);
+            ShowError(Texts.ErrorDesktopNotFound(account.Provider));
             return;
         }
 
@@ -44,8 +44,8 @@ public sealed class LaunchCoordinator(AppServices services)
         if (check is DesktopLaunchCheck.Conflict conflict)
         {
             var dialog = new ConfirmDialogViewModel(
-                Texts.ConflictDialogTitle,
-                Texts.ConflictDialogText(OwnerName(conflict, account), account.Name),
+                Texts.ConflictDialogTitle(account.Provider),
+                Texts.ConflictDialogText(account.Provider, OwnerName(conflict, account), account.Name),
                 Texts.ConflictDialogRestart);
             services.Lifetime.ShowWindow();
             if (await services.Dialogs.ShowAsync(dialog).ConfigureAwait(true) != true)
@@ -57,7 +57,7 @@ public sealed class LaunchCoordinator(AppServices services)
         }
 
         DesktopLaunchOutcome outcome;
-        using (services.Dialogs.Busy(quitConflicts ? Texts.BusyQuitting : Texts.BusyStarting))
+        using (services.Dialogs.Busy(quitConflicts ? Texts.BusyQuitting(account.Provider) : Texts.BusyStarting(account.Provider)))
         {
             try
             {
@@ -88,15 +88,15 @@ public sealed class LaunchCoordinator(AppServices services)
                 await WatchLoginAsync(account).ConfigureAwait(true);
                 return;
             case DesktopLaunchOutcome.NotInstalled:
-                ShowError(Texts.ErrorDesktopNotFound);
+                ShowError(Texts.ErrorDesktopNotFound(account.Provider));
                 return;
             case DesktopLaunchOutcome.QuitFailed:
-                ShowError(Texts.ErrorQuitFailed);
+                ShowError(Texts.ErrorQuitFailed(account.Provider));
                 return;
             case DesktopLaunchOutcome.ConflictNotResolved:
                 return;
             default:
-                ShowError(Texts.ErrorDesktopStartFailed);
+                ShowError(Texts.ErrorDesktopStartFailed(account.Provider));
                 return;
         }
     }
@@ -129,13 +129,13 @@ public sealed class LaunchCoordinator(AppServices services)
                 // Claude Code renews an expired token as it starts; without a recheck the tile would say expired
                 // until the next tick.
                 _ = services.Poller.RecheckAsync(account);
-                if (result.ClaudeCliNotFound)
+                if (result.CliNotFound)
                 {
                     // The login shell may still find claude, so this is a hint and the switcher stays open.
-                    ShowError(Texts.HintClaudeCliMissing);
+                    ShowError(Texts.HintCliMissing(account.Provider));
                 }
 
-                await FinishAsync(account, LaunchTarget.Code, autoClose: !result.ClaudeCliNotFound).ConfigureAwait(true);
+                await FinishAsync(account, LaunchTarget.Code, autoClose: !result.CliNotFound).ConfigureAwait(true);
                 return;
         }
     }
@@ -170,7 +170,7 @@ public sealed class LaunchCoordinator(AppServices services)
 
         if (outcome == DesktopRedirectOutcome.Failed)
         {
-            ShowError(Texts.ErrorLoginRedirectFailed);
+            ShowError(Texts.ErrorLoginRedirectFailed(account.Provider));
             return;
         }
 

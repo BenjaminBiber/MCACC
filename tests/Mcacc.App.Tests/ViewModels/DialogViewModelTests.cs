@@ -40,9 +40,9 @@ public sealed class DialogViewModelTests : IDisposable
     [Fact]
     public void A_confirm_dialog_carries_its_texts()
     {
-        var dialog = new ConfirmDialogViewModel(Texts.ConflictDialogTitle, "Text", Texts.ConflictDialogRestart);
+        var dialog = new ConfirmDialogViewModel(Texts.ConflictDialogTitle(ProviderKind.Claude), "Text", Texts.ConflictDialogRestart);
 
-        dialog.Title.ShouldBe(Texts.ConflictDialogTitle);
+        dialog.Title.ShouldBe(Texts.ConflictDialogTitle(ProviderKind.Claude));
         dialog.ConfirmText.ShouldBe(Texts.ConflictDialogRestart);
         dialog.CancelText.ShouldBe(Texts.Cancel);
         dialog.IsDangerous.ShouldBeFalse();
@@ -55,8 +55,8 @@ public sealed class DialogViewModelTests : IDisposable
 
         dialog.Title.ShouldBe(Texts.RemoveDialogTitle("Privat"));
         dialog.Folders.ShouldBe([
-            _services.Paths.DesktopDataDir("privat"),
-            _services.Paths.ClaudeConfigDir("privat"),
+            _services.Paths.DesktopDataDir("privat", ProviderDescriptors.Claude),
+            _services.Paths.ConfigDir("privat", ProviderDescriptors.Claude),
         ]);
     }
 

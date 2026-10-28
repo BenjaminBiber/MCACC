@@ -80,8 +80,8 @@ public sealed class AccountServiceTests : IDisposable
 
         var created = new Account("kunde-mueller", "Kunde Müller", "#7D9B76", IsDefault: false);
         result.ShouldBe(new CreateAccountResult(created, CopyReport: null));
-        Directory.Exists(_paths.DesktopDataDir("kunde-mueller")).ShouldBeTrue();
-        Directory.Exists(_paths.ClaudeConfigDir("kunde-mueller")).ShouldBeTrue();
+        Directory.Exists(_paths.DesktopDataDir("kunde-mueller", ProviderDescriptors.Claude)).ShouldBeTrue();
+        Directory.Exists(_paths.ConfigDir("kunde-mueller", ProviderDescriptors.Claude)).ShouldBeTrue();
         store.Saved.Single().Accounts.ShouldBe([Account.CreateDefault(), Privat, created]);
         service.Config.ShouldBeSameAs(store.Saved.Single());
     }
@@ -128,11 +128,11 @@ public sealed class AccountServiceTests : IDisposable
     [Fact]
     public void Create_skips_slugs_whose_profile_directory_already_exists()
     {
-        WriteFile(Path.Join(_paths.ClaudeConfigDir("firma"), "CLAUDE.md"), "orphan");
+        WriteFile(Path.Join(_paths.ConfigDir("firma", ProviderDescriptors.Claude), "CLAUDE.md"), "orphan");
         var service = Service(Store());
 
         service.Create("Firma", "#7D9B76", copy: null).Account.Id.ShouldBe("firma-2");
-        File.ReadAllText(Path.Join(_paths.ClaudeConfigDir("firma"), "CLAUDE.md")).ShouldBe("orphan");
+        File.ReadAllText(Path.Join(_paths.ConfigDir("firma", ProviderDescriptors.Claude), "CLAUDE.md")).ShouldBe("orphan");
     }
 
     [Fact]
@@ -158,7 +158,7 @@ public sealed class AccountServiceTests : IDisposable
             "Privat", "#6A9BCC", CopyFrom(Account.DefaultId, true, CopyItem.ClaudeMd, CopyItem.SettingsJson, CopyItem.Skills));
 
         result.CopyReport.ShouldNotBeNull().Copied.ShouldBe([CopyItem.ClaudeMd, CopyItem.SettingsJson]);
-        var claude = _paths.ClaudeConfigDir("privat");
+        var claude = _paths.ConfigDir("privat", ProviderDescriptors.Claude);
         File.ReadAllText(Path.Join(claude, "CLAUDE.md")).ShouldBe("# memory");
         File.ReadAllText(Path.Join(claude, "settings.json"))
             .ShouldBe($$"""{ "statusLine": "bash {{claude.Replace('\\', '/')}}/status.sh" }""");
@@ -169,16 +169,16 @@ public sealed class AccountServiceTests : IDisposable
     [Fact]
     public void Create_copies_config_of_another_profile()
     {
-        WriteFile(Path.Join(_paths.ClaudeConfigDir("firma"), "skills", "a", "SKILL.md"), "skill");
-        WriteFile(Path.Join(_paths.DesktopDataDir("firma"), "claude_desktop_config.json"), "{}");
+        WriteFile(Path.Join(_paths.ConfigDir("firma", ProviderDescriptors.Claude), "skills", "a", "SKILL.md"), "skill");
+        WriteFile(Path.Join(_paths.DesktopDataDir("firma", ProviderDescriptors.Claude), "claude_desktop_config.json"), "{}");
         var service = Service(Store(Firma));
 
         var result = service.Create(
             "Privat", "#6A9BCC", CopyFrom("firma", false, CopyItem.Skills, CopyItem.DesktopMcpConfig));
 
         result.CopyReport.ShouldNotBeNull().Copied.ShouldBe([CopyItem.Skills, CopyItem.DesktopMcpConfig]);
-        File.ReadAllText(Path.Join(_paths.ClaudeConfigDir("privat"), "skills", "a", "SKILL.md")).ShouldBe("skill");
-        File.Exists(Path.Join(_paths.DesktopDataDir("privat"), "claude_desktop_config.json")).ShouldBeTrue();
+        File.ReadAllText(Path.Join(_paths.ConfigDir("privat", ProviderDescriptors.Claude), "skills", "a", "SKILL.md")).ShouldBe("skill");
+        File.Exists(Path.Join(_paths.DesktopDataDir("privat", ProviderDescriptors.Claude), "claude_desktop_config.json")).ShouldBeTrue();
     }
 
     [Fact]
@@ -237,7 +237,7 @@ public sealed class AccountServiceTests : IDisposable
         {
             // An open handle blocks deleting the profile on Windows; elsewhere the rollback just succeeds.
             lockedInsideProfile = new FileStream(
-                Path.Join(_paths.ClaudeConfigDir("privat"), "busy.log"), FileMode.CreateNew, FileAccess.Write, FileShare.None);
+                Path.Join(_paths.ConfigDir("privat", ProviderDescriptors.Claude), "busy.log"), FileMode.CreateNew, FileAccess.Write, FileShare.None);
             throw new IOException("disk full");
         };
         var service = Service(store);
@@ -344,7 +344,7 @@ public sealed class AccountServiceTests : IDisposable
     [Fact]
     public void Remove_without_data_keeps_the_profile_directory()
     {
-        WriteFile(Path.Join(_paths.ClaudeConfigDir("privat"), "CLAUDE.md"));
+        WriteFile(Path.Join(_paths.ConfigDir("privat", ProviderDescriptors.Claude), "CLAUDE.md"));
         var store = Store(Privat, Firma);
         var service = Service(store);
 
@@ -352,13 +352,13 @@ public sealed class AccountServiceTests : IDisposable
 
         store.Saved.Single().Accounts.ShouldBe([Account.CreateDefault(), Firma]);
         service.Config.ShouldBeSameAs(store.Saved.Single());
-        File.Exists(Path.Join(_paths.ClaudeConfigDir("privat"), "CLAUDE.md")).ShouldBeTrue();
+        File.Exists(Path.Join(_paths.ConfigDir("privat", ProviderDescriptors.Claude), "CLAUDE.md")).ShouldBeTrue();
     }
 
     [Fact]
     public void Remove_with_data_deletes_the_profile_directory_before_saving()
     {
-        WriteFile(Path.Join(_paths.ClaudeConfigDir("privat"), "CLAUDE.md"));
+        WriteFile(Path.Join(_paths.ConfigDir("privat", ProviderDescriptors.Claude), "CLAUDE.md"));
         var store = Store(Privat);
         bool? existedAtSave = null;
         store.OnSave = _ => existedAtSave = Directory.Exists(_paths.ProfileDir("privat"));
@@ -420,7 +420,7 @@ public sealed class AccountServiceTests : IDisposable
     [Fact]
     public void Read_only_config_refuses_every_change_before_touching_the_disk()
     {
-        WriteFile(Path.Join(_paths.ClaudeConfigDir("privat"), "CLAUDE.md"));
+        WriteFile(Path.Join(_paths.ConfigDir("privat", ProviderDescriptors.Claude), "CLAUDE.md"));
         var store = ReadOnlyStore(Privat);
         var service = Service(store);
 
@@ -432,6 +432,36 @@ public sealed class AccountServiceTests : IDisposable
         store.Saved.ShouldBeEmpty();
         service.Config.ShouldBeSameAs(service.LoadResult.Config);
         Directory.GetDirectories(_paths.ProfilesDir).Select(Path.GetFileName).ShouldBe(["privat"]);
-        File.Exists(Path.Join(_paths.ClaudeConfigDir("privat"), "CLAUDE.md")).ShouldBeTrue();
+        File.Exists(Path.Join(_paths.ConfigDir("privat", ProviderDescriptors.Claude), "CLAUDE.md")).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Creating_a_Codex_account_makes_only_the_Codex_folders()
+    {
+        var service = Service(Store());
+
+        var result = service.Create("Codex Privat", "#5E8C8A", copy: null, ProviderKind.Codex);
+
+        result.Account.Provider.ShouldBe(ProviderKind.Codex);
+        Directory.Exists(_paths.ConfigDir(result.Account.Id, ProviderDescriptors.Codex)).ShouldBeTrue();
+        Directory.Exists(_paths.DesktopDataDir(result.Account.Id, ProviderDescriptors.Codex)).ShouldBeTrue();
+        Directory.Exists(_paths.ConfigDir(result.Account.Id, ProviderDescriptors.Claude)).ShouldBeFalse();
+        Directory.Exists(_paths.DesktopDataDir(result.Account.Id, ProviderDescriptors.Claude)).ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// Copying across providers would write one provider's files into another's home. The editor filters its
+    /// sources, but the service must refuse it on its own.
+    /// </summary>
+    [Fact]
+    public void Refuses_a_copy_source_of_another_provider()
+    {
+        var service = Service(Store());
+
+        var exception = Should.Throw<ArgumentException>(
+            () => service.Create("Codex", "#5E8C8A", CopyFrom(Account.DefaultId, false, CopyItem.ClaudeMd), ProviderKind.Codex));
+
+        exception.Message.ShouldContain("Claude");
+        service.Config.Accounts.ShouldAllBe(a => a.Provider == ProviderKind.Claude);
     }
 }

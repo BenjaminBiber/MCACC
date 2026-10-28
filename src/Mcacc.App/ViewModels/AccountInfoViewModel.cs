@@ -1,3 +1,4 @@
+using Mcacc.Core.Providers;
 using System.Globalization;
 using Avalonia.Input;
 using Avalonia.Media;
@@ -35,10 +36,10 @@ public sealed partial class AccountInfoViewModel : PageViewModel
     private readonly AppServices _services;
     private CancellationTokenSource? _life;
     private IReadOnlyList<TokenBucket> _buckets = [];
-    private IReadOnlyList<ClaudeDailyTokens> _summary = [];
+    private IReadOnlyList<DailyTokens> _summary = [];
     private IReadOnlyDictionary<string, string> _projects = new Dictionary<string, string>();
     private AccountProfile? _profile;
-    private ClaudeLoginInfo? _login;
+    private AccountLoginInfo? _login;
     private CredentialFacts? _credentials;
     private string? _desktop;
 
@@ -47,7 +48,7 @@ public sealed partial class AccountInfoViewModel : PageViewModel
         _services = services;
         Account = account;
         _profile = services.Usage.GetProfile(account);
-        _login = services.Login.Read(services.Resolver.Resolve(account));
+        _login = services.Login.Read(account, services.Resolver.Resolve(account));
         ShowLimits(services.Usage.GetCached(account));
         LoadHistory();
         BuildFields();
@@ -78,7 +79,7 @@ public sealed partial class AccountInfoViewModel : PageViewModel
 
     public string HistoryHeader => Texts.InfoHistory;
 
-    public string UsageHeader => Texts.InfoUsage;
+    public string UsageHeader => Texts.InfoUsage(Account.Provider);
 
     public string TokensPerDayHeader => Texts.InfoTokensPerDay;
 
@@ -107,6 +108,12 @@ public sealed partial class AccountInfoViewModel : PageViewModel
     public string ColumnShare => Texts.InfoColumnShare;
 
     public string ColumnCost => Texts.InfoColumnCost;
+
+    /// <summary>
+    /// Only where tokens are billed per token. A ChatGPT plan is flat-rate, so a cost column there would be an
+    /// invented number dressed as a measurement.
+    /// </summary>
+    public bool ShowCost => Account.Provider == ProviderKind.Claude;
 
     public string CostNote => Texts.InfoCostNote;
 
@@ -378,18 +385,18 @@ public sealed partial class AccountInfoViewModel : PageViewModel
 
         Rings = rings;
         LimitsAsOf = usage.Snapshot is { } shown ? Texts.UsageAsOf(shown.FetchedAt) : null;
-        LimitsHint = HintFor(usage);
+        LimitsHint = HintFor(Account.Provider, usage);
     }
 
     /// <summary>
     /// The tile falls back to the time of the shown limits after a failed refresh; the header here names that time
     /// already, so the hint says what the time alone does not: that the refresh failed.
     /// </summary>
-    private static string? HintFor(AccountUsage usage) => usage.State switch
+    private static string? HintFor(ProviderKind provider, AccountUsage usage) => usage.State switch
     {
         UsageState.RateLimited or UsageState.Unauthorized or UsageState.Error =>
             usage.Snapshot is null ? null : Texts.InfoLimitsStale,
-        _ => AccountTileViewModel.HintFor(usage),
+        _ => AccountTileViewModel.HintFor(provider, usage),
     };
 
     private static void AddRing(List<LimitRingViewModel> rings, string label, UsageWindow? window)
@@ -572,7 +579,9 @@ public sealed partial class AccountInfoViewModel : PageViewModel
 
         // Without a priced model the cost has no source and is left out like any missing value; the model table and
         // the unpriced note below still say why.
-        KpiViewModel[] cost = stats.Cost is { } usd ? [new(Texts.InfoCost, Texts.Cost(usd), Texts.InfoCostNote)] : [];
+        KpiViewModel[] cost = ShowCost && stats.Cost is { } usd
+            ? [new(Texts.InfoCost, Texts.Cost(usd), Texts.InfoCostNote)]
+            : [];
         Kpis =
         [
             new(Texts.InfoTokens, Texts.TokenAmount(total)),
@@ -641,7 +650,7 @@ public sealed partial class AccountInfoViewModel : PageViewModel
                 ColorOf(model.Model)))
             .ToList();
 
-        UnpricedText = stats.UnpricedTokens > 0 ? Texts.InfoUnpriced(stats.UnpricedTokens) : null;
+        UnpricedText = ShowCost && stats.UnpricedTokens > 0 ? Texts.InfoUnpriced(stats.UnpricedTokens) : null;
     }
 
     private static ChartSlice Kind(string label, long value, ChartColor color, long total) =>
@@ -661,7 +670,7 @@ public sealed partial class AccountInfoViewModel : PageViewModel
                 ? new CredentialFacts(credentials.SubscriptionType, credentials.Scopes, credentials.ExpiresAt)
                 : null;
 
-            var instances = await _services.Detector.DetectAsync(ct).ConfigureAwait(true);
+            var instances = await _services.Detector.DetectAsync(ProviderDescriptors.For(Account), ct).ConfigureAwait(true);
             var own = instances
                 .Where(instance => _services.Matcher.Match(instance, _services.Accounts.Config.Accounts)?.Id == Account.Id)
                 .ToList();
@@ -702,7 +711,7 @@ public sealed partial class AccountInfoViewModel : PageViewModel
         AddField(fields, Texts.InfoInstallMethod, Humanized(login?.InstallMethod));
         AddField(fields, Texts.InfoProjects, login?.ProjectCount is { } projects ? Texts.Count(projects) : null);
         HasAccountData = fields.Count > 0;
-        AddField(fields, Texts.InfoDesktop, _desktop);
+        AddField(fields, Texts.InfoDesktop(Account.Provider), _desktop);
         Fields = fields;
     }
 

@@ -75,6 +75,14 @@
                   <Border Classes="chip"
                           Padding="6,1"
                           VerticalAlignment="Center"
+                          IsVisible="{TemplateBinding ProviderBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <TextBlock Text="{TemplateBinding ProviderBadge}"
+                               FontSize="11"
+                               Foreground="{DynamicResource Mcacc.TextSecondary}" />
+                  </Border>
+                  <Border Classes="chip"
+                          Padding="6,1"
+                          VerticalAlignment="Center"
                           IsVisible="{TemplateBinding Badge, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                     <TextBlock Text="{TemplateBinding Badge}"
                                FontSize="11"

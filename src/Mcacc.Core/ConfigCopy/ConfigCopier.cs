@@ -7,9 +7,16 @@ public sealed class ConfigCopier
 {
     public CopyReport Execute(CopyPlan plan, AccountPaths source, AccountPaths target)
     {
-        if (target.ClaudeConfigDir is null)
+        if (target.ConfigDirOverride is null)
         {
             throw new ArgumentException("The default account is never a copy target.", nameof(target));
+        }
+
+        if (target.Provider.Kind != source.Provider.Kind)
+        {
+            throw new ArgumentException(
+                $"A {source.Provider.DisplayName} account is no copy source for a {target.Provider.DisplayName} one.",
+                nameof(target));
         }
 
         // Checked up front, so a bogus plan copies nothing at all.
@@ -57,18 +64,23 @@ public sealed class ConfigCopier
 
     /// <summary>
     /// The operation must be exactly what the planner derives for its item: the whitelisted path inside the source's
-    /// Claude dir or one of its Desktop candidates, copied to the same path inside the target profile.
+    /// config dir or one of its Desktop candidates, copied to the same path inside the target profile.
     /// </summary>
     private static bool MatchesWhitelist(CopyOperation operation, AccountPaths source, AccountPaths target)
     {
-        var (relativePath, isDirectory, location) = CopyItems.Info(operation.Item);
-        IReadOnlyList<string> sourceDirs = location == CopyLocation.ClaudeDir ? [source.EffectiveClaudeDir] : source.DesktopDataDirs;
-        var targetDir = location == CopyLocation.ClaudeDir ? target.ClaudeConfigDir : target.DesktopUserDataDir;
-        return operation.IsDirectory == isDirectory
-            && (!operation.RewritePaths || operation.Item == CopyItem.SettingsJson)
+        var entry = CopyItems.Info(operation.Item);
+        IReadOnlyList<string> sourceDirs = entry.Location == CopyLocation.ConfigDir
+            ? [source.EffectiveConfigDir]
+            : source.DesktopDataDirs;
+        var targetDir = entry.Location == CopyLocation.ConfigDir
+            ? target.ConfigDirOverride
+            : target.DesktopUserDataDir;
+        return operation.IsDirectory == entry.IsDirectory
+            && source.Provider.CopyItems.Contains(operation.Item)
+            && (!operation.RewritePaths || entry.Rewrite != PathRewrite.None)
             && targetDir is not null
-            && SamePath(operation.TargetPath, Path.Join(targetDir, relativePath))
-            && sourceDirs.Any(dir => SamePath(operation.SourcePath, Path.Join(dir, relativePath)));
+            && SamePath(operation.TargetPath, Path.Join(targetDir, entry.RelativePath))
+            && sourceDirs.Any(dir => SamePath(operation.SourcePath, Path.Join(dir, entry.RelativePath)));
     }
 
     private static bool SamePath(string a, string b) =>
@@ -124,11 +136,7 @@ public sealed class ConfigCopier
 
     private static void CopyRewritten(CopyOperation operation, AccountPaths source, AccountPaths target)
     {
-        var rewritten = SettingsPathRewriter.Rewrite(
-            File.ReadAllText(operation.SourcePath),
-            source.EffectiveClaudeDir,
-            target.EffectiveClaudeDir,
-            sourceIsDefault: source.ClaudeConfigDir is null);
+        var rewritten = ProfilePathRewriter.Rewrite(File.ReadAllText(operation.SourcePath), source, target);
         using var stream = new FileStream(operation.TargetPath, FileMode.CreateNew, FileAccess.Write);
         using var writer = new StreamWriter(stream);
         writer.Write(rewritten);

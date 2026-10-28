@@ -1,3 +1,4 @@
+using Mcacc.Core.Providers;
 using Avalonia.Input;
 using Mcacc.App.Controls;
 using Mcacc.App.Localization;
@@ -121,7 +122,7 @@ public sealed class AccountInfoViewModelTests : IDisposable
     {
         _services.Usage.Cached["privat"] = new AccountUsage(UsageState.WrongAccount, null, "other@example.com");
 
-        Page().LimitsHint.ShouldBe(Texts.UsageWrongAccount("other@example.com"));
+        Page().LimitsHint.ShouldBe(Texts.UsageWrongAccount(ProviderKind.Claude, "other@example.com"));
     }
 
     [Theory]
@@ -357,8 +358,8 @@ public sealed class AccountInfoViewModelTests : IDisposable
     [Fact]
     public void Without_a_profile_the_login_file_fills_the_fields()
     {
-        _services.Login.ByClaudeDir[_services.Services.Resolver.Resolve(Privat).EffectiveClaudeDir] =
-            new ClaudeLoginInfo("login@example.com", "Firma", "Ben", "uuid-1", "admin", 12, "native", 3);
+        _services.Login.ByClaudeDir[_services.Services.Resolver.Resolve(Privat).EffectiveConfigDir] =
+            new AccountLoginInfo("login@example.com", "Firma", "Ben", "uuid-1", "admin", "plus", 12, "native", 3);
 
         var page = Page();
 
@@ -397,7 +398,7 @@ public sealed class AccountInfoViewModelTests : IDisposable
 
         await page.ActivateAsync(Ct);
 
-        Field(page, Texts.InfoDesktop).ShouldNotBeNull().ShouldStartWith("läuft seit");
+        Field(page, Texts.InfoDesktop(ProviderKind.Claude)).ShouldNotBeNull().ShouldStartWith("läuft seit");
     }
 
     [Fact]
@@ -409,7 +410,7 @@ public sealed class AccountInfoViewModelTests : IDisposable
         await page.ActivateAsync(Ct);
 
         page.HasAccountData.ShouldBeFalse();
-        page.Fields.ShouldHaveSingleItem().ShouldBe(new InfoFieldViewModel(Texts.InfoDesktop, Texts.InfoDesktopNotRunning));
+        page.Fields.ShouldHaveSingleItem().ShouldBe(new InfoFieldViewModel(Texts.InfoDesktop(ProviderKind.Claude), Texts.InfoDesktopNotRunning));
     }
 
     // Claude Code usage
@@ -546,7 +547,7 @@ public sealed class AccountInfoViewModelTests : IDisposable
         var today = DateOnly.FromDateTime(DateTime.Now);
         var gone = today.AddDays(-40);
         _services.Stats.Buckets.Add(Bucket("claude-opus-4-5", 1_000));
-        _services.Stats.Summary.AddRange([new ClaudeDailyTokens(gone, 3), new ClaudeDailyTokens(today, 10)]);
+        _services.Stats.Summary.AddRange([new DailyTokens(gone, 3), new DailyTokens(today, 10)]);
         var page = Page();
 
         await page.ActivateAsync(Ct);

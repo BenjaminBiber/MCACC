@@ -4,10 +4,11 @@ using System.IO.Enumeration;
 namespace Mcacc.Core.Stats;
 
 /// <summary>
-/// Brings a <see cref="StatsIndex"/> up to date with the session logs under <c>&lt;claudeDir&gt;/projects</c>. Only what
-/// is new since the last scan is read, so after the first scan an update takes milliseconds.
+/// Brings a <see cref="StatsIndex"/> up to date with the session logs below a root directory. Only what is
+/// new since the last scan is read, so after the first scan an update takes milliseconds. The format is the
+/// <see cref="ILogLineReader"/>.s business; everything here is the same for every provider.
 /// </summary>
-public static class ClaudeLogScanner
+public static class LogScanner
 {
     private const int BufferSize = 64 * 1024;
     private const long ProgressStep = 8L * 1024 * 1024;
@@ -15,8 +16,9 @@ public static class ClaudeLogScanner
     private static readonly EnumerationOptions AllLogs = new() { RecurseSubdirectories = true, IgnoreInaccessible = true };
 
     public static LogScanResult Update(
-        string claudeDir,
+        string root,
         StatsIndex index,
+        Func<ILogLineReader> newReader,
         IProgress<double>? progress,
         CancellationToken ct)
     {
@@ -27,7 +29,6 @@ public static class ClaudeLogScanner
             ? new Dictionary<string, IndexedLogFile>(StringComparer.Ordinal)
             : index.Files.ToDictionary(file => file.Path, StringComparer.Ordinal);
 
-        var root = Path.Join(claudeDir, "projects");
         var work = new List<WorkItem>();
         if (Directory.Exists(root))
         {
@@ -55,7 +56,7 @@ public static class ClaudeLogScanner
         foreach (var item in work)
         {
             ct.ThrowIfCancellationRequested();
-            if (Scan(item, seen, counter, ct) is { } scanned)
+            if (Scan(item, newReader(), seen, counter, ct) is { } scanned)
             {
                 entries[item.Path] = scanned;
             }
@@ -67,9 +68,15 @@ public static class ClaudeLogScanner
     }
 
     /// <returns>The new entry, or null when the file could not be read; the old entry then stands.</returns>
-    private static IndexedLogFile? Scan(WorkItem item, HashSet<long> seen, ProgressCounter counter, CancellationToken ct)
+    private static IndexedLogFile? Scan(
+        WorkItem item,
+        ILogLineReader reader,
+        HashSet<long> seen,
+        ProgressCounter counter,
+        CancellationToken ct)
     {
         var resumed = item.Resume ? item.Old : null;
+        reader.State = resumed?.Reader ?? LogReaderState.None;
 
         // A file read from the start may count its own earlier responses again; they are in seen because of it.
         HashSet<long> own = item.Old is not null && !item.Resume ? [.. item.Old.Ids] : [];
@@ -87,7 +94,7 @@ public static class ClaudeLogScanner
         {
             offset = ReadLines(item.Info.FullName, item.Start, counter, ct, line =>
             {
-                if (!LogLineParser.TryParse(line, out var usage))
+                if (!reader.TryRead(line, out var usage))
                 {
                     broken++;
                     return;
@@ -120,7 +127,15 @@ public static class ClaudeLogScanner
             .ThenBy(bucket => bucket.Project, StringComparer.Ordinal)
             .ThenBy(bucket => bucket.Session, StringComparer.Ordinal)
             .ToList();
-        return new IndexedLogFile(item.Path, item.Info.Length, item.Info.LastWriteTimeUtc, offset, buckets, ids, broken);
+        return new IndexedLogFile(
+            item.Path,
+            item.Info.Length,
+            item.Info.LastWriteTimeUtc,
+            offset,
+            buckets,
+            ids,
+            broken,
+            reader.State);
     }
 
     /// <summary>Hands every complete line to <paramref name="onLine"/>; a line may be longer than the buffer.</summary>

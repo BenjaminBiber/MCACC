@@ -92,4 +92,34 @@ public sealed class PathExecutableLocatorTests : IDisposable
 
         locator.Find("mcacc-probe").ShouldBeNull();
     }
+
+    /// <summary>
+    /// MCACC does not inherit a login shell's PATH, so the Codex install root has to be on the extra list the way
+    /// <c>~/.claude/local</c> is for Claude.
+    /// </summary>
+    [WindowsFact]
+    public void Finds_codex_in_its_windows_install_directory_without_PATH()
+    {
+        var localAppData = Path.Join(_temp.Path, "local");
+        var info = PlatformInfo.Current() with
+        {
+            HomeDir = Path.Join(_temp.Path, "home"),
+            LocalAppData = localAppData,
+        };
+        var expected = WriteExecutable(Path.Join(localAppData, "Programs", "OpenAI", "Codex", "bin"), "codex");
+
+        new PathExecutableLocator(info, _ => null).Find("codex").ShouldBe(expected);
+    }
+
+    [Fact]
+    public void Finds_codex_in_the_standalone_package_directory_without_PATH()
+    {
+        var home = Path.Join(_temp.Path, "home");
+        var info = PlatformInfo.Current() with { HomeDir = home, LocalAppData = Path.Join(_temp.Path, "local") };
+        var expected = WriteExecutable(
+            Path.Join(home, ".codex", "packages", "standalone", "current", "bin"),
+            "codex");
+
+        new PathExecutableLocator(info, _ => null).Find("codex").ShouldBe(expected);
+    }
 }

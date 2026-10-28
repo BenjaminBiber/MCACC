@@ -33,7 +33,7 @@ public sealed class ClaudeStatsProviderTests : IDisposable
 
     private string Log(params string[] lines)
     {
-        var file = Path.Join(Resolver.Resolve(Privat).EffectiveClaudeDir, "projects", "p1", "s1.jsonl");
+        var file = Path.Join(Resolver.Resolve(Privat).EffectiveConfigDir, "projects", "p1", "s1.jsonl");
         Directory.CreateDirectory(Path.GetDirectoryName(file)!);
         File.WriteAllText(file, string.Concat(lines.Select(line => line + "\n")));
         return file;

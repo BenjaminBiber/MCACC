@@ -11,7 +11,7 @@ public class CalendarBackfillTests
     private static DailyUsage Own(int offset, long tokens) =>
         new(Start.AddDays(offset), tokens == 0 ? new Dictionary<string, long>() : new Dictionary<string, long> { ["m"] = tokens });
 
-    private static ClaudeDailyTokens Claude(int offset, long tokens) => new(Start.AddDays(offset), tokens);
+    private static DailyTokens Claude(int offset, long tokens) => new(Start.AddDays(offset), tokens);
 
     [Fact]
     public void Without_a_day_in_both_nothing_is_estimated()

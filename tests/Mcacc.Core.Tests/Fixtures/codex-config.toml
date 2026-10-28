@@ -1,0 +1,88 @@
+notify = [ "C:\\Users\\x\\AppData\\Local\\OpenAI\\Codex\\runtimes\\cua_node\\45309f9050f7314b\\bin\\node_modules\\@oai\\sky\\bin\\windows\\codex-computer-use.exe", "turn-ended" ]
+model = "gpt-6.1-sol"
+model_reasoning_effort = "low"
+[desktop]
+followUpQueueMode = "steer"
+
+[marketplaces.openai-bundled]
+source_type = "local"
+source = '\\?\C:\Users\x\.codex\.tmp\bundled-marketplaces\openai-bundled'
+
+[marketplaces.openai-primary-runtime]
+source_type = "local"
+source = '\\?\C:\Users\x\.cache\codex-runtimes\codex-primary-runtime\plugins\openai-primary-runtime'
+
+[plugins."codex-app-tools@openai-bundled"]
+enabled = true
+
+[plugins."browser@openai-bundled"]
+enabled = true
+
+[plugins."unified-computer-use@openai-bundled"]
+enabled = true
+
+[plugins."code-review@openai-bundled"]
+enabled = true
+
+[plugins."visualize@openai-bundled"]
+enabled = true
+
+[plugins."computer-use@openai-bundled"]
+enabled = true
+
+[plugins."documents@openai-primary-runtime"]
+enabled = true
+
+[plugins."pdf@openai-primary-runtime"]
+enabled = true
+
+[plugins."spreadsheets@openai-primary-runtime"]
+enabled = true
+
+[plugins."presentations@openai-primary-runtime"]
+enabled = true
+
+[plugins."template-creator@openai-primary-runtime"]
+enabled = true
+
+[mcp_servers.node_repl]
+args = []
+command = 'C:\Users\x\AppData\Local\OpenAI\Codex\runtimes\cua_node\45309f9050f7314b\bin\node_repl.exe'
+env_vars = ["CODEX_WINDOWS_REGISTERED_CORE"]
+startup_timeout_sec = 120
+
+[mcp_servers.node_repl.env]
+NODE_REPL_NATIVE_PIPE_CONNECT_TIMEOUT_MS = "1000"
+NODE_REPL_NODE_MODULE_DIRS = 'C:\Users\x\AppData\Local\OpenAI\Codex\runtimes\cua_node\45309f9050f7314b\bin\node_modules'
+NODE_REPL_NODE_PATH = 'C:\Users\x\AppData\Local\OpenAI\Codex\runtimes\cua_node\45309f9050f7314b\bin\node.exe'
+NODE_REPL_TRUSTED_CODE_PATHS = 'C:\Users\x\.codex;C:\Users\x\AppData\Local\OpenAI\Codex\runtimes\cua_node\45309f9050f7314b\bin\node_modules'
+CODEX_HOME = 'C:\Users\x\.codex'
+BROWSER_USE_AVAILABLE_BACKENDS = "chrome,iab,mcpapps"
+BROWSER_USE_TINYSKY_ENABLED = "1"
+NODE_REPL_INSTRUCTIONS_USE_CASE_BROWSER = ""
+NODE_REPL_INSTRUCTIONS_USE_CASE_CHROME = ""
+BROWSER_USE_CODEX_APP_BUILD_FLAVOR = "prod"
+BROWSER_USE_CODEX_APP_VERSION = "26.930.31730"
+NODE_REPL_TRUSTED_SERVICES = '{"browser":"C:/Users/x/.codex/plugins/cache/openai-bundled/browser/26.930.31730/scripts/browser-service.mjs","sky":"@oai/sky/service"}'
+SKY_CUA_NATIVE_PIPE = "1"
+SKY_CUA_NATIVE_PIPE_DIRECTORY = '\\.\pipe\codex-computer-use-f0866948-f484-41d7-a732-25614cd0172a'
+CODEX_CLI_PATH = 'C:\Users\x\AppData\Local\OpenAI\Codex\bin\8aaf1547b825b104\codex.exe'
+NODE_REPL_UNTRUSTED_ENV_ALLOWLIST = "CODEX_WINDOWS_REGISTERED_CORE"
+
+[windows]
+sandbox = "elevated"
+
+[tui]
+screen_reader_detection_done = true
+
+[tui.model_availability_nux]
+"gpt-6.1-sol" = 3
+
+[projects.'c:\users\x']
+trust_level = "trusted"
+
+[projects.'c:\users\x\work\shop']
+trust_level = "trusted"
+
+[projects.'c:\users\x\riderprojects\agriso']
+trust_level = "trusted"

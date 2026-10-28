@@ -23,7 +23,7 @@ public class MacPlatformTests
     {
         var provider = new PsProcessSnapshotProvider(Runner);
 
-        var processes = await provider.GetClaudeProcessesAsync(Ct);
+        var processes = await provider.GetProcessesAsync(ProviderDescriptors.Claude, Ct);
 
         processes.ShouldAllBe(p => p.Pid > 0);
         processes.ShouldAllBe(p => p.CommandLine!.Contains("Claude.app/Contents/"));
@@ -44,7 +44,7 @@ public class MacPlatformTests
     [MacFact]
     public void The_installation_locator_returns_an_existing_bundle_or_nothing()
     {
-        var installation = new MacDesktopInstallationLocator(PlatformInfo.Current(), Runner).Locate();
+        var installation = new MacDesktopInstallationLocator(PlatformInfo.Current(), Runner).Locate(ProviderDescriptors.Claude);
 
         if (installation is not null)
         {

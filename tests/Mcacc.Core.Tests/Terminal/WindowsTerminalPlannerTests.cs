@@ -24,14 +24,22 @@ public class WindowsTerminalPlannerTests
     private const string EscapedHome = @"C:\Users\Jö O'Neil’s 100%\;$x";
     private const string EscapedLaunchDir = @"C:\Users\Jö O'Neil’s 100%\;$x\.mcacc\launch";
 
-    private const string ProfileScript =
-        """Remove-Item Env:CLAUDECODE,Env:CLAUDE_CODE_ENTRYPOINT,Env:CLAUDE_CODE_SSE_PORT -ErrorAction Ignore; $env:CLAUDE_CONFIG_DIR='C:\Users\Jö O''Neil’’s 100%;$x\.mcacc\profiles\privat\claude'; Set-Location -LiteralPath 'C:\Users\Jö O''Neil’’s 100%;$x'; $Host.UI.RawUI.WindowTitle='Claude Code · Privat'; claude""";
+    private static readonly string Scrub =
+        $"Remove-Item {Scrubs.PowerShell(ProviderDescriptors.Claude)} -ErrorAction Ignore; ";
 
-    private const string EscapedProfileScript =
-        """Remove-Item Env:CLAUDECODE,Env:CLAUDE_CODE_ENTRYPOINT,Env:CLAUDE_CODE_SSE_PORT -ErrorAction Ignore\; $env:CLAUDE_CONFIG_DIR='C:\Users\Jö O''Neil’’s 100%\;$x\.mcacc\profiles\privat\claude'\; Set-Location -LiteralPath 'C:\Users\Jö O''Neil’’s 100%\;$x'\; $Host.UI.RawUI.WindowTitle='Claude Code · Privat'\; claude""";
+    /// <summary>Windows Terminal escapes the semicolon, the scrub prefix included.</summary>
+    private static readonly string EscapedScrub = Scrub.Replace(";", WtEscapedSemicolon);
 
-    private const string EscapedDefaultScript =
-        """Remove-Item Env:CLAUDECODE,Env:CLAUDE_CODE_ENTRYPOINT,Env:CLAUDE_CODE_SSE_PORT -ErrorAction Ignore\; Remove-Item Env:CLAUDE_CONFIG_DIR -ErrorAction Ignore\; Set-Location -LiteralPath 'C:\Users\Jö O''Neil’’s 100%\;$x'\; $Host.UI.RawUI.WindowTitle='Claude Code · Standard'\; claude""";
+    private const string WtEscapedSemicolon = @"\;";
+
+    private static readonly string ProfileScript =
+        Scrub + """$env:CLAUDE_CONFIG_DIR='C:\Users\Jö O''Neil’’s 100%;$x\.mcacc\profiles\privat\claude'; Set-Location -LiteralPath 'C:\Users\Jö O''Neil’’s 100%;$x'; $Host.UI.RawUI.WindowTitle='Claude Code · Privat'; claude""";
+
+    private static readonly string EscapedProfileScript =
+        EscapedScrub + """$env:CLAUDE_CONFIG_DIR='C:\Users\Jö O''Neil’’s 100%\;$x\.mcacc\profiles\privat\claude'\; Set-Location -LiteralPath 'C:\Users\Jö O''Neil’’s 100%\;$x'\; $Host.UI.RawUI.WindowTitle='Claude Code · Privat'\; claude""";
+
+    private static readonly string EscapedDefaultScript =
+        EscapedScrub + """Remove-Item Env:CLAUDE_CONFIG_DIR -ErrorAction Ignore\; Set-Location -LiteralPath 'C:\Users\Jö O''Neil’’s 100%\;$x'\; $Host.UI.RawUI.WindowTitle='Claude Code · Standard'\; claude""";
 
     private static readonly LaunchFile ProfileBatchFile = new(
         LaunchRequests.WindowsLaunchDir + @"\privat.cmd",
@@ -184,7 +192,7 @@ public class WindowsTerminalPlannerTests
         {
             var process = WindowsTerminalPlanner.Plan(request, terminal, shell, AllInstalled).Process;
 
-            process.EnvUnset.ShouldBe(["CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SSE_PORT", "CLAUDE_CONFIG_DIR"]);
+            process.EnvUnset.ShouldBe(EnvironmentScrub.WithoutAnyConfigDir);
             process.EnvSet.ShouldBeEmpty();
         }
     }

@@ -14,21 +14,20 @@ public sealed class CodeLaunchService(
     McaccPaths paths,
     PlatformInfo platform) : ICodeLauncher
 {
-    private const string ClaudeCli = "claude";
-
     public CodeLaunchResult Launch(Account account, AppSettings settings)
     {
         var installed = catalog.GetInstalled();
         var terminal = TerminalSelector.Select(settings.Terminal, installed, catalog.PlatformDefaultId);
         if (terminal is null || platform.Os is not (OsKind.Windows or OsKind.MacOS))
         {
-            return new CodeLaunchResult(CodeLaunchOutcome.NoTerminal, Terminal: null, ClaudeCliNotFound: false);
+            return new CodeLaunchResult(CodeLaunchOutcome.NoTerminal, Terminal: null, CliNotFound: false);
         }
 
-        var cliMissing = locator.Find(ClaudeCli) is null;
+        var request = Request(account);
+        var cliMissing = locator.Find(request.CliCommand) is null;
         try
         {
-            var plan = Plan(Request(account), terminal, settings, installed);
+            var plan = Plan(request, terminal, settings, installed);
             foreach (var file in plan.Files)
             {
                 writer.Write(file);
@@ -46,16 +45,21 @@ public sealed class CodeLaunchService(
         return new CodeLaunchResult(CodeLaunchOutcome.Launched, terminal, cliMissing);
     }
 
-    private ClaudeCodeLaunchRequest Request(Account account) => new(
-        account.Id,
-        account.Name,
-        resolver.Resolve(account).ClaudeConfigDir,
-        platform.HomeDir,
-        paths.LaunchDir,
-        account.Color);
+    private CliLaunchRequest Request(Account account)
+    {
+        var accountPaths = resolver.Resolve(account);
+        return new CliLaunchRequest(
+            accountPaths.Provider,
+            account.Id,
+            account.Name,
+            accountPaths.ConfigDirOverride,
+            platform.HomeDir,
+            paths.LaunchDir,
+            account.Color);
+    }
 
     private TerminalLaunchPlan Plan(
-        ClaudeCodeLaunchRequest request,
+        CliLaunchRequest request,
         TerminalOption terminal,
         AppSettings settings,
         IReadOnlyList<TerminalOption> installed) => platform.Os == OsKind.Windows

@@ -25,7 +25,7 @@ public sealed class DesktopLaunchService(
 
     public async Task<DesktopLaunchCheck> PrepareAsync(Account target, IReadOnlyList<Account> accounts, CancellationToken ct)
     {
-        if (locator.Locate() is null)
+        if (locator.Locate(ProviderDescriptors.For(target)) is null)
         {
             return new DesktopLaunchCheck.NotInstalled();
         }
@@ -43,7 +43,7 @@ public sealed class DesktopLaunchService(
     /// <exception cref="PlatformNotSupportedException">Claude Desktop is installed on neither Windows nor macOS.</exception>
     public async Task<DesktopLaunchOutcome> LaunchAsync(Account target, IReadOnlyList<Account> accounts, bool quitConflicts, CancellationToken ct)
     {
-        var installation = locator.Locate();
+        var installation = locator.Locate(ProviderDescriptors.For(target));
         if (installation is null)
         {
             return DesktopLaunchOutcome.NotInstalled;
@@ -113,7 +113,7 @@ public sealed class DesktopLaunchService(
         IReadOnlyList<Account> accounts,
         CancellationToken ct)
     {
-        var instances = await detector.DetectAsync(ct).ConfigureAwait(false);
+        var instances = await detector.DetectAsync(ProviderDescriptors.For(target), ct).ConfigureAwait(false);
         var conflicts = new List<DesktopConflict>();
         var targetRunning = false;
         foreach (var instance in instances)

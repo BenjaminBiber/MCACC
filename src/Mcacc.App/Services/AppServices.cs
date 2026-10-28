@@ -16,7 +16,7 @@ public sealed record AppServices(
     ICodeLauncher Code,
     IUsageProvider Usage,
     UsagePoller Poller,
-    IClaudeStatsProvider Stats,
+    IStatsProvider Stats,
     ICredentialSource Credentials,
     ILoginInfoReader Login,
     IDesktopInstanceDetector Detector,

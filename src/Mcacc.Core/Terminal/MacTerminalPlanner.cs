@@ -9,7 +9,7 @@ public static class MacTerminalPlanner
     private const string Open = "/usr/bin/open";
 
     /// <exception cref="ArgumentException">Not a macOS terminal, or the account id is not a slug.</exception>
-    public static TerminalLaunchPlan Plan(ClaudeCodeLaunchRequest req, TerminalOption terminal)
+    public static TerminalLaunchPlan Plan(CliLaunchRequest req, TerminalOption terminal)
     {
         TerminalPlanning.RequireSlugAccountId(req);
         var file = PathStyle.Posix.Join(req.LaunchDir, $"{req.AccountId}.command");

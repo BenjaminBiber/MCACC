@@ -16,8 +16,8 @@ public class DesktopProcessRulesTests
     private const string MacCrashpad =
         "/Applications/Claude.app/Contents/Frameworks/Electron Framework.framework/Helpers/chrome_crashpad_handler";
 
-    private static readonly DesktopProcessRules Windows = DesktopProcessRules.ForOs(OsKind.Windows);
-    private static readonly DesktopProcessRules Mac = DesktopProcessRules.ForOs(OsKind.MacOS);
+    private static readonly DesktopProcessRules Windows = DesktopProcessRules.For(OsKind.Windows, ProviderDescriptors.Claude);
+    private static readonly DesktopProcessRules Mac = DesktopProcessRules.For(OsKind.MacOS, ProviderDescriptors.Claude);
 
     private static ProcessInfo Process(string? exePath, string? commandLine = null) =>
         new(100, 1, exePath, commandLine ?? (exePath is null ? null : $"\"{exePath}\""), StartTime: null);
@@ -80,7 +80,7 @@ public class DesktopProcessRulesTests
     [InlineData(MacMain)]
     public void Linux_knows_no_desktop_process(string exePath)
     {
-        DesktopProcessRules.ForOs(OsKind.Linux).IsDesktopProcess(Process(exePath)).ShouldBeFalse();
+        DesktopProcessRules.For(OsKind.Linux, ProviderDescriptors.Claude).IsDesktopProcess(Process(exePath)).ShouldBeFalse();
     }
 
     [Theory]
@@ -117,5 +117,48 @@ public class DesktopProcessRulesTests
     public void Mac_helpers_are_not_main_even_without_type(string exePath, string commandLine)
     {
         Mac.IsMain(new ProcessInfo(100, 1, exePath, commandLine, StartTime: null)).ShouldBeFalse();
+    }
+
+    private static DesktopProcessRules CodexWindows => DesktopProcessRules.For(OsKind.Windows, ProviderDescriptors.Codex);
+
+    private static ProcessInfo Exe(string path, string? commandLine = null) =>
+        new(1, 0, path, commandLine ?? $"\"{path}\"", DateTimeOffset.Now);
+
+    private const string CodexApp =
+        @"C:\Program Files\WindowsApps\OpenAI.Codex_26.930.3930.0_x64__2p2nqsd0c76g0\app\ChatGPT.exe";
+
+    [Fact]
+    public void The_Codex_app_is_recognised_by_its_package_path()
+    {
+        CodexWindows.IsDesktopProcess(Exe(CodexApp)).ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// The separate ChatGPT app carries the same executable name. Matching on the name alone would make MCACC
+    /// quit someone's chat window while switching a Codex account.
+    /// </summary>
+    [Fact]
+    public void The_separate_ChatGPT_app_is_not_the_Codex_app()
+    {
+        const string other = @"C:\Program Files\WindowsApps\OpenAI.ChatGPT_1.2.3_x64__abcdefghijklm\app\ChatGPT.exe";
+
+        CodexWindows.IsDesktopProcess(Exe(other)).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Claude_rules_do_not_match_the_Codex_app_and_the_other_way_round()
+    {
+        const string claudeApp = @"C:\Program Files\WindowsApps\Claude_pzs8sxrjxfjjc\app\Claude.exe";
+
+        DesktopProcessRules.For(OsKind.Windows, ProviderDescriptors.Claude).IsDesktopProcess(Exe(CodexApp)).ShouldBeFalse();
+        CodexWindows.IsDesktopProcess(Exe(claudeApp)).ShouldBeFalse();
+    }
+
+    /// <summary>A render process carries --type=; only the one without it is the instance's main process.</summary>
+    [Fact]
+    public void Only_the_Codex_process_without_a_type_switch_is_the_main_one()
+    {
+        CodexWindows.IsMain(Exe(CodexApp)).ShouldBeTrue();
+        CodexWindows.IsMain(Exe(CodexApp, $"\"{CodexApp}\" --type=renderer")).ShouldBeFalse();
     }
 }

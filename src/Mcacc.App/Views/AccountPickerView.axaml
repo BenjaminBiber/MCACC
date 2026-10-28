@@ -42,6 +42,7 @@
                                  Title="{Binding Name}"
                                  Subtitle="{Binding Subtitle}"
                                  Badge="{Binding Badge}"
+                                 ProviderBadge="{Binding ProviderBadge}"
                                  AvatarText="{Binding Initials}"
                                  AvatarBrush="{Binding AvatarBrush}"
                                  Command="{Binding $parent[ItemsControl].((vm:AccountPickerViewModel)DataContext).SelectCommand}"

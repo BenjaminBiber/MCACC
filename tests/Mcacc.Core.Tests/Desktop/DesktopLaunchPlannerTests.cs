@@ -1,3 +1,4 @@
+using Mcacc.Core.Processes;
 using Mcacc.Core.Desktop;
 using Mcacc.Core.Model;
 using Mcacc.Core.Paths;
@@ -49,7 +50,7 @@ public class DesktopLaunchPlannerTests
         spec.WorkingDirectory.ShouldBe(WindowsHome);
         spec.EnvSet.Count.ShouldBe(1);
         spec.EnvSet["CLAUDE_CONFIG_DIR"].ShouldBe(@"C:\Users\Jö O'Neil\.mcacc\profiles\privat\claude");
-        spec.EnvUnset.ShouldBe(["CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SSE_PORT"]);
+        spec.EnvUnset.ShouldBe(EnvironmentScrub.For(ProviderDescriptors.Claude));
     }
 
     [Theory]
@@ -65,7 +66,7 @@ public class DesktopLaunchPlannerTests
         spec.Arguments.ShouldBeEmpty();
         spec.WorkingDirectory.ShouldBe(WindowsHome);
         spec.EnvSet.ShouldBeEmpty();
-        spec.EnvUnset.ShouldBe(["CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SSE_PORT", "CLAUDE_CONFIG_DIR"]);
+        spec.EnvUnset.ShouldBe(EnvironmentScrub.WithoutAnyConfigDir);
     }
 
     [Fact]
@@ -143,6 +144,88 @@ public class DesktopLaunchPlannerTests
 
         spec.WorkingDirectory.ShouldBeNull();
         spec.EnvSet.ShouldBeEmpty();
-        spec.EnvUnset.ShouldBe(["CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SSE_PORT", "CLAUDE_CONFIG_DIR"]);
+        spec.EnvUnset.ShouldBe(EnvironmentScrub.WithoutAnyConfigDir);
+    }
+
+    private static readonly Account CodexPrivat =
+        new("codex-privat", "Codex Privat", "#5E8C8A", IsDefault: false, ProviderKind.Codex);
+
+    private static readonly DesktopInstallation CodexMsix = new(
+        DesktopInstallKind.Msix,
+        @"C:\Program Files\WindowsApps\OpenAI.Codex_26.930.3930.0_x64__2p2nqsd0c76g0\app\ChatGPT.exe");
+
+    /// <summary>
+    /// Verified by starting it: the Codex app only takes a profile when all three agree — its agent home, its
+    /// Electron directory in the environment, and the Chromium switch.
+    /// </summary>
+    [Fact]
+    public void A_Codex_profile_is_named_three_times()
+    {
+        var paths = PathsOf(CodexPrivat, Windows);
+
+        var spec = DesktopLaunchPlanner.PlanWindows(CodexMsix, paths, WindowsHome);
+
+        spec.EnvSet["CODEX_HOME"].ShouldBe(paths.ConfigDirOverride);
+        spec.EnvSet["CODEX_ELECTRON_USER_DATA_PATH"].ShouldBe(paths.DesktopUserDataDir);
+        spec.Arguments.ShouldBe([$"--user-data-dir={paths.DesktopUserDataDir}"]);
+    }
+
+    /// <summary>Claude Desktop takes the switch alone; naming a variable it does not read would be noise.</summary>
+    [Fact]
+    public void A_Claude_profile_is_named_without_an_electron_variable()
+    {
+        var paths = PathsOf(Privat, Windows);
+
+        var spec = DesktopLaunchPlanner.PlanWindows(Msix, paths, WindowsHome);
+
+        spec.EnvSet.Keys.ShouldBe(["CLAUDE_CONFIG_DIR"]);
+    }
+
+    [Fact]
+    public void A_Codex_start_scrubs_the_other_providers_config_dir()
+    {
+        var spec = DesktopLaunchPlanner.PlanWindows(CodexMsix, PathsOf(CodexPrivat, Windows), WindowsHome);
+
+        spec.EnvUnset.ShouldContain("CLAUDE_CONFIG_DIR");
+        spec.EnvUnset.ShouldContain("CODEX_SQLITE_HOME");
+        spec.EnvUnset.ShouldNotContain("CODEX_HOME");
+    }
+
+    [Fact]
+    public void A_Codex_start_on_mac_hands_both_variables_to_open()
+    {
+        var paths = PathsOf(CodexPrivat, Mac);
+
+        var spec = DesktopLaunchPlanner.PlanMac(new DesktopInstallation(DesktopInstallKind.MacBundle, "/Applications/ChatGPT.app"), paths);
+
+        spec.Arguments.ShouldContain($"CODEX_HOME={paths.ConfigDirOverride}");
+        spec.Arguments.ShouldContain($"CODEX_ELECTRON_USER_DATA_PATH={paths.DesktopUserDataDir}");
+        spec.Arguments.ShouldContain($"--user-data-dir={paths.DesktopUserDataDir}");
+    }
+
+    /// <summary>The account on the provider's own home sets nothing and has every config dir removed.</summary>
+    [Fact]
+    public void The_Codex_default_account_sets_no_variable_at_all()
+    {
+        var spec = DesktopLaunchPlanner.PlanWindows(
+            CodexMsix,
+            PathsOf(Account.CreateDefault(ProviderKind.Codex), Windows),
+            WindowsHome);
+
+        spec.EnvSet.ShouldBeEmpty();
+        spec.Arguments.ShouldBeEmpty();
+        spec.EnvUnset.ShouldContain("CODEX_HOME");
+        spec.EnvUnset.ShouldContain("CLAUDE_CONFIG_DIR");
+    }
+
+    [Fact]
+    public void A_Codex_deep_link_comes_after_the_profile_switch()
+    {
+        const string url = "codex://login/app-google-auth?code=abc";
+
+        var spec = DesktopLaunchPlanner.PlanWindows(CodexMsix, PathsOf(CodexPrivat, Windows), WindowsHome, url);
+
+        spec.Arguments[^1].ShouldBe(url);
+        spec.Arguments[0].ShouldStartWith("--user-data-dir=");
     }
 }

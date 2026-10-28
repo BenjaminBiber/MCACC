@@ -309,7 +309,7 @@ public class DesktopLaunchServiceTests
 
     private sealed class FakeLocator(DesktopInstallation? installation) : IDesktopInstallationLocator
     {
-        public DesktopInstallation? Locate() => installation;
+        public DesktopInstallation? Locate(ProviderDescriptor provider) => installation;
     }
 
     /// <summary>Each detection returns the next scripted snapshot; the last one repeats. Unscripted, nothing runs.</summary>
@@ -328,7 +328,7 @@ public class DesktopLaunchServiceTests
             }
         }
 
-        public Task<IReadOnlyList<DesktopInstance>> DetectAsync(CancellationToken ct)
+        public Task<IReadOnlyList<DesktopInstance>> DetectAsync(ProviderDescriptor provider, CancellationToken ct)
         {
             Calls++;
             if (_snapshots.TryDequeue(out var next))

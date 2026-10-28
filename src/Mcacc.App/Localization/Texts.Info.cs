@@ -1,3 +1,5 @@
+using Mcacc.Core.Model;
+
 using System.Globalization;
 using System.Text.RegularExpressions;
 using Mcacc.Core.Stats;
@@ -14,7 +16,7 @@ public static partial class Texts
     public const string InfoSubtitle = "Alles, was sich über diesen Account auslesen lässt.";
     public const string InfoAccount = "Konto";
     public const string InfoLimits = "Limits";
-    public const string InfoUsage = "Claude Code Nutzung";
+    public static string InfoUsage(ProviderKind provider) => $"{TargetCode(provider)} Nutzung";
 
     public const string InfoEmail = "E-Mail";
     public const string InfoName = "Name";
@@ -29,7 +31,7 @@ public static partial class Texts
     public const string InfoStartups = "Claude-Code-Starts";
     public const string InfoInstallMethod = "Installation";
     public const string InfoProjects = "Projekte";
-    public const string InfoDesktop = "Claude Desktop";
+    public static string InfoDesktop(ProviderKind provider) => TargetDesktop(provider);
     public const string InfoDesktopNotRunning = "läuft nicht";
     public const string InfoNoAccountData = "Noch keine Kontodaten – einmal mit diesem Account anmelden.";
     public const string InfoNoLimits = "Keine Limits verfügbar.";

@@ -5,7 +5,7 @@ namespace Mcacc.Core.Model;
 
 public sealed record AppConfig(int Version, IReadOnlyList<Account> Accounts, AppSettings Settings)
 {
-    public const int CurrentVersion = 1;
+    public const int CurrentVersion = 2;
 
     [JsonExtensionData]
     [JsonInclude]

@@ -1,3 +1,4 @@
+using Mcacc.Core.Model;
 using Mcacc.Core.Desktop;
 using Shouldly;
 using Xunit;
@@ -12,7 +13,7 @@ public class DesktopDeepLinkTests
     [Fact]
     public void Quoted_url_behind_the_quoted_exe_is_read_whole()
     {
-        DesktopDeepLink.TryGetUrl($"\"{MsixExe}\" \"{LoginUrl}\"", out var url).ShouldBeTrue();
+        DesktopDeepLink.TryGetUrl(ProviderDescriptors.Claude, $"\"{MsixExe}\" \"{LoginUrl}\"", out var url).ShouldBeTrue();
 
         url.ShouldBe(LoginUrl);
     }
@@ -20,7 +21,7 @@ public class DesktopDeepLinkTests
     [Fact]
     public void Unquoted_url_ends_at_the_next_argument()
     {
-        DesktopDeepLink.TryGetUrl($"\"{MsixExe}\" {LoginUrl} --lang=de", out var url).ShouldBeTrue();
+        DesktopDeepLink.TryGetUrl(ProviderDescriptors.Claude, $"\"{MsixExe}\" {LoginUrl} --lang=de", out var url).ShouldBeTrue();
 
         url.ShouldBe(LoginUrl);
     }
@@ -28,7 +29,7 @@ public class DesktopDeepLinkTests
     [Fact]
     public void Url_that_ends_the_command_line_is_read_to_the_end()
     {
-        DesktopDeepLink.TryGetUrl($"\"{MsixExe}\" {LoginUrl}", out var url).ShouldBeTrue();
+        DesktopDeepLink.TryGetUrl(ProviderDescriptors.Claude, $"\"{MsixExe}\" {LoginUrl}", out var url).ShouldBeTrue();
 
         url.ShouldBe(LoginUrl);
     }
@@ -36,7 +37,7 @@ public class DesktopDeepLinkTests
     [Fact]
     public void Scheme_is_matched_without_regard_to_case()
     {
-        DesktopDeepLink.TryGetUrl($"\"{MsixExe}\" \"Claude://login/app-google-auth\"", out var url).ShouldBeTrue();
+        DesktopDeepLink.TryGetUrl(ProviderDescriptors.Claude, $"\"{MsixExe}\" \"Claude://login/app-google-auth\"", out var url).ShouldBeTrue();
 
         url.ShouldBe("Claude://login/app-google-auth");
     }
@@ -48,7 +49,7 @@ public class DesktopDeepLinkTests
     [InlineData(@"""C:\app\Claude.exe"" --user-data-dir=C:\profiles\privat\desktop")]
     public void Command_line_without_a_deep_link_yields_nothing(string? commandLine)
     {
-        DesktopDeepLink.TryGetUrl(commandLine, out var url).ShouldBeFalse();
+        DesktopDeepLink.TryGetUrl(ProviderDescriptors.Claude, commandLine, out var url).ShouldBeFalse();
 
         url.ShouldBeEmpty();
     }
@@ -56,6 +57,19 @@ public class DesktopDeepLinkTests
     [Fact]
     public void Bare_scheme_without_a_target_is_not_a_deep_link()
     {
-        DesktopDeepLink.TryGetUrl(@"""C:\app\Claude.exe"" ""claude://""", out _).ShouldBeFalse();
+        DesktopDeepLink.TryGetUrl(ProviderDescriptors.Claude, @"""C:\app\Claude.exe"" ""claude://""", out _).ShouldBeFalse();
+    }
+
+    /// <summary>Each provider only answers to its own scheme, or a login would land in the wrong app.</summary>
+    [Fact]
+    public void Each_provider_only_reads_its_own_scheme()
+    {
+        const string codexUrl = "codex://login/app-google-auth?code=abc";
+        var commandLine = $@"""C:\app\ChatGPT.exe"" ""{codexUrl}""";
+
+        DesktopDeepLink.TryGetUrl(ProviderDescriptors.Codex, commandLine, out var url).ShouldBeTrue();
+        url.ShouldBe(codexUrl);
+
+        DesktopDeepLink.TryGetUrl(ProviderDescriptors.Claude, commandLine, out _).ShouldBeFalse();
     }
 }

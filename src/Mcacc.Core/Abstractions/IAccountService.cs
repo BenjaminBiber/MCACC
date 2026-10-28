@@ -12,7 +12,7 @@ public interface IAccountService
 
     AppConfig Config { get; }
 
-    CreateAccountResult Create(string name, string color, CopyRequest? copy);
+    CreateAccountResult Create(string name, string color, CopyRequest? copy, ProviderKind provider = ProviderKind.Claude);
 
     Account Update(string id, string name, string color);
 

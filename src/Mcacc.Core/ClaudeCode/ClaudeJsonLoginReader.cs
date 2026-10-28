@@ -1,3 +1,4 @@
+using Mcacc.Core.Providers;
 using System.Linq;
 using System.Text.Json;
 
@@ -16,7 +17,7 @@ public static class ClaudeJsonLoginReader
     };
 
     /// <returns>Null when the file is missing, unreadable, not an object or holds no e-mail address.</returns>
-    public static ClaudeLoginInfo? Read(string claudeJsonPath)
+    public static AccountLoginInfo? Read(string claudeJsonPath)
     {
         try
         {
@@ -35,7 +36,7 @@ public static class ClaudeJsonLoginReader
         }
     }
 
-    private static ClaudeLoginInfo? ReadLogin(JsonElement root)
+    private static AccountLoginInfo? ReadLogin(JsonElement root)
     {
         if (root.ValueKind != JsonValueKind.Object
             || !root.TryGetProperty("oauthAccount", out var account)
@@ -47,12 +48,13 @@ public static class ClaudeJsonLoginReader
         var email = Text(account, "emailAddress");
         return email is null
             ? null
-            : new ClaudeLoginInfo(
+            : new AccountLoginInfo(
                 email,
                 Text(account, "organizationName"),
                 Text(account, "displayName"),
                 Text(account, "accountUuid"),
                 Text(account, "organizationRole"),
+                PlanType: null,
                 Number(root, "numStartups"),
                 Text(root, "installMethod"),
                 root.TryGetProperty("projects", out var projects) && projects.ValueKind == JsonValueKind.Object

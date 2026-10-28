@@ -26,8 +26,8 @@ public class McaccPathsTests
         paths.LaunchDir.ShouldBe(@"C:\Users\ben\.mcacc\launch");
         paths.LogsDir.ShouldBe(@"C:\Users\ben\.mcacc\logs");
         paths.ProfileDir("privat").ShouldBe(@"C:\Users\ben\.mcacc\profiles\privat");
-        paths.DesktopDataDir("privat").ShouldBe(@"C:\Users\ben\.mcacc\profiles\privat\desktop");
-        paths.ClaudeConfigDir("privat").ShouldBe(@"C:\Users\ben\.mcacc\profiles\privat\claude");
+        paths.DesktopDataDir("privat", ProviderDescriptors.Claude).ShouldBe(@"C:\Users\ben\.mcacc\profiles\privat\desktop");
+        paths.ConfigDir("privat", ProviderDescriptors.Claude).ShouldBe(@"C:\Users\ben\.mcacc\profiles\privat\claude");
         paths.ProfileCacheFile.ShouldBe(@"C:\Users\ben\.mcacc\profile-cache.json");
         paths.UsageHistoryDir.ShouldBe(@"C:\Users\ben\.mcacc\usage-history");
         paths.StatsDir.ShouldBe(@"C:\Users\ben\.mcacc\stats");
@@ -46,8 +46,8 @@ public class McaccPathsTests
         paths.ProfilesDir.ShouldBe("/Users/ben/.mcacc/profiles");
         paths.LaunchDir.ShouldBe("/Users/ben/.mcacc/launch");
         paths.LogsDir.ShouldBe("/Users/ben/.mcacc/logs");
-        paths.DesktopDataDir("privat").ShouldBe("/Users/ben/.mcacc/profiles/privat/desktop");
-        paths.ClaudeConfigDir("privat").ShouldBe("/Users/ben/.mcacc/profiles/privat/claude");
+        paths.DesktopDataDir("privat", ProviderDescriptors.Claude).ShouldBe("/Users/ben/.mcacc/profiles/privat/desktop");
+        paths.ConfigDir("privat", ProviderDescriptors.Claude).ShouldBe("/Users/ben/.mcacc/profiles/privat/claude");
         paths.ProfileCacheFile.ShouldBe("/Users/ben/.mcacc/profile-cache.json");
         paths.UsageHistoryFile("privat").ShouldBe("/Users/ben/.mcacc/usage-history/privat.jsonl");
         paths.StatsFile("privat").ShouldBe("/Users/ben/.mcacc/stats/privat.json");
@@ -78,5 +78,17 @@ public class McaccPathsTests
         paths.Root.ShouldBe(@"D:\mcacc-test");
         paths.Style.ShouldBe(PathStyle.Windows);
         paths.ConfigFile.ShouldBe(@"D:\mcacc-test\config.json");
+    }
+
+    [Fact]
+    public void Each_provider_gets_its_own_subfolders_below_the_profile()
+    {
+        var paths = new McaccPaths(@"C:\Users\ben\.mcacc", PathStyle.Windows);
+
+        paths.ConfigDir("privat", ProviderDescriptors.Claude).ShouldBe(@"C:\Users\ben\.mcacc\profiles\privat\claude");
+        paths.ConfigDir("privat", ProviderDescriptors.Codex).ShouldBe(@"C:\Users\ben\.mcacc\profiles\privat\codex");
+        paths.DesktopDataDir("privat", ProviderDescriptors.Claude).ShouldBe(@"C:\Users\ben\.mcacc\profiles\privat\desktop");
+        paths.DesktopDataDir("privat", ProviderDescriptors.Codex)
+            .ShouldBe(@"C:\Users\ben\.mcacc\profiles\privat\codex-desktop");
     }
 }

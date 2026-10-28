@@ -2,6 +2,7 @@ using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Mcacc.App.Localization;
 using Mcacc.Core.Model;
+using Mcacc.Core.Providers;
 using Mcacc.Core.Usage;
 
 namespace Mcacc.App.ViewModels;
@@ -44,6 +45,13 @@ public sealed partial class AccountTileViewModel : ViewModelBase
 
     public string? Badge => IsRunning ? Texts.RunningBadge : null;
 
+    /// <summary>
+    /// Which service the account belongs to. Null for Claude: MCACC was a Claude switcher, so an unmarked tile
+    /// reads as Claude, and only the accounts that need telling apart carry a word.
+    /// </summary>
+    public string? ProviderBadge =>
+        Account.Provider == ProviderKind.Claude ? null : Texts.ProviderName(Account.Provider);
+
     public static string InitialsOf(string name)
     {
         var words = name.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -59,21 +67,28 @@ public sealed partial class AccountTileViewModel : ViewModelBase
         OnPropertyChanged(nameof(Initials));
         OnPropertyChanged(nameof(AvatarBrush));
         OnPropertyChanged(nameof(IsDefault));
+        OnPropertyChanged(nameof(ProviderBadge));
     }
 
-    public void SetLogin(string? email) => Subtitle = string.IsNullOrWhiteSpace(email) ? Texts.NotLoggedIn : email;
+    /// <param name="login">Null when the account has no login; its e-mail is null for an API-key login.</param>
+    public void SetLogin(AccountLoginInfo? login) => Subtitle = login switch
+    {
+        null => Texts.NotLoggedIn,
+        { Email: { } email } when !string.IsNullOrWhiteSpace(email) => email,
+        _ => Texts.LoggedInWithApiKey,
+    };
 
     public void SetUsage(AccountUsage usage)
     {
         FiveHour.Set(usage.Snapshot?.FiveHour);
         SevenDay.Set(usage.Snapshot?.SevenDay);
-        UsageHint = HintFor(usage);
+        UsageHint = HintFor(Account.Provider, usage);
     }
 
-    internal static string? HintFor(AccountUsage usage) => usage.State switch
+    internal static string? HintFor(ProviderKind provider, AccountUsage usage) => usage.State switch
     {
-        UsageState.Expired => Texts.UsageExpired,
-        UsageState.WrongAccount => Texts.UsageWrongAccount(usage.TokenEmail),
+        UsageState.Expired => Texts.UsageExpired(provider),
+        UsageState.WrongAccount => Texts.UsageWrongAccount(provider, usage.TokenEmail),
         UsageState.NotLoggedIn => null,
         UsageState.Ok => null,
         _ => usage.Snapshot is { } snapshot ? Texts.UsageAsOf(snapshot.FetchedAt) : null,

@@ -2,6 +2,7 @@ namespace Mcacc.Core.ConfigCopy;
 
 public enum CopyLocation
 {
-    ClaudeDir,
+    /// <summary>The provider's own configuration home.</summary>
+    ConfigDir,
     DesktopDir,
 }

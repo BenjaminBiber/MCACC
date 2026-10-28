@@ -1,3 +1,4 @@
+using Mcacc.Core.Model;
 using Mcacc.Core.Processes;
 using Mcacc.Core.Terminal;
 using Mcacc.Core.Tests.TestSupport;
@@ -13,17 +14,15 @@ public class CmdBatchBuilderTests
     [Fact]
     public void Profile_batch_sets_utf8_scrubs_sets_the_config_dir_changes_to_home_and_runs_claude()
     {
-        CmdBatchBuilder.Build(LaunchRequests.WindowsProfile()).ShouldBe(CrLfLines(
+        CmdBatchBuilder.Build(LaunchRequests.WindowsProfile()).ShouldBe(CrLfLines([
             "@chcp 65001 >nul",
             "@echo off",
-            "set \"CLAUDECODE=\"",
-            "set \"CLAUDE_CODE_ENTRYPOINT=\"",
-            "set \"CLAUDE_CODE_SSE_PORT=\"",
+            .. Scrubs.CmdLines(ProviderDescriptors.Claude),
             @"set ""CLAUDE_CONFIG_DIR=C:\Users\Jö O'Neil’s 100%%;$x\.mcacc\profiles\privat\claude""",
             @"cd /d ""C:\Users\Jö O'Neil’s 100%%;$x""",
             "title Claude Code · Privat",
             "call claude",
-            "@echo on"));
+            "@echo on"]));
     }
 
     [Fact]
@@ -60,7 +59,7 @@ public class CmdBatchBuilderTests
     {
         var request = LaunchRequests.WindowsProfile();
 
-        Should.Throw<ArgumentException>(() => CmdBatchBuilder.Build(request with { ClaudeConfigDir = @"C:\a" + bad }));
+        Should.Throw<ArgumentException>(() => CmdBatchBuilder.Build(request with { ConfigDirOverride = @"C:\a" + bad }));
         Should.Throw<ArgumentException>(() => CmdBatchBuilder.Build(request with { HomeDir = @"C:\a" + bad }));
     }
 
@@ -77,5 +76,29 @@ public class CmdBatchBuilderTests
         bytes[..16].ShouldBe("@chcp 65001 >nul"u8.ToArray());
         bytes[16..18].ShouldBe("\r\n"u8.ToArray());
         File.ReadAllText(path).ShouldBe(content);
+    }
+
+    [Fact]
+    public void Codex_batch_sets_CODEX_HOME_and_calls_codex()
+    {
+        CmdBatchBuilder.Build(LaunchRequests.WindowsCodexProfile()).ShouldBe(CrLfLines([
+            "@chcp 65001 >nul",
+            "@echo off",
+            .. Scrubs.CmdLines(ProviderDescriptors.Codex),
+            @"set ""CODEX_HOME=C:\Users\Jö O'Neil’s 100%%;$x\.mcacc\profiles\codex-privat\codex""",
+            @"cd /d ""C:\Users\Jö O'Neil’s 100%%;$x""",
+            "title Codex · Codex Privat",
+            "call codex",
+            "@echo on"]));
+    }
+
+    [Fact]
+    public void A_Codex_batch_clears_the_Claude_config_dir_and_the_sqlite_home()
+    {
+        var lines = CmdBatchBuilder.Build(LaunchRequests.WindowsCodexProfile()).Split("\r\n");
+
+        lines.ShouldContain("set \"CLAUDE_CONFIG_DIR=\"");
+        lines.ShouldContain("set \"CODEX_SQLITE_HOME=\"");
+        lines.Count(l => l.Contains("CODEX_HOME=")).ShouldBe(1);
     }
 }

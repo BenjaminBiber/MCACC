@@ -15,7 +15,7 @@ public sealed class ConfigStoreTests : IDisposable
 
     private const string ValidJson = """
         {
-          "version": 1,
+          "version": 2,
           "accounts": [
             { "id": "standard", "name": "Standard", "color": "#D97757", "isDefault": true },
             { "id": "privat", "name": "Privat", "color": "#6A9BCC", "isDefault": false }
@@ -174,7 +174,7 @@ public sealed class ConfigStoreTests : IDisposable
     public void Newer_version_is_loaded_read_only_and_save_throws()
     {
         const string newer = """
-            { "version": 2, "accounts": [ { "id": "standard", "name": "Standard", "color": "#D97757", "isDefault": true } ],
+            { "version": 3, "accounts": [ { "id": "standard", "name": "Standard", "color": "#D97757", "isDefault": true } ],
               "settings": {}, "profilesV2": [] }
             """;
         WriteFile(_paths.ConfigFile, newer);
@@ -184,7 +184,7 @@ public sealed class ConfigStoreTests : IDisposable
 
         result.Status.ShouldBe(ConfigLoadStatus.NewerVersionReadOnly);
         result.IsReadOnly.ShouldBeTrue();
-        result.Config.Version.ShouldBe(2);
+        result.Config.Version.ShouldBe(3);
         result.Config.Accounts.ShouldBe([Account.CreateDefault()]);
         Should.Throw<InvalidOperationException>(() => store.Save(result.Config));
         File.ReadAllText(_paths.ConfigFile).ShouldBe(newer);
@@ -227,7 +227,7 @@ public sealed class ConfigStoreTests : IDisposable
     [Fact]
     public void Repairs_of_a_newer_version_are_not_saved()
     {
-        const string newer = """{ "version": 2, "accounts": [], "settings": {} }""";
+        const string newer = """{ "version": 3, "accounts": [], "settings": {} }""";
         WriteFile(_paths.ConfigFile, newer);
 
         var result = CreateStore().Load();
@@ -242,7 +242,7 @@ public sealed class ConfigStoreTests : IDisposable
     public void Newer_version_backup_recovered_after_corruption_stays_read_only()
     {
         WriteFile(_paths.ConfigFile, "{");
-        WriteFile(_paths.ConfigBackupFile, """{ "version": 2, "accounts": [], "settings": {} }""");
+        WriteFile(_paths.ConfigBackupFile, """{ "version": 3, "accounts": [], "settings": {} }""");
         var store = CreateStore();
 
         var result = store.Load();
@@ -251,5 +251,36 @@ public sealed class ConfigStoreTests : IDisposable
         result.IsReadOnly.ShouldBeTrue();
         File.Exists(_paths.ConfigFile).ShouldBeFalse();
         Should.Throw<InvalidOperationException>(() => store.Save(result.Config));
+    }
+
+    /// <summary>
+    /// The real upgrade path: a file written before providers existed is raised to the current version, every
+    /// account in it belongs to Claude, and the raised file is written back.
+    /// </summary>
+    [Fact]
+    public void A_version_one_file_is_migrated_and_written_back()
+    {
+        WriteFile(_paths.ConfigFile, """
+            {
+              "version": 1,
+              "accounts": [
+                { "id": "standard", "name": "Standard", "color": "#D97757", "isDefault": true },
+                { "id": "privat", "name": "Privat", "color": "#6A9BCC", "isDefault": false }
+              ],
+              "settings": { "lastAccountId": "privat", "lastTarget": "code" }
+            }
+            """);
+
+        var result = CreateStore().Load();
+
+        result.IsReadOnly.ShouldBeFalse();
+        result.Config.Version.ShouldBe(AppConfig.CurrentVersion);
+        result.Config.Accounts.ShouldBe([Account.CreateDefault(), Privat]);
+        result.Config.Accounts.ShouldAllBe(a => a.Provider == ProviderKind.Claude);
+        result.Repairs.ShouldHaveSingleItem().ShouldContain("version 1");
+
+        var onDisk = File.ReadAllText(_paths.ConfigFile);
+        onDisk.ShouldContain($"\"version\": {AppConfig.CurrentVersion}");
+        onDisk.ShouldContain("\"provider\": \"claude\"");
     }
 }

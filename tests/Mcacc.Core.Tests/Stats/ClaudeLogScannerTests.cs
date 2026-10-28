@@ -25,7 +25,7 @@ public sealed class ClaudeLogScannerTests : IDisposable
     }
 
     private LogScanResult Scan(StatsIndex? index = null, IProgress<double>? progress = null) =>
-        ClaudeLogScanner.Update(Claude, index ?? StatsIndex.Empty, progress, Ct);
+        LogScanner.Update(Path.Join(Claude, "projects"), index ?? StatsIndex.Empty, static () => new ClaudeLineReader(), progress, Ct);
 
     private static IEnumerable<TokenBucket> Buckets(StatsIndex index) => index.Files.SelectMany(file => file.Buckets);
 

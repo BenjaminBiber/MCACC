@@ -1,23 +1,25 @@
+using Mcacc.Core.Model;
+
 namespace Mcacc.Core.Desktop;
 
 /// <summary>
-/// Reads the <c>claude://</c> URL that the operating system puts on the command line when it opens the protocol
-/// handler. The login leaves Claude Desktop for the system browser and comes back this way, and the launch carries
-/// no <c>--user-data-dir</c>, so the URL decides which profile ends up signed in.
+/// Reads the <c>claude://</c> or <c>codex://</c> URL that the operating system puts on the command line when it
+/// opens the protocol handler. The login leaves the desktop app for the system browser and comes back this way,
+/// and that launch carries no <c>--user-data-dir</c>, so the URL decides which profile ends up signed in.
 /// </summary>
 public static class DesktopDeepLink
 {
-    /// <returns>False when the command line holds no <c>claude://</c> argument.</returns>
+    /// <returns>False when the command line holds no url of that provider's scheme.</returns>
     /// <remarks>The URL carries a one-time login code, so it must never reach a log.</remarks>
-    public static bool TryGetUrl(string? commandLine, out string url)
+    public static bool TryGetUrl(ProviderDescriptor provider, string? commandLine, out string url)
     {
         url = "";
-        if (string.IsNullOrEmpty(commandLine))
+        if (string.IsNullOrEmpty(commandLine) || provider.Desktop is not { } desktop)
         {
             return false;
         }
 
-        var scheme = ClaudeDesktopConstants.DeepLinkScheme;
+        var scheme = desktop.DeepLinkScheme;
         var start = commandLine.IndexOf(scheme, StringComparison.OrdinalIgnoreCase);
         if (start < 0)
         {

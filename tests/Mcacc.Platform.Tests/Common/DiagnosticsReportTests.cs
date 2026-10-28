@@ -26,7 +26,7 @@ public sealed class DiagnosticsReportTests : IDisposable
 
         report.ShouldContain("MCACC diagnose");
         report.ShouldContain("== System ==");
-        report.ShouldContain("== Claude Desktop ==");
+        report.ShouldContain("== Desktop apps ==");
         report.ShouldContain("== Terminals ==");
         report.ShouldContain("== Claude Code CLI ==");
         report.ShouldContain("== Running instances ==");

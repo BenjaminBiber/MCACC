@@ -65,7 +65,7 @@ public sealed class LaunchCoordinatorTests : IDisposable
         await Launcher.LaunchDesktopAsync(Standard);
 
         _services.Lifetime.Shows.ShouldBe(1);
-        _services.Window.ErrorBanner.ShouldBe(Texts.ErrorDesktopStartFailed);
+        _services.Window.ErrorBanner.ShouldBe(Texts.ErrorDesktopStartFailed(ProviderKind.Claude));
     }
 
     [Fact]

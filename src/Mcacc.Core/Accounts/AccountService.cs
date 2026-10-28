@@ -34,26 +34,46 @@ public sealed class AccountService : IAccountService
     public AppConfig Config { get; private set; }
 
     /// <exception cref="AccountValidationException">The name is invalid.</exception>
-    /// <exception cref="ArgumentException">The color is invalid or the copy source is unknown.</exception>
+    /// <exception cref="ArgumentException">
+    /// The color is invalid, the copy source is unknown, or it belongs to another provider.
+    /// </exception>
     /// <exception cref="IOException">
     /// Creating, copying or saving failed (also <see cref="UnauthorizedAccessException"/>); the new profile is removed again.
     /// </exception>
-    public CreateAccountResult Create(string name, string color, CopyRequest? copy)
+    public CreateAccountResult Create(
+        string name,
+        string color,
+        CopyRequest? copy,
+        ProviderKind provider = ProviderKind.Claude)
     {
         EnsureWritable();
         var validName = ValidName(name, exceptId: null);
         EnsureValidColor(color);
+        var descriptor = ProviderDescriptors.For(provider);
         var copySource = copy is null
             ? null
             : Find(copy.SourceAccountId)
               ?? throw new ArgumentException($"Unknown copy source account '{copy.SourceAccountId}'.", nameof(copy));
 
+        // Copying across providers would write one provider's files into another's home. The editor filters the
+        // sources it offers, but it must not be the only guard.
+        if (copySource is not null && copySource.Provider != provider)
+        {
+            throw new ArgumentException(
+                $"Copy source '{copySource.Id}' belongs to {copySource.Provider}, not to {provider}.",
+                nameof(copy));
+        }
+
         var id = SlugGenerator.Generate(validName, slug => Find(slug) is not null || Path.Exists(_paths.ProfileDir(slug)));
-        var account = new Account(id, validName, color, IsDefault: false);
+        var account = new Account(id, validName, color, IsDefault: false, provider);
         try
         {
-            Directory.CreateDirectory(_paths.DesktopDataDir(id));
-            Directory.CreateDirectory(_paths.ClaudeConfigDir(id));
+            if (descriptor.Desktop is not null)
+            {
+                Directory.CreateDirectory(_paths.DesktopDataDir(id, descriptor));
+            }
+
+            Directory.CreateDirectory(_paths.ConfigDir(id, descriptor));
             var report = copy is not null && copySource is not null ? CopyConfig(copySource, account, copy) : null;
 
             Save(Config with { Accounts = [.. Config.Accounts, account] });

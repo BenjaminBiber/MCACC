@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Management;
 using System.Runtime.Versioning;
+using Mcacc.Core.Model;
 using Mcacc.Core.Abstractions;
 using Mcacc.Core.Processes;
 
@@ -13,16 +14,21 @@ namespace Mcacc.Platform.Windows;
 [SupportedOSPlatform("windows")]
 public sealed class WmiProcessSnapshotProvider : IProcessSnapshotProvider
 {
-    private const string Query =
-        "SELECT ProcessId,ParentProcessId,ExecutablePath,CommandLine,CreationDate FROM Win32_Process WHERE Name='claude.exe'";
+    private const string QueryFormat =
+        "SELECT ProcessId,ParentProcessId,ExecutablePath,CommandLine,CreationDate FROM Win32_Process WHERE Name='{0}'";
 
     private static readonly TimeSpan QueryTimeout = TimeSpan.FromSeconds(3);
 
     /// <exception cref="TimeoutException">WMI did not answer within three seconds.</exception>
     /// <exception cref="ManagementException">The query failed.</exception>
-    public async Task<IReadOnlyList<ProcessInfo>> GetClaudeProcessesAsync(CancellationToken ct)
+    public async Task<IReadOnlyList<ProcessInfo>> GetProcessesAsync(ProviderDescriptor provider, CancellationToken ct)
     {
-        var query = Task.Run(Read, ct);
+        if (provider.Desktop is not { } desktop)
+        {
+            return [];
+        }
+
+        var query = Task.Run(() => Read(desktop.WindowsProcessName), ct);
         var finished = await Task.WhenAny(query, Task.Delay(QueryTimeout, ct)).ConfigureAwait(false);
         if (finished != query)
         {
@@ -33,9 +39,10 @@ public sealed class WmiProcessSnapshotProvider : IProcessSnapshotProvider
         return await query.ConfigureAwait(false);
     }
 
-    private static IReadOnlyList<ProcessInfo> Read()
+    private static IReadOnlyList<ProcessInfo> Read(string processName)
     {
-        using var searcher = new ManagementObjectSearcher(Query);
+        using var searcher = new ManagementObjectSearcher(
+            string.Format(CultureInfo.InvariantCulture, QueryFormat, processName));
         using var results = searcher.Get();
         var processes = new List<ProcessInfo>();
         foreach (var row in results)

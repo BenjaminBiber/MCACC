@@ -196,4 +196,102 @@ public class ConfigValidatorTests
         repairs.Count.ShouldBe(6);
         repairs.ShouldAllBe(r => !string.IsNullOrWhiteSpace(r));
     }
+
+    private static readonly Account CodexDefault = Account.CreateDefault(ProviderKind.Codex);
+    private static readonly Account CodexPrivat =
+        new("codex-privat", "Codex Privat", "#C2A477", IsDefault: false, ProviderKind.Codex);
+
+    [Fact]
+    public void Migrates_a_version_one_config_and_reports_it()
+    {
+        var config = new AppConfig(1, [Standard, Privat], new AppSettings());
+
+        var (repaired, repairs) = ConfigValidator.Repair(config);
+
+        repaired.Version.ShouldBe(AppConfig.CurrentVersion);
+        repaired.Accounts.ShouldBe([Standard, Privat]);
+        repairs.ShouldHaveSingleItem().ShouldContain("version 1");
+    }
+
+    /// <summary>A file from a newer MCACC is loaded read-only; lowering its version would unprotect it.</summary>
+    [Fact]
+    public void Leaves_a_newer_version_alone()
+    {
+        var config = new AppConfig(AppConfig.CurrentVersion + 1, [Standard], new AppSettings());
+
+        var (repaired, repairs) = ConfigValidator.Repair(config);
+
+        repaired.Version.ShouldBe(AppConfig.CurrentVersion + 1);
+        repairs.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void An_account_of_an_unknown_provider_becomes_a_Claude_account()
+    {
+        var strange = Privat with { Provider = (ProviderKind)42 };
+
+        var (repaired, repairs) = ConfigValidator.Repair(ConfigWith([Standard, strange]));
+
+        repaired.Accounts.ShouldBe([Standard, Privat]);
+        repairs.ShouldHaveSingleItem().ShouldContain("unknown provider");
+    }
+
+    [Fact]
+    public void A_default_account_of_each_provider_survives()
+    {
+        var config = ConfigWith([Standard, CodexDefault, Privat, CodexPrivat]);
+
+        var (repaired, repairs) = ConfigValidator.Repair(config);
+
+        repairs.ShouldBeEmpty();
+        repaired.ShouldBeSameAs(config);
+    }
+
+    [Fact]
+    public void Keeps_only_the_first_default_of_each_provider()
+    {
+        var secondClaude = Privat with { IsDefault = true };
+        var secondCodex = CodexPrivat with { IsDefault = true };
+
+        var (repaired, repairs) = ConfigValidator.Repair(
+            ConfigWith([Standard, CodexDefault, secondClaude, secondCodex]));
+
+        repaired.Accounts.ShouldBe([Standard, CodexDefault, Privat, CodexPrivat]);
+        repairs.Count.ShouldBe(2);
+    }
+
+    /// <summary>A Codex default is the user's decision, so a missing one is not repaired into existence.</summary>
+    [Fact]
+    public void Does_not_invent_a_default_for_another_provider()
+    {
+        var (repaired, repairs) = ConfigValidator.Repair(ConfigWith([Standard, CodexPrivat]));
+
+        repaired.Accounts.ShouldBe([Standard, CodexPrivat]);
+        repairs.ShouldBeEmpty();
+    }
+
+    /// <summary>
+    /// A Codex account carrying the default flag does not stand in for Claude's: without Claude's default the list
+    /// would have no account on <c>~/.claude</c> at all.
+    /// </summary>
+    [Fact]
+    public void Inserts_the_Claude_default_even_when_another_provider_has_one()
+    {
+        var (repaired, repairs) = ConfigValidator.Repair(ConfigWith([CodexDefault, Privat]));
+
+        repaired.Accounts.ShouldBe([Standard, CodexDefault, Privat]);
+        repairs.ShouldHaveSingleItem();
+    }
+
+    /// <summary>A Codex account with the standard id must not be promoted into Claude's default.</summary>
+    [Fact]
+    public void Promotes_only_a_Claude_account_to_the_Claude_default()
+    {
+        var codexNamedStandard = CodexPrivat with { Id = Account.DefaultId };
+
+        var (repaired, repairs) = ConfigValidator.Repair(ConfigWith([codexNamedStandard]));
+
+        repaired.Accounts.ShouldBe([Standard, codexNamedStandard]);
+        repairs.ShouldHaveSingleItem();
+    }
 }

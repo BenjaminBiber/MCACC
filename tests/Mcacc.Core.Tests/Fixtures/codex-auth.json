@@ -1,0 +1,11 @@
+{
+  "OPENAI_API_KEY": null,
+  "tokens": {
+    "id_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImJlbkBleGFtcGxlLmNvbSIsIm5hbWUiOiJCZW4gQmliZXIiLCJhdXRoX3Byb3ZpZGVyIjoiZ29vZ2xlIiwiaHR0cHM6Ly9hcGkub3BlbmFpLmNvbS9hdXRoIjp7ImNoYXRncHRfYWNjb3VudF9pZCI6ImNmZjMyZWIzLTAwMDAtMDAwMC0wMDAwLTAwMDAwMDAwMDAwMCIsImNoYXRncHRfcGxhbl90eXBlIjoicGx1cyIsImNoYXRncHRfdXNlcl9pZCI6InVzZXItWFlaIiwib3JnYW5pemF0aW9ucyI6W3siaWQiOiJvcmctMSIsImlzX2RlZmF1bHQiOmZhbHNlLCJyb2xlIjoibWVtYmVyIiwidGl0bGUiOiJOZWJlbm9yZyJ9LHsiaWQiOiJvcmctMiIsImlzX2RlZmF1bHQiOnRydWUsInJvbGUiOiJhZG1pbiIsInRpdGxlIjoiSGF1cHRvcmcifV19fQ.c2ln",
+    "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3OTMwMDAwMDAsInN1YiI6InVzZXItWFlaIn0.c2ln",
+    "refresh_token": "rt-dummy",
+    "account_id": "cff32eb3-0000-0000-0000-000000000000"
+  },
+  "last_refresh": "2026-10-05T00:43:09.123456789Z",
+  "auth_mode": "chatgpt"
+}

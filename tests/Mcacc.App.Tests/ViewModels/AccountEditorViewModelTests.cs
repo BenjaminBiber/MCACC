@@ -15,7 +15,14 @@ public sealed class AccountEditorViewModelTests : IDisposable
 
     private readonly TestServices _services = new(OsKind.Windows, Standard, Privat);
 
-    public void Dispose() => _services.Dispose();
+    public void Dispose()
+    {
+        _services.Dispose();
+        foreach (var extra in _extra)
+        {
+            extra.Dispose();
+        }
+    }
 
     private AccountEditorViewModel Create() => AccountEditorViewModel.ForCreate(_services.Services);
 
@@ -24,7 +31,7 @@ public sealed class AccountEditorViewModelTests : IDisposable
     /// <summary>Puts the files of an item into the source account's claude directory.</summary>
     private void GiveSourceItem(Account source, string relativePath, bool isDirectory = false)
     {
-        var claudeDir = _services.Resolver.Resolve(source).EffectiveClaudeDir;
+        var claudeDir = _services.Resolver.Resolve(source).EffectiveConfigDir;
         var path = Path.Join(claudeDir, relativePath);
         if (isDirectory)
         {
@@ -104,7 +111,7 @@ public sealed class AccountEditorViewModelTests : IDisposable
 
         editor.SubmitCommand.Execute(null);
 
-        _services.Accounts.Created.ShouldBe([("Arbeit", editor.SelectedColor, null)]);
+        _services.Accounts.Created.ShouldBe([("Arbeit", editor.SelectedColor, null, ProviderKind.Claude)]);
         (await editor.Completion)!.Name.ShouldBe("Arbeit");
     }
 
@@ -144,13 +151,13 @@ public sealed class AccountEditorViewModelTests : IDisposable
     }
 
     [Fact]
-    public void Choosing_a_source_lists_every_copy_item()
+    public void Choosing_a_source_lists_every_copy_item_of_its_provider()
     {
         var editor = Create();
 
         editor.CopySource = Privat;
 
-        editor.CopyItemsToShow.Select(item => item.Item).ShouldBe(Enum.GetValues<CopyItem>());
+        editor.CopyItemsToShow.Select(item => item.Item).ShouldBe(ProviderDescriptors.Claude.CopyItems);
         editor.HasCopySource.ShouldBeTrue();
     }
 
@@ -286,5 +293,138 @@ public sealed class AccountEditorViewModelTests : IDisposable
     {
         Create().SubmitText.ShouldBe(Texts.EditorCreate);
         Edit(Privat).SubmitText.ShouldBe(Texts.EditorSave);
+    }
+
+    private static readonly Account CodexPrivat =
+        new("codex-privat", "Codex Privat", "#5E8C8A", IsDefault: false, ProviderKind.Codex);
+
+    private AccountEditorViewModel CreateWith(params Account[] accounts)
+    {
+        var services = new TestServices(OsKind.Windows, accounts);
+        _extra.Add(services);
+        return AccountEditorViewModel.ForCreate(services.Services);
+    }
+
+    private readonly List<TestServices> _extra = [];
+
+    [Fact]
+    public void Creating_starts_with_Claude_and_offers_both_services()
+    {
+        var editor = Create();
+
+        editor.SelectedProvider.ShouldBe(ProviderKind.Claude);
+        editor.Providers.Select(p => p.Kind).ShouldBe([ProviderKind.Claude, ProviderKind.Codex]);
+        editor.Providers.Single(p => p.IsSelected).Kind.ShouldBe(ProviderKind.Claude);
+        editor.IsProviderFixed.ShouldBeFalse();
+    }
+
+    /// <summary>The profile directory is named after the service, so an existing account keeps the one it has.</summary>
+    [Fact]
+    public void Editing_fixes_the_service_of_the_account()
+    {
+        var editor = Edit(CodexPrivat);
+
+        editor.SelectedProvider.ShouldBe(ProviderKind.Codex);
+        editor.IsProviderFixed.ShouldBeTrue();
+        editor.Providers.Single(p => p.IsSelected).Kind.ShouldBe(ProviderKind.Codex);
+    }
+
+    /// <summary>
+    /// Copying across services would write one provider's files into the other's home, so only accounts of the
+    /// chosen service are offered at all.
+    /// </summary>
+    [Fact]
+    public void Only_accounts_of_the_chosen_service_are_offered_as_a_copy_source()
+    {
+        var editor = CreateWith(Standard, Privat, CodexPrivat);
+
+        editor.CopySources.ShouldBe([null, Standard, Privat]);
+
+        editor.SelectedProvider = ProviderKind.Codex;
+
+        editor.CopySources.ShouldBe([null, CodexPrivat]);
+    }
+
+    [Fact]
+    public void Switching_the_service_drops_a_source_that_no_longer_qualifies()
+    {
+        var editor = CreateWith(Standard, Privat, CodexPrivat);
+        editor.CopySource = Privat;
+
+        editor.SelectedProvider = ProviderKind.Codex;
+
+        editor.CopySource.ShouldBeNull();
+        editor.HasCopySource.ShouldBeFalse();
+        editor.CopyItemsToShow.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Switching_back_keeps_a_source_that_still_qualifies()
+    {
+        var editor = CreateWith(Standard, Privat, CodexPrivat);
+        editor.SelectedProvider = ProviderKind.Codex;
+        editor.CopySource = CodexPrivat;
+
+        editor.SelectedProvider = ProviderKind.Codex;
+
+        editor.CopySource.ShouldBe(CodexPrivat);
+    }
+
+    [Fact]
+    public void A_Codex_source_offers_the_Codex_items()
+    {
+        var editor = CreateWith(Standard, CodexPrivat);
+        editor.SelectedProvider = ProviderKind.Codex;
+
+        editor.CopySource = CodexPrivat;
+
+        editor.CopyItemsToShow.Select(item => item.Item).ShouldBe(ProviderDescriptors.Codex.CopyItems);
+    }
+
+    [Fact]
+    public void The_chosen_service_reaches_the_account_service()
+    {
+        var editor = Create();
+        editor.Name = "Codex Privat";
+        editor.SelectedProvider = ProviderKind.Codex;
+
+        editor.SubmitCommand.Execute(null);
+
+        _services.Accounts.Created.ShouldHaveSingleItem().Provider.ShouldBe(ProviderKind.Codex);
+    }
+
+    [Fact]
+    public void The_service_cannot_be_picked_while_editing()
+    {
+        var editor = Edit(Privat);
+
+        editor.PickProviderCommand.Execute(ProviderKind.Codex);
+
+        editor.SelectedProvider.ShouldBe(ProviderKind.Claude);
+    }
+
+    /// <summary>
+    /// For Codex the one file that holds paths is rewritten either way, so the checkbox would promise a choice that
+    /// does not exist.
+    /// </summary>
+    [Fact]
+    public void The_path_checkbox_only_shows_where_it_decides_something()
+    {
+        var editor = CreateWith(Standard, Privat, CodexPrivat);
+
+        editor.CopySource = Privat;
+        editor.HasOptionalRewrite.ShouldBeTrue();
+
+        editor.SelectedProvider = ProviderKind.Codex;
+        editor.CopySource = CodexPrivat;
+        editor.HasOptionalRewrite.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Without_a_copy_source_the_path_checkbox_is_gone_too()
+    {
+        var editor = Create();
+
+        editor.HasOptionalRewrite.ShouldBeFalse();
     }
 }

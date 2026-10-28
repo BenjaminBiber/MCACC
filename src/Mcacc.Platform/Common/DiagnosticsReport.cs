@@ -1,9 +1,14 @@
 using System.Globalization;
 using System.Text;
+using Mcacc.Core.Abstractions;
 using Mcacc.Core.ClaudeCode;
+using Mcacc.Core.Codex;
 using Mcacc.Core.Desktop;
 using Mcacc.Core.Model;
+using Mcacc.Core.Paths;
+using Mcacc.Core.Providers;
 using Mcacc.Core.Terminal;
+using Mcacc.Core.Usage;
 
 namespace Mcacc.Platform.Common;
 
@@ -48,10 +53,15 @@ public static class DiagnosticsReport
     private static void AppendInstallation(StringBuilder report, PlatformServices services)
     {
         report.AppendLine();
-        report.AppendLine("== Claude Desktop ==");
-        report.AppendLine(services.InstallationLocator.Locate() is { } installation
-            ? $"{installation.Kind}: {installation.LaunchPath}"
-            : "not installed");
+        report.AppendLine("== Desktop apps ==");
+        foreach (var provider in ProviderDescriptors.All.Where(p => p.Desktop is not null))
+        {
+            var installation = services.InstallationLocator.Locate(provider);
+            report.AppendLine(provider.DesktopDisplayName);
+            report.AppendLine(installation is { } found
+                ? $"  {found.Kind}: {found.LaunchPath}"
+                : "  not installed");
+        }
     }
 
     private static void AppendTerminals(StringBuilder report, PlatformServices services)
@@ -92,7 +102,7 @@ public static class DiagnosticsReport
         IReadOnlyList<DesktopInstance> instances;
         try
         {
-            instances = await services.CreateDetector().DetectAsync(ct).ConfigureAwait(false);
+            instances = await services.CreateDetector().DetectAsync(ProviderDescriptors.Claude, ct).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
@@ -135,11 +145,13 @@ public static class DiagnosticsReport
             report.AppendLine(CultureInfo.InvariantCulture,
                 $"  user-data-dir {paths.DesktopUserDataDir ?? "<app default>"}");
             report.AppendLine(CultureInfo.InvariantCulture,
-                $"  config dir    {paths.ClaudeConfigDir ?? "<inherited, unset>"}");
-            report.AppendLine(CultureInfo.InvariantCulture, $"  claude dir    {paths.EffectiveClaudeDir}");
+                $"  config dir    {paths.ConfigDirOverride ?? "<inherited, unset>"}");
+            report.AppendLine(CultureInfo.InvariantCulture, $"  provider      {paths.Provider.DisplayName}");
+            report.AppendLine(CultureInfo.InvariantCulture, $"  config home   {paths.EffectiveConfigDir}");
             report.AppendLine(CultureInfo.InvariantCulture,
                 $"  credentials   {(File.Exists(paths.CredentialsFile) ? "present" : "missing")}");
-            report.AppendLine(CultureInfo.InvariantCulture, $"  login         {Login(paths.ClaudeJsonFile)}");
+            report.AppendLine(CultureInfo.InvariantCulture, $"  login         {Login(account, paths)}");
+            report.AppendLine(CultureInfo.InvariantCulture, $"  local limits  {LocalLimits(paths)}");
             foreach (var dir in paths.DesktopDataDirs)
             {
                 report.AppendLine(CultureInfo.InvariantCulture,
@@ -148,15 +160,39 @@ public static class DiagnosticsReport
         }
     }
 
-    /// <summary>Only the domain, so a report can be shared without handing out the address.</summary>
-    private static string Login(string claudeJsonFile)
+    private static readonly ILoginInfoReader LoginReaders = new RoutingLoginInfoReader(
+        ProviderMap<ILoginInfoReader>.Of(new ClaudeJsonLoginInfoReader(), new CodexLoginInfoReader()));
+
+    private static readonly CodexRateLimitsReader LocalLimitsReader = new();
+
+    /// <summary>
+    /// The limits the provider has written into its own session files, if it writes any. Claude does not, so the
+    /// line stays empty there; for Codex it is the fallback the tile falls back to.
+    /// </summary>
+    private static string LocalLimits(AccountPaths paths)
     {
-        if (ClaudeJsonLoginReader.Read(claudeJsonFile) is not { } info)
+        if (LocalLimitsReader.Read(paths.EffectiveConfigDir) is not { } limits)
+        {
+            return "none on disk";
+        }
+
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"5h {Percent(limits.FiveHour)} · 7d {Percent(limits.SevenDay)} · as of {limits.At:u}");
+    }
+
+    private static string Percent(UsageWindow? window) =>
+        window?.Utilization is { } used ? string.Create(CultureInfo.InvariantCulture, $"{used:0.#} %") : "-";
+
+    /// <summary>Only the domain, so a report can be shared without handing out the address.</summary>
+    private static string Login(Account account, AccountPaths paths)
+    {
+        if (LoginReaders.Read(account, paths) is not { } info)
         {
             return "not logged in";
         }
 
-        return $"{MaskAddresses(info.Email)} org '{MaskAddresses(info.OrganizationName ?? "-")}'";
+        return $"{MaskAddresses(info.Email ?? "logged in without an address")} org '{MaskAddresses(info.OrganizationName ?? "-")}'";
     }
 
     /// <summary>

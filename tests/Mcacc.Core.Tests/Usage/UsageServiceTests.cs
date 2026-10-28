@@ -1,3 +1,4 @@
+using Mcacc.Core.Providers;
 using Mcacc.Core.Abstractions;
 using Mcacc.Core.ClaudeCode;
 using Mcacc.Core.Logging;
@@ -24,7 +25,7 @@ public sealed class UsageServiceTests : IDisposable
     private const string OtherProfile =
         """{ "account": { "uuid": "00000000-0000-0000-0000-000000000099", "email": "privat@example.com" } }""";
 
-    private static readonly ClaudeLoginInfo OwnLogin = new("max.muster@example.com", null, null, OwnUuid);
+    private static readonly AccountLoginInfo OwnLogin = new("max.muster@example.com", null, null, OwnUuid);
 
     private static readonly UsageSnapshot Old = new(
         new UsageWindow(11, new DateTimeOffset(2026, 9, 23, 10, 0, 0, TimeSpan.Zero)),
@@ -298,8 +299,8 @@ public sealed class UsageServiceTests : IDisposable
         usage.ShouldBe(new AccountUsage(UsageState.Ok, Fresh(Now)));
         _http.ProfileRequests.ShouldBe([Token]);
         _http.Requests.ShouldBe([Token]);
-        _login.ReadPaths.Single().ClaudeJsonFile
-            .ShouldBe(new AccountPathResolver(Paths, Platform).Resolve(Privat).ClaudeJsonFile);
+        _login.ReadPaths.Single().IdentityFile
+            .ShouldBe(new AccountPathResolver(Paths, Platform).Resolve(Privat).IdentityFile);
     }
 
     [Fact]
@@ -319,7 +320,7 @@ public sealed class UsageServiceTests : IDisposable
     [Fact]
     public async Task Without_a_uuid_the_emails_are_compared_ignoring_case()
     {
-        _login.Info = new ClaudeLoginInfo("Max.Muster@example.com", null, null);
+        _login.Info = new AccountLoginInfo("Max.Muster@example.com", null, null);
         _http.ProfileResponse = new UsageHttpResponse(200, """{ "account": { "email": "max.muster@EXAMPLE.com" } }""");
 
         (await Service().RefreshAsync(Privat, Ct)).State.ShouldBe(UsageState.Ok);
@@ -643,11 +644,11 @@ public sealed class UsageServiceTests : IDisposable
     {
         private readonly Lock _gate = new();
 
-        public ClaudeLoginInfo? Info { get; set; }
+        public AccountLoginInfo? Info { get; set; }
 
         public List<AccountPaths> ReadPaths { get; } = [];
 
-        public ClaudeLoginInfo? Read(AccountPaths paths)
+        public AccountLoginInfo? Read(Account account, AccountPaths paths)
         {
             lock (_gate)
             {

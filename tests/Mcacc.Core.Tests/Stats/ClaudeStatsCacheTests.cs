@@ -28,8 +28,8 @@ public sealed class ClaudeStatsCacheTests : IDisposable
 
         ClaudeStatsCache.Read(_dir).ShouldBe(
         [
-            new ClaudeDailyTokens(new DateOnly(2026, 7, 27), 1710),
-            new ClaudeDailyTokens(new DateOnly(2026, 8, 3), 100),
+            new DailyTokens(new DateOnly(2026, 7, 27), 1710),
+            new DailyTokens(new DateOnly(2026, 8, 3), 100),
         ]);
     }
 
@@ -49,7 +49,7 @@ public sealed class ClaudeStatsCacheTests : IDisposable
             }
             """);
 
-        ClaudeStatsCache.Read(_dir).ShouldHaveSingleItem().ShouldBe(new ClaudeDailyTokens(new DateOnly(2026, 7, 31), 5));
+        ClaudeStatsCache.Read(_dir).ShouldHaveSingleItem().ShouldBe(new DailyTokens(new DateOnly(2026, 7, 31), 5));
     }
 
     [Theory]

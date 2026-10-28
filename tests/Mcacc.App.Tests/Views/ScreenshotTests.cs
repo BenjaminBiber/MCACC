@@ -17,7 +17,10 @@ public sealed class ScreenshotTests : IDisposable
     private static readonly Account Standard = Account.CreateDefault();
     private static readonly Account Privat = new("privat", "Privat", "#6A9BCC", IsDefault: false);
 
-    private readonly TestServices _services = new(OsKind.Windows, Standard, Privat);
+    private static readonly Account CodexPrivat =
+        new("codex-privat", "Codex Privat", "#5E8C8A", IsDefault: false, ProviderKind.Codex);
+
+    private readonly TestServices _services = new(OsKind.Windows, Standard, Privat, CodexPrivat);
 
     public void Dispose() => _services.Dispose();
 
@@ -59,6 +62,17 @@ public sealed class ScreenshotTests : IDisposable
         _services.Usage.Cached["privat"] = new AccountUsage(
             UsageState.RateLimited,
             new UsageSnapshot(new UsageWindow(94, now.AddMinutes(35)), new UsageWindow(null, null), now));
+
+        // A Codex account whose numbers come from the session files: the bars are filled, the age is shown.
+        _services.SetLogin(CodexPrivat, "codex@example.com");
+        _services.Usage.Cached["codex-privat"] = new AccountUsage(
+            UsageState.Stale,
+            new UsageSnapshot(
+                new UsageWindow(22, now.AddHours(1)),
+                new UsageWindow(3, now.AddDays(5)),
+                now.AddHours(-3),
+                Extra: null,
+                UsageSource.LocalFile));
     }
 
     [AvaloniaTheory]
@@ -107,6 +121,27 @@ public sealed class ScreenshotTests : IDisposable
         Save(Window(new TargetPickerViewModel(_services.Services, Privat), variant), $"target-{theme}");
     }
 
+    /// <summary>The second page for a Codex account: its own programs, and the ChatGPT desktop app.</summary>
+    [AvaloniaFact]
+    public void Target_picker_codex()
+    {
+        Seed();
+        Save(Window(new TargetPickerViewModel(_services.Services, CodexPrivat), ThemeVariant.Light), "target-codex");
+    }
+
+    /// <summary>Creating a Codex account: the service is picked first, and only Codex sources are offered.</summary>
+    [AvaloniaFact]
+    public void Editor_dialog_codex()
+    {
+        Seed();
+        var window = Window(new AccountPickerViewModel(_services.Services), ThemeVariant.Light);
+        var editor = AccountEditorViewModel.ForCreate(_services.Services);
+        editor.SelectedProvider = ProviderKind.Codex;
+        editor.CopySource = CodexPrivat;
+        _services.Window.Dialog = editor;
+        Save(window, "editor-codex");
+    }
+
     [AvaloniaFact]
     public async Task Settings()
     {
@@ -135,8 +170,8 @@ public sealed class ScreenshotTests : IDisposable
         Seed();
         var window = Window(new TargetPickerViewModel(_services.Services, Privat), ThemeVariant.Light);
         _services.Window.Dialog = new ConfirmDialogViewModel(
-            Mcacc.App.Localization.Texts.ConflictDialogTitle,
-            Mcacc.App.Localization.Texts.ConflictDialogText("Standard", "Privat"),
+            Mcacc.App.Localization.Texts.ConflictDialogTitle(ProviderKind.Claude),
+            Mcacc.App.Localization.Texts.ConflictDialogText(ProviderKind.Claude, "Standard", "Privat"),
             Mcacc.App.Localization.Texts.ConflictDialogRestart);
         Save(window, "conflict");
     }
@@ -222,12 +257,39 @@ public sealed class ScreenshotTests : IDisposable
         var today = DateOnly.FromDateTime(DateTime.Now);
         _services.Stats.Summary.AddRange(Enumerable.Range(0, 90)
             .Where(i => i < 30 || today.AddDays(-i).DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday))
-            .Select(i => new ClaudeDailyTokens(today.AddDays(-i), 20_000 + 7_000 * (i % 4))));
+            .Select(i => new DailyTokens(today.AddDays(-i), 20_000 + 7_000 * (i % 4))));
         page.ShowUsageViewCommand.Execute("calendar");
 
         var window = Window(page, ThemeVariant.Light, width: width, height: 1750);
         await page.ActivateAsync(TestContext.Current.CancellationToken);
         Save(window, $"info-calendar-{width}");
+    }
+
+    /// <summary>The same page for a Codex account: token numbers, but no invented cost.</summary>
+    [AvaloniaFact]
+    public async Task Info_page_codex()
+    {
+        var page = InfoPage(CodexPrivat, "gpt-5-codex");
+
+        var window = Window(page, ThemeVariant.Light, height: 1750);
+        await page.ActivateAsync(TestContext.Current.CancellationToken);
+        Save(window, "info-codex");
+    }
+
+    private AccountInfoViewModel InfoPage(Account account, string model)
+    {
+        Seed();
+        var now = DateTimeOffset.Now;
+        _services.Usage.Profiles[account.Id] = new AccountProfile(
+            "uuid", "codex@example.com", "Ben Biber", "Ben", null, null, null, "Personal", null, null, "plus");
+        _services.Stats.Buckets.AddRange(Enumerable.Range(0, 30).Select(i => new TokenBucket(
+            now.AddDays(-i).AddHours(-1),
+            model,
+            @"C:\Repos\A",
+            $"t{i / 4}",
+            new TokenCounts(20_000 * (i % 5 + 1), 8_000 * (i % 3 + 1), 30_000, 0, 400_000 * (i % 4 + 1)),
+            Messages: 10 + i % 7)));
+        return new AccountInfoViewModel(_services.Services, account);
     }
 
     private AccountInfoViewModel InfoPage()

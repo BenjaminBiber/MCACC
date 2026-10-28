@@ -1,3 +1,4 @@
+using Mcacc.Core.Providers;
 using Mcacc.App.Services;
 using Mcacc.App.ViewModels;
 using Mcacc.Core.Abstractions;
@@ -29,7 +30,7 @@ internal sealed class FakeAccountService : IAccountService
 
     public AppConfig Config { get; private set; }
 
-    public List<(string Name, string Color, CopyRequest? Copy)> Created { get; } = [];
+    public List<(string Name, string Color, CopyRequest? Copy, ProviderKind Provider)> Created { get; } = [];
 
     public List<(string Id, string Name, string Color)> Updated { get; } = [];
 
@@ -41,15 +42,15 @@ internal sealed class FakeAccountService : IAccountService
 
     public CopyReport? CreateReport { get; set; }
 
-    public CreateAccountResult Create(string name, string color, CopyRequest? copy)
+    public CreateAccountResult Create(string name, string color, CopyRequest? copy, ProviderKind provider = ProviderKind.Claude)
     {
-        Created.Add((name, color, copy));
+        Created.Add((name, color, copy, provider));
         if (ThrowOnCreate is { } error)
         {
             throw error;
         }
 
-        var account = new Account(SlugGenerator.Generate(name, _ => false), name.Trim(), color, IsDefault: false);
+        var account = new Account(SlugGenerator.Generate(name, _ => false), name.Trim(), color, IsDefault: false, provider);
         Config = Config with { Accounts = [.. Config.Accounts, account] };
         return new CreateAccountResult(account, CreateReport);
     }
@@ -194,9 +195,9 @@ internal sealed class FakeUsageProvider : IUsageProvider
 
 internal sealed class FakeLoginReader : ILoginInfoReader
 {
-    public Dictionary<string, ClaudeLoginInfo> ByClaudeDir { get; } = [];
+    public Dictionary<string, AccountLoginInfo> ByClaudeDir { get; } = [];
 
-    public ClaudeLoginInfo? Read(AccountPaths paths) => ByClaudeDir.GetValueOrDefault(paths.EffectiveClaudeDir);
+    public AccountLoginInfo? Read(Account account, AccountPaths paths) => ByClaudeDir.GetValueOrDefault(paths.EffectiveConfigDir);
 }
 
 internal sealed class FakeDetector : IDesktopInstanceDetector
@@ -207,7 +208,7 @@ internal sealed class FakeDetector : IDesktopInstanceDetector
 
     public int Calls { get; private set; }
 
-    public Task<IReadOnlyList<DesktopInstance>> DetectAsync(CancellationToken ct)
+    public Task<IReadOnlyList<DesktopInstance>> DetectAsync(ProviderDescriptor provider, CancellationToken ct)
     {
         Calls++;
         if (ThrowOnDetect is { } error)
@@ -298,7 +299,7 @@ internal sealed class FakeDialogService : IDialogService
     }
 }
 
-internal sealed class FakeClaudeStatsProvider : IClaudeStatsProvider
+internal sealed class FakeStatsProvider : IStatsProvider
 {
     public List<TokenBucket> Buckets { get; } = [];
 
@@ -340,9 +341,9 @@ internal sealed class FakeClaudeStatsProvider : IClaudeStatsProvider
         return ByAccount.TryGetValue(account.Id, out var own) ? own.ToList() : Buckets.ToList();
     }
 
-    public List<ClaudeDailyTokens> Summary { get; } = [];
+    public List<DailyTokens> Summary { get; } = [];
 
-    public IReadOnlyList<ClaudeDailyTokens> LoadSummary(Account account) => Summary.ToList();
+    public IReadOnlyList<DailyTokens> LoadSummary(Account account) => Summary.ToList();
 
     public void Forget(Account account) => Forgotten.Add(account.Id);
 }

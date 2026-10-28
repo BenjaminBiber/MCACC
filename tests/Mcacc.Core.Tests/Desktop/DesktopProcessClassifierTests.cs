@@ -18,7 +18,7 @@ public class DesktopProcessClassifierTests
     private const string ArbeitDesktop = @"C:\Users\USER\.mcacc\profiles\arbeit\desktop";
 
     private static readonly DateTimeOffset Started = new(2026, 9, 23, 10, 15, 2, TimeSpan.FromHours(2));
-    private static readonly DesktopProcessRules Windows = DesktopProcessRules.ForOs(OsKind.Windows);
+    private static readonly DesktopProcessRules Windows = DesktopProcessRules.For(OsKind.Windows, ProviderDescriptors.Claude);
 
     private static ProcessInfo MainProcess(int pid, string arguments = "", string exe = MsixExe, int parentPid = 5316) =>
         new(pid, parentPid, exe, $"\"{exe}\"{arguments}", Started);
@@ -222,7 +222,7 @@ public class DesktopProcessClassifierTests
     {
         var processes = PsOutputParser.Parse(FixtureFiles.ReadAllText("ps-profile.txt"));
 
-        var instances = DesktopProcessClassifier.Classify(processes, DesktopProcessRules.ForOs(OsKind.MacOS));
+        var instances = DesktopProcessClassifier.Classify(processes, DesktopProcessRules.For(OsKind.MacOS, ProviderDescriptors.Claude));
 
         instances.Select(i => i.MainPid).ShouldBe([812, 1204]);
         instances[0].ProcessIds.ShouldBe([812, 815, 818, 820, 824]);

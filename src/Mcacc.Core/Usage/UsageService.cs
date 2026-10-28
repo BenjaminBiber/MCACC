@@ -1,3 +1,4 @@
+using Mcacc.Core.Providers;
 using System.Security.Cryptography;
 using System.Text;
 using Mcacc.Core.Abstractions;
@@ -131,7 +132,7 @@ public sealed class UsageService(
         }
 
         // Without a login in .claude.json there is nothing to compare with, and the tile says so anyway.
-        if (login.Read(paths) is { } expected)
+        if (login.Read(account, paths) is { } expected)
         {
             var check = await ProfileAsync(account.Id, generation, found.AccessToken, ct).ConfigureAwait(false);
             if (check.Profile is not { } profile)
@@ -230,10 +231,18 @@ public sealed class UsageService(
     }
 
     /// <summary>The uuid decides when both sides have one; older files only carry the e-mail.</summary>
-    private static bool IsSameAccount(ClaudeLoginInfo expected, TokenOwner owner) =>
-        expected.AccountUuid is { } uuid && owner.AccountUuid is { } ownerUuid
-            ? string.Equals(uuid, ownerUuid, StringComparison.OrdinalIgnoreCase)
-            : string.Equals(expected.Email, owner.Email, StringComparison.OrdinalIgnoreCase);
+    private static bool IsSameAccount(AccountLoginInfo expected, TokenOwner owner)
+    {
+        if (expected.AccountUuid is { } uuid && owner.AccountUuid is { } ownerUuid)
+        {
+            return string.Equals(uuid, ownerUuid, StringComparison.OrdinalIgnoreCase);
+        }
+
+        // Two unknown addresses are not a match: without something to compare, nothing is confirmed.
+        return expected.Email is { } email
+               && owner.Email is { } ownerEmail
+               && string.Equals(email, ownerEmail, StringComparison.OrdinalIgnoreCase);
+    }
 
     /// <summary>Only the hash is remembered, so the token itself does not outlive the refresh.</summary>
     private static string Hash(string accessToken) =>

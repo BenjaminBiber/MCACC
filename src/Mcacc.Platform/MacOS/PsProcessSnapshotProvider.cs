@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Runtime.Versioning;
+using Mcacc.Core.Model;
 using Mcacc.Core.Abstractions;
 using Mcacc.Core.Processes;
 
@@ -13,14 +14,20 @@ namespace Mcacc.Platform.MacOS;
 public sealed class PsProcessSnapshotProvider(IProcessRunner runner) : IProcessSnapshotProvider
 {
     private const string Ps = "/bin/ps";
-    private const string BundleMarker = "Claude.app/Contents/";
+
 
     private static readonly TimeSpan QueryTimeout = TimeSpan.FromSeconds(5);
 
     /// <exception cref="TimeoutException">ps did not answer within five seconds.</exception>
     /// <exception cref="LaunchException">ps could not be started.</exception>
-    public async Task<IReadOnlyList<ProcessInfo>> GetClaudeProcessesAsync(CancellationToken ct)
+    public async Task<IReadOnlyList<ProcessInfo>> GetProcessesAsync(ProviderDescriptor provider, CancellationToken ct)
     {
+        if (provider.Desktop is not { } desktop)
+        {
+            return [];
+        }
+
+        var marker = $"{desktop.MacBundleName}/Contents/";
         var spec = new ProcessSpec(
             Ps,
             ["-axww", "-o", "pid=,ppid=,lstart=,command="],
@@ -34,6 +41,6 @@ public sealed class PsProcessSnapshotProvider(IProcessRunner runner) : IProcessS
         }
 
         return [.. PsOutputParser.Parse(result.StdOut)
-            .Where(p => p.CommandLine?.Contains(BundleMarker, StringComparison.Ordinal) == true)];
+            .Where(p => p.CommandLine?.Contains(marker, StringComparison.Ordinal) == true)];
     }
 }

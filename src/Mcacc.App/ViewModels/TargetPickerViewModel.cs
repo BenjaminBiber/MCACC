@@ -29,7 +29,7 @@ public sealed partial class TargetPickerViewModel : PageViewModel
 
     public string Title => Texts.TargetPickerTitle;
 
-    public string Subtitle => Texts.TargetPickerSubtitle;
+    public string Subtitle => Texts.TargetPickerSubtitle(Account.Provider);
 
     public string AccountName => Account.Name;
 
@@ -39,9 +39,12 @@ public sealed partial class TargetPickerViewModel : PageViewModel
 
     public IBrush AvatarBrush => new SolidColorBrush(Color.Parse(Account.Color));
 
-    public string DesktopTitle => Texts.TargetDesktop;
+    public string DesktopTitle => Texts.TargetDesktop(Account.Provider);
 
-    public string CodeTitle => Texts.TargetCode;
+    public string CodeTitle => Texts.TargetCode(Account.Provider);
+
+    /// <summary>False for a provider whose desktop app MCACC cannot start per profile; the tile is then hidden.</summary>
+    public bool HasDesktopTarget => ProviderDescriptors.For(Account).Desktop is not null;
 
     [ObservableProperty]
     public partial string DesktopSubtitle { get; private set; }
@@ -52,8 +55,12 @@ public sealed partial class TargetPickerViewModel : PageViewModel
     [ObservableProperty]
     public partial bool IsDesktopAvailable { get; private set; } = true;
 
-    /// <summary>Which tile the page focuses first: the target used last.</summary>
-    public LaunchTarget PreferredTarget => _services.Accounts.Config.Settings.LastTarget ?? LaunchTarget.Desktop;
+    /// <summary>
+    /// Which tile the page focuses first: the target used last, but never the desktop one when this provider has none.
+    /// </summary>
+    public LaunchTarget PreferredTarget => HasDesktopTarget
+        ? _services.Accounts.Config.Settings.LastTarget ?? LaunchTarget.Desktop
+        : LaunchTarget.Code;
 
     public override async Task ActivateAsync(CancellationToken ct)
     {
@@ -91,6 +98,12 @@ public sealed partial class TargetPickerViewModel : PageViewModel
 
     private async Task RefreshDesktopStateAsync(CancellationToken ct)
     {
+        if (!HasDesktopTarget)
+        {
+            IsDesktopAvailable = false;
+            return;
+        }
+
         var check = await _launcher.CheckDesktopAsync(Account, ct).ConfigureAwait(true);
         IsDesktopAvailable = check is not DesktopLaunchCheck.NotInstalled;
         DesktopSubtitle = check switch

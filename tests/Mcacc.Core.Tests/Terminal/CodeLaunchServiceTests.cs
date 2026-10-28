@@ -52,14 +52,16 @@ public sealed class CodeLaunchServiceTests : IDisposable
             platform);
     }
 
-    private ClaudeCodeLaunchRequest Request(Account account, OsKind os)
+    private CliLaunchRequest Request(Account account, OsKind os)
     {
         var platform = Platform(os);
         var paths = Paths(platform);
-        return new ClaudeCodeLaunchRequest(
+        var accountPaths = new AccountPathResolver(paths, platform).Resolve(account);
+        return new CliLaunchRequest(
+            accountPaths.Provider,
             account.Id,
             account.Name,
-            new AccountPathResolver(paths, platform).Resolve(account).ClaudeConfigDir,
+            accountPaths.ConfigDirOverride,
             platform.HomeDir,
             paths.LaunchDir,
             account.Color);
@@ -133,7 +135,7 @@ public sealed class CodeLaunchServiceTests : IDisposable
         Service().Launch(Privat, new AppSettings());
 
         var script = _runner.Started.ShouldHaveSingleItem().Arguments[^1];
-        script.ShouldContain(Paths(Platform(OsKind.Windows)).ClaudeConfigDir("privat"));
+        script.ShouldContain(Paths(Platform(OsKind.Windows)).ConfigDir("privat", ProviderDescriptors.Claude));
     }
 
     [Fact]
@@ -191,7 +193,7 @@ public sealed class CodeLaunchServiceTests : IDisposable
         var result = Service().Launch(Privat, new AppSettings());
 
         result.Outcome.ShouldBe(CodeLaunchOutcome.Launched);
-        result.ClaudeCliNotFound.ShouldBeTrue();
+        result.CliNotFound.ShouldBeTrue();
         _runner.Started.Count.ShouldBe(1);
     }
 
@@ -201,7 +203,7 @@ public sealed class CodeLaunchServiceTests : IDisposable
         _catalog.Installed = [WindowsPowerShell];
         _locator.Found["claude"] = @"C:\Users\USER\AppData\Local\Microsoft\WinGet\Links\claude.exe";
 
-        Service().Launch(Privat, new AppSettings()).ClaudeCliNotFound.ShouldBeFalse();
+        Service().Launch(Privat, new AppSettings()).CliNotFound.ShouldBeFalse();
     }
 
     [Fact]
@@ -241,5 +243,37 @@ public sealed class CodeLaunchServiceTests : IDisposable
         public Dictionary<string, string> Found { get; } = [];
 
         public string? Find(string name) => Found.GetValueOrDefault(name);
+    }
+
+    private static readonly Account CodexPrivat =
+        new("codex-privat", "Codex Privat", "#5E8C8A", IsDefault: false, ProviderKind.Codex);
+
+    [Fact]
+    public void Launch_of_a_Codex_account_sets_CODEX_HOME_on_its_own_profile_and_runs_codex()
+    {
+        _catalog.Installed = [WindowsPowerShell];
+        _locator.Found["codex"] = @"C:\Users\USER\AppData\Local\Programs\OpenAI\Codex\bin\codex.exe";
+
+        var result = Service().Launch(CodexPrivat, new AppSettings());
+
+        result.CliNotFound.ShouldBeFalse();
+        var script = _runner.Started.ShouldHaveSingleItem().Arguments[^1];
+        script.ShouldContain(
+            "$env:CODEX_HOME='"
+            + Paths(Platform(OsKind.Windows)).ConfigDir("codex-privat", ProviderDescriptors.Codex)
+            + "'");
+        script.ShouldEndWith("; codex");
+        script.ShouldContain("Env:CLAUDE_CONFIG_DIR");
+        script.ShouldContain("Env:CODEX_SQLITE_HOME");
+    }
+
+    /// <summary>A Codex account must be judged by the codex binary, not by whether claude happens to be installed.</summary>
+    [Fact]
+    public void Launch_of_a_Codex_account_reports_a_missing_codex_even_with_claude_installed()
+    {
+        _catalog.Installed = [WindowsPowerShell];
+        _locator.Found["claude"] = @"C:\Users\USER\AppData\Local\Microsoft\WinGet\Links\claude.exe";
+
+        Service().Launch(CodexPrivat, new AppSettings()).CliNotFound.ShouldBeTrue();
     }
 }

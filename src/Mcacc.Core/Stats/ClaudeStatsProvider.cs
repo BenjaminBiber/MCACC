@@ -5,7 +5,7 @@ using Mcacc.Core.Paths;
 
 namespace Mcacc.Core.Stats;
 
-public sealed class ClaudeStatsProvider(StatsIndexStore store, AccountPathResolver resolver) : IClaudeStatsProvider
+public sealed class ClaudeStatsProvider(StatsIndexStore store, AccountPathResolver resolver) : IStatsProvider
 {
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _gates = new();
 
@@ -23,7 +23,7 @@ public sealed class ClaudeStatsProvider(StatsIndexStore store, AccountPathResolv
         await gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var claudeDir = resolver.Resolve(account).EffectiveClaudeDir;
+            var claudeDir = resolver.Resolve(account).EffectiveConfigDir;
             return await Task.Run(() => Scan(account.Id, claudeDir, gate, progress, ct), ct).ConfigureAwait(false);
         }
         finally
@@ -32,8 +32,8 @@ public sealed class ClaudeStatsProvider(StatsIndexStore store, AccountPathResolv
         }
     }
 
-    public IReadOnlyList<ClaudeDailyTokens> LoadSummary(Account account) =>
-        ClaudeStatsCache.Read(resolver.Resolve(account).EffectiveClaudeDir);
+    public IReadOnlyList<DailyTokens> LoadSummary(Account account) =>
+        ClaudeStatsCache.Read(resolver.Resolve(account).EffectiveConfigDir);
 
     public void Forget(Account account)
     {
@@ -51,7 +51,12 @@ public sealed class ClaudeStatsProvider(StatsIndexStore store, AccountPathResolv
         IProgress<double>? progress,
         CancellationToken ct)
     {
-        var result = ClaudeLogScanner.Update(claudeDir, store.Load(accountId), progress, ct);
+        var result = LogScanner.Update(
+            Path.Join(claudeDir, "projects"),
+            store.Load(accountId),
+            static () => new ClaudeLineReader(),
+            progress,
+            ct);
 
         // A forgotten account has lost its gate; writing now would bring its index back. The check and the write
         // share _writeGate with Forget so the two can never interleave (see the field's comment).

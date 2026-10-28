@@ -1,4 +1,3 @@
-using Mcacc.Core.Processes;
 using Mcacc.Core.Quoting;
 
 namespace Mcacc.Core.Terminal;
@@ -6,19 +5,19 @@ namespace Mcacc.Core.Terminal;
 public static class CmdBatchBuilder
 {
     /// <exception cref="ArgumentException">The config dir or home contains a double quote or a line break.</exception>
-    public static string Build(ClaudeCodeLaunchRequest req)
+    public static string Build(CliLaunchRequest req)
     {
-        var configDir = req.ClaudeConfigDir is null ? "" : BatchEscaping.ForSetValue(req.ClaudeConfigDir);
+        var configDir = req.ConfigDirOverride is null ? "" : BatchEscaping.ForSetValue(req.ConfigDirOverride);
         string[] lines =
         [
             "@chcp 65001 >nul",
             "@echo off",
-            .. EnvironmentScrub.Always.Select(name => $"set \"{name}=\""),
-            $"set \"{EnvironmentScrub.ClaudeConfigDirVariable}={configDir}\"",
+            .. req.Scrub.Select(name => $"set \"{name}=\""),
+            $"set \"{req.ConfigDirVariable}={configDir}\"",
             $"cd /d \"{BatchEscaping.ForSetValue(req.HomeDir)}\"",
             $"title {req.Title}",
-            // call, so an npm claude.cmd shim returns here instead of ending this batch file.
-            "call claude",
+            // call, so an npm .cmd shim returns here instead of ending this batch file.
+            $"call {req.CliCommand}",
             // cmd /k keeps the window open; without this its prompt would stay hidden.
             "@echo on",
         ];

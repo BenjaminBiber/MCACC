@@ -1,3 +1,5 @@
+using Mcacc.Core.Model;
+
 namespace Mcacc.Core.Paths;
 
 public sealed class McaccPaths
@@ -52,9 +54,13 @@ public sealed class McaccPaths
 
     public string ProfileDir(string id) => Style.Join(ProfilesDir, id);
 
-    public string DesktopDataDir(string id) => Style.Join(ProfileDir(id), "desktop");
+    /// <summary>Below the profile: the desktop app's user data, named by the provider.</summary>
+    public string DesktopDataDir(string id, ProviderDescriptor provider) =>
+        Style.Join(ProfileDir(id), provider.DesktopSubfolder);
 
-    public string ClaudeConfigDir(string id) => Style.Join(ProfileDir(id), "claude");
+    /// <summary>Below the profile: the provider's own configuration home.</summary>
+    public string ConfigDir(string id, ProviderDescriptor provider) =>
+        Style.Join(ProfileDir(id), provider.ProfileSubfolder);
 
     public string UsageHistoryFile(string id) => Style.Join(UsageHistoryDir, id + ".jsonl");
 

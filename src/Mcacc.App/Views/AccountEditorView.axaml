@@ -17,6 +17,27 @@
                  IsVisible="{Binding NameError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
     </StackPanel>
 
+    <StackPanel Spacing="6" IsVisible="{Binding IsCreate}">
+      <TextBlock Classes="caption" Text="{Binding ProviderLabel}" />
+      <ItemsControl ItemsSource="{Binding Providers}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel Orientation="Horizontal" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:ProviderChoiceViewModel">
+            <RadioButton Margin="0,0,16,0"
+                         Content="{Binding Label}"
+                         IsChecked="{Binding IsSelected, Mode=OneWay}"
+                         GroupName="Provider"
+                         Command="{Binding $parent[ItemsControl].((vm:AccountEditorViewModel)DataContext).PickProviderCommand}"
+                         CommandParameter="{Binding Kind}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+
     <StackPanel Spacing="6">
       <TextBlock Classes="caption" Text="{Binding ColorLabel}" />
       <ItemsControl ItemsSource="{Binding Swatches}">
@@ -74,6 +95,7 @@
           </ItemsControl>
         </ScrollViewer>
         <CheckBox Content="{Binding RewritePathsText}"
+                  IsVisible="{Binding HasOptionalRewrite}"
                   IsChecked="{Binding RewriteSettingsPaths}"
                   Margin="20,0,0,0" />
       </StackPanel>

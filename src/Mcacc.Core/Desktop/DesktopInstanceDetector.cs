@@ -1,12 +1,20 @@
 using Mcacc.Core.Abstractions;
+using Mcacc.Core.Model;
+using Mcacc.Core.Paths;
 
 namespace Mcacc.Core.Desktop;
 
-public sealed class DesktopInstanceDetector(IProcessSnapshotProvider provider, DesktopProcessRules rules) : IDesktopInstanceDetector
+public sealed class DesktopInstanceDetector(IProcessSnapshotProvider provider, PlatformInfo info)
+    : IDesktopInstanceDetector
 {
-    public async Task<IReadOnlyList<DesktopInstance>> DetectAsync(CancellationToken ct)
+    public async Task<IReadOnlyList<DesktopInstance>> DetectAsync(ProviderDescriptor descriptor, CancellationToken ct)
     {
-        var processes = await provider.GetClaudeProcessesAsync(ct).ConfigureAwait(false);
-        return DesktopProcessClassifier.Classify(processes, rules);
+        if (descriptor.Desktop is null)
+        {
+            return [];
+        }
+
+        var processes = await provider.GetProcessesAsync(descriptor, ct).ConfigureAwait(false);
+        return DesktopProcessClassifier.Classify(processes, DesktopProcessRules.For(info.Os, descriptor));
     }
 }

@@ -289,7 +289,8 @@
                 <TextBlock Grid.Column="1" Classes="muted" FontSize="12" Text="{Binding ColumnModel}" />
                 <TextBlock Grid.Column="2" Classes="muted" FontSize="12" Text="{Binding ColumnTokens}" TextAlignment="Right" />
                 <TextBlock Grid.Column="3" Classes="muted" FontSize="12" Text="{Binding ColumnShare}" TextAlignment="Right" />
-                <TextBlock Grid.Column="4" Classes="muted" FontSize="12" Text="{Binding ColumnCost}" TextAlignment="Right" />
+                <TextBlock Grid.Column="4" Classes="muted" FontSize="12" Text="{Binding ColumnCost}" TextAlignment="Right"
+                           IsVisible="{Binding ShowCost}" />
               </Grid>
               <ItemsControl ItemsSource="{Binding Models}">
                 <ItemsControl.ItemTemplate>
@@ -299,12 +300,13 @@
                       <TextBlock Grid.Column="1" Text="{Binding Name}" />
                       <TextBlock Grid.Column="2" Text="{Binding Tokens}" TextAlignment="Right" />
                       <TextBlock Grid.Column="3" Text="{Binding Share}" TextAlignment="Right" />
-                      <TextBlock Grid.Column="4" Text="{Binding Cost}" TextAlignment="Right" />
+                      <TextBlock Grid.Column="4" Text="{Binding Cost}" TextAlignment="Right"
+                                 IsVisible="{Binding $parent[ItemsControl].((vm:AccountInfoViewModel)DataContext).ShowCost}" />
                     </Grid>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-              <TextBlock Classes="muted" FontSize="11" Text="{Binding CostNote}" />
+              <TextBlock Classes="muted" FontSize="11" Text="{Binding CostNote}" IsVisible="{Binding ShowCost}" />
               <TextBlock Classes="muted" FontSize="11" Text="{Binding UnpricedText}"
                          IsVisible="{Binding UnpricedText, Converter={x:Static ObjectConverters.IsNotNull}}" />
             </StackPanel>

@@ -103,7 +103,7 @@ public sealed class TrayMenuModelTests
         var standard = AccountEntries(Build(usageOf: _ => usage)).First();
 
         standard.Header.ShouldBe("Standard");
-        standard.Children![0].Header.ShouldBe(Texts.UsageWrongAccount("other@example.com"));
+        standard.Children![0].Header.ShouldBe(Texts.UsageWrongAccount(ProviderKind.Claude, "other@example.com"));
     }
 
     [Fact]
@@ -117,5 +117,29 @@ public sealed class TrayMenuModelTests
     public void Without_accounts_the_tooltip_is_just_the_app()
     {
         TrayMenuModel.ToolTip([], _ => null, lastAccountId: null).ShouldBe("MCACC");
+    }
+
+    private static readonly Account CodexPrivat =
+        new("codex-privat", "Codex Privat", "#5E8C8A", IsDefault: false, ProviderKind.Codex);
+
+    /// <summary>The desktop app of a Codex account is called ChatGPT; naming it Codex would send the user wrong.</summary>
+    [Fact]
+    public void A_Codex_account_names_its_own_programs()
+    {
+        var entries = TrayMenuModel.Build([CodexPrivat], _ => null, NoneRunning, lastAccountId: null);
+
+        var children = entries.Single(e => e.AccountId == CodexPrivat.Id).Children;
+        children.ShouldNotBeNull().Select(c => c.Header).ShouldContain("Codex starten");
+        children.ShouldNotBeNull().Select(c => c.Header).ShouldContain("ChatGPT starten");
+    }
+
+    [Fact]
+    public void A_Claude_account_still_names_the_Claude_programs()
+    {
+        var entries = TrayMenuModel.Build([Privat], _ => null, NoneRunning, lastAccountId: null);
+
+        var children = entries.Single(e => e.AccountId == Privat.Id).Children;
+        children.ShouldNotBeNull().Select(c => c.Header).ShouldContain("Claude Code starten");
+        children.ShouldNotBeNull().Select(c => c.Header).ShouldContain("Claude Desktop starten");
     }
 }

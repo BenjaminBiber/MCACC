@@ -48,6 +48,8 @@ public sealed class PathExecutableLocator(PlatformInfo info, Func<string, string
                 style.Join(info.LocalAppData, "Microsoft", "WinGet", "Links"),
                 style.Join(info.LocalAppData, "Microsoft", "WindowsApps"),
                 style.Join(info.HomeDir, ".local", "bin"),
+                style.Join(info.LocalAppData, "Programs", "OpenAI", "Codex", "bin"),
+                style.Join(info.HomeDir, ".codex", "packages", "standalone", "current", "bin"),
             ],
             OsKind.MacOS =>
             [
@@ -55,6 +57,8 @@ public sealed class PathExecutableLocator(PlatformInfo info, Func<string, string
                 "/usr/local/bin",
                 style.Join(info.HomeDir, ".local", "bin"),
                 style.Join(info.HomeDir, ".claude", "local"),
+                style.Join(info.HomeDir, ".codex", "bin"),
+                style.Join(info.HomeDir, ".codex", "packages", "standalone", "current", "bin"),
             ],
             _ => [style.Join(info.HomeDir, ".local", "bin")],
         };

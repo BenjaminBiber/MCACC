@@ -3,43 +3,50 @@ using Mcacc.Core.Processes;
 
 namespace Mcacc.Core.Desktop;
 
-/// <summary>Tells Claude Desktop processes apart from Claude Code CLI processes, which are also named claude(.exe).</summary>
+/// <summary>
+/// Tells the processes of a provider's desktop app from everything else that carries the same name. Both providers
+/// need it, for different reasons: Claude Desktop shares its executable name with the Claude Code CLI, and the
+/// Codex app shares <c>ChatGPT.exe</c> with the separate ChatGPT app. The package path decides, never the name.
+/// </summary>
 public sealed class DesktopProcessRules
 {
     private const string TypeSwitch = "--type=";
+
+    /// <summary>The Claude Code CLI installs under this folder and is also called claude(.exe).</summary>
     private const string ClaudeCodeDirectory = "claude-code";
 
-    private const string MsixDirectory = @"\WindowsApps\Claude_";
-    private const string MsixExeSuffix = @"\app\Claude.exe";
     private const string SquirrelDirectory = @"\AnthropicClaude\app-";
     private const string SquirrelExeSuffix = @"\claude.exe";
-
-    private const string MacMainExe = "/Claude.app/Contents/MacOS/Claude";
-    private const string MacFrameworks = "/Claude.app/Contents/Frameworks/";
-    private const string MacMainExeSuffix = "/Contents/MacOS/Claude";
 
     private static readonly char[] PathSeparators = ['\\', '/'];
 
     private readonly OsKind _os;
+    private readonly ProviderDescriptor _provider;
 
-    private DesktopProcessRules(OsKind os) => _os = os;
+    private DesktopProcessRules(OsKind os, ProviderDescriptor provider)
+    {
+        _os = os;
+        _provider = provider;
+    }
 
-    /// <remarks>Linux has no Claude Desktop, so its rules match nothing.</remarks>
-    public static DesktopProcessRules ForOs(OsKind os) => new(os);
+    /// <remarks>Linux has no desktop app, so its rules match nothing.</remarks>
+    public static DesktopProcessRules For(OsKind os, ProviderDescriptor provider) => new(os, provider);
+
+    public ProviderDescriptor Provider => _provider;
 
     public bool IsDesktopProcess(ProcessInfo p)
     {
         var path = p.ExePath;
-        if (string.IsNullOrEmpty(path) || IsUnderClaudeCodeDirectory(path))
+        if (string.IsNullOrEmpty(path) || _provider.Desktop is not { } desktop || IsUnderClaudeCodeDirectory(path))
         {
             return false;
         }
 
         return _os switch
         {
-            OsKind.Windows => IsWindowsDesktopExe(path),
-            OsKind.MacOS => path.Contains(MacMainExe, StringComparison.Ordinal)
-                            || path.Contains(MacFrameworks, StringComparison.Ordinal),
+            OsKind.Windows => IsWindowsDesktopExe(path, desktop),
+            OsKind.MacOS => path.Contains(MacMainExe(desktop), StringComparison.Ordinal)
+                            || path.Contains(MacFrameworks(desktop), StringComparison.Ordinal),
             _ => false,
         };
     }
@@ -49,14 +56,30 @@ public sealed class DesktopProcessRules
         IsDesktopProcess(p)
         && p.CommandLine is not null
         && !p.CommandLine.Contains(TypeSwitch, StringComparison.Ordinal)
-        && (_os != OsKind.MacOS || p.ExePath!.EndsWith(MacMainExeSuffix, StringComparison.Ordinal));
+        && (_os != OsKind.MacOS || p.ExePath!.EndsWith(MacMainExeSuffix(_provider.Desktop!), StringComparison.Ordinal));
 
-    private static bool IsWindowsDesktopExe(string path) =>
-        (path.Contains(MsixDirectory, StringComparison.OrdinalIgnoreCase)
-         && path.EndsWith(MsixExeSuffix, StringComparison.OrdinalIgnoreCase))
-        || (path.Contains(SquirrelDirectory, StringComparison.OrdinalIgnoreCase)
+    /// <summary>The packaged app, or — Claude only — a Squirrel install beside it.</summary>
+    private bool IsWindowsDesktopExe(string path, ProviderDesktop desktop) =>
+        (path.Contains(desktop.WindowsPathDiscriminator, StringComparison.OrdinalIgnoreCase)
+         && path.EndsWith($@"\app\{desktop.WindowsProcessName}", StringComparison.OrdinalIgnoreCase))
+        || (_provider.Kind == ProviderKind.Claude
+            && path.Contains(SquirrelDirectory, StringComparison.OrdinalIgnoreCase)
             && path.EndsWith(SquirrelExeSuffix, StringComparison.OrdinalIgnoreCase));
 
-    private static bool IsUnderClaudeCodeDirectory(string path) =>
-        path.Split(PathSeparators).Any(segment => segment.Equals(ClaudeCodeDirectory, StringComparison.OrdinalIgnoreCase));
+    private static string MacMainExe(ProviderDesktop desktop) =>
+        $"/{desktop.MacBundleName}/Contents/MacOS/{BundleStem(desktop)}";
+
+    private static string MacFrameworks(ProviderDesktop desktop) => $"/{desktop.MacBundleName}/Contents/Frameworks/";
+
+    private static string MacMainExeSuffix(ProviderDesktop desktop) => $"/Contents/MacOS/{BundleStem(desktop)}";
+
+    private static string BundleStem(ProviderDesktop desktop) =>
+        desktop.MacBundleName.EndsWith(".app", StringComparison.Ordinal)
+            ? desktop.MacBundleName[..^4]
+            : desktop.MacBundleName;
+
+    /// <summary>Only Claude needs this: the CLI there carries the same executable name as the app.</summary>
+    private bool IsUnderClaudeCodeDirectory(string path) =>
+        _provider.Kind == ProviderKind.Claude
+        && path.Split(PathSeparators).Any(segment => segment.Equals(ClaudeCodeDirectory, StringComparison.OrdinalIgnoreCase));
 }

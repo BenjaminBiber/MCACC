@@ -14,7 +14,7 @@ public static class DesktopProcessClassifier
         // Another main is never a descendant, so a relaunched instance and a stale parent pid stay separate.
         var childrenByParent = desktop.Where(p => !mainPids.Contains(p.Pid)).ToLookup(p => p.ParentPid);
 
-        return mains.Select(main => ToInstance(main, Descendants(main, childrenByParent))).ToList();
+        return mains.Select(main => ToInstance(rules, main, Descendants(main, childrenByParent))).ToList();
     }
 
     private static List<ProcessInfo> Descendants(ProcessInfo main, ILookup<int, ProcessInfo> childrenByParent)
@@ -38,14 +38,14 @@ public static class DesktopProcessClassifier
         return descendants;
     }
 
-    private static DesktopInstance ToInstance(ProcessInfo main, List<ProcessInfo> descendants)
+    private static DesktopInstance ToInstance(DesktopProcessRules rules, ProcessInfo main, List<ProcessInfo> descendants)
     {
         var userDataDir = descendants.Prepend(main)
-            .Select(p => CommandLineSwitch.TryGetValue(p.CommandLine, ClaudeDesktopConstants.UserDataDirSwitch, out var dir) ? dir : null)
+            .Select(p => CommandLineSwitch.TryGetValue(p.CommandLine, DesktopLaunchPlanner.UserDataDirSwitch, out var dir) ? dir : null)
             .FirstOrDefault(dir => dir is not null);
 
         // Only the main process is asked: the OS puts the deep link on the launch it starts, never on a child.
-        var deepLink = DesktopDeepLink.TryGetUrl(main.CommandLine, out var url) ? url : null;
+        var deepLink = DesktopDeepLink.TryGetUrl(rules.Provider, main.CommandLine, out var url) ? url : null;
 
         return new DesktopInstance(
             main.Pid,

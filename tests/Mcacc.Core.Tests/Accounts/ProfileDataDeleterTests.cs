@@ -76,21 +76,21 @@ public sealed class ProfileDataDeleterTests : IDisposable
     [Fact]
     public void Profile_directory_is_deleted_and_nothing_else()
     {
-        WriteFile(Path.Join(_paths.DesktopDataDir("privat"), "Local Storage", "leveldb", "000003.log"));
-        WriteFile(Path.Join(_paths.ClaudeConfigDir("privat"), ".credentials.json"));
-        WriteFile(Path.Join(_paths.ClaudeConfigDir("privat-2"), "CLAUDE.md"));
+        WriteFile(Path.Join(_paths.DesktopDataDir("privat", ProviderDescriptors.Claude), "Local Storage", "leveldb", "000003.log"));
+        WriteFile(Path.Join(_paths.ConfigDir("privat", ProviderDescriptors.Claude), ".credentials.json"));
+        WriteFile(Path.Join(_paths.ConfigDir("privat-2", ProviderDescriptors.Claude), "CLAUDE.md"));
 
         _deleter.Delete(Profile("privat"), _paths);
 
         Directory.Exists(_paths.ProfileDir("privat")).ShouldBeFalse();
-        File.Exists(Path.Join(_paths.ClaudeConfigDir("privat-2"), "CLAUDE.md")).ShouldBeTrue();
+        File.Exists(Path.Join(_paths.ConfigDir("privat-2", ProviderDescriptors.Claude), "CLAUDE.md")).ShouldBeTrue();
         File.Exists(_paths.ConfigFile).ShouldBeTrue();
     }
 
     [Fact]
     public void Read_only_and_hidden_entries_are_deleted()
     {
-        var claude = _paths.ClaudeConfigDir("privat");
+        var claude = _paths.ConfigDir("privat", ProviderDescriptors.Claude);
         WriteFile(Path.Join(claude, "settings.json"), FileAttributes.ReadOnly);
         WriteFile(Path.Join(claude, ".hidden"), FileAttributes.ReadOnly | FileAttributes.Hidden);
         var lockedDir = Path.Join(claude, "plugins");
@@ -113,8 +113,8 @@ public sealed class ProfileDataDeleterTests : IDisposable
     {
         var outside = Path.Join(_temp.Path, "home", ".claude", "skills");
         WriteFile(Path.Join(outside, "kanban", "SKILL.md"), FileAttributes.ReadOnly);
-        WriteFile(Path.Join(_paths.ClaudeConfigDir("privat"), "CLAUDE.md"));
-        FileSystemLinks.CreateDirectoryLink(Path.Join(_paths.ClaudeConfigDir("privat"), "skills"), outside);
+        WriteFile(Path.Join(_paths.ConfigDir("privat", ProviderDescriptors.Claude), "CLAUDE.md"));
+        FileSystemLinks.CreateDirectoryLink(Path.Join(_paths.ConfigDir("privat", ProviderDescriptors.Claude), "skills"), outside);
 
         _deleter.Delete(Profile("privat"), _paths);
 

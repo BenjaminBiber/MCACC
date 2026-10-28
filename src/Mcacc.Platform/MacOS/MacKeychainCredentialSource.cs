@@ -26,7 +26,7 @@ public sealed class MacKeychainCredentialSource(IProcessRunner runner) : ICreden
     {
         var spec = new ProcessSpec(
             Security,
-            ["find-generic-password", "-s", KeychainServiceName.For(paths.ClaudeConfigDir), "-w"],
+            ["find-generic-password", "-s", KeychainServiceName.For(paths.ConfigDirOverride), "-w"],
             WorkingDirectory: null,
             ReadOnlyDictionary<string, string>.Empty,
             EnvironmentScrub.Always);

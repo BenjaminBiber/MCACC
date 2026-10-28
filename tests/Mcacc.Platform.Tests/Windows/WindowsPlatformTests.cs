@@ -22,7 +22,7 @@ public class WindowsPlatformTests
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(Ct);
         limit.CancelAfter(TimeSpan.FromSeconds(5));
 
-        var processes = await provider.GetClaudeProcessesAsync(limit.Token);
+        var processes = await provider.GetProcessesAsync(ProviderDescriptors.Claude, limit.Token);
 
         // Whether a Claude process runs is up to the machine; every row must be a plausible process, though.
         processes.ShouldAllBe(p => p.Pid > 0);
@@ -55,7 +55,7 @@ public class WindowsPlatformTests
     [WindowsFact]
     public void The_installation_locator_returns_an_existing_path_or_nothing()
     {
-        var installation = new WindowsDesktopInstallationLocator(PlatformInfo.Current()).Locate();
+        var installation = new WindowsDesktopInstallationLocator(PlatformInfo.Current(), new SystemProcessRunner()).Locate(ProviderDescriptors.Claude);
 
         if (installation is not null)
         {

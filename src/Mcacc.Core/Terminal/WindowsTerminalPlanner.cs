@@ -12,7 +12,7 @@ public static class WindowsTerminalPlanner
     /// <exception cref="ArgumentException">Not a Windows terminal, the account id is not a slug, or the tab color is not <c>#RRGGBB</c>.</exception>
     /// <exception cref="InvalidOperationException">The shell Windows Terminal should run is not installed.</exception>
     public static TerminalLaunchPlan Plan(
-        ClaudeCodeLaunchRequest req,
+        CliLaunchRequest req,
         TerminalOption terminal,
         WindowsTerminalShell shell,
         IReadOnlyList<TerminalOption> installed)
@@ -39,20 +39,20 @@ public static class WindowsTerminalPlanner
         };
     }
 
-    private static TerminalLaunchPlan WindowsTerminalPowerShell(ClaudeCodeLaunchRequest req, TerminalOption wt, TerminalOption powerShell)
+    private static TerminalLaunchPlan WindowsTerminalPowerShell(CliLaunchRequest req, TerminalOption wt, TerminalOption powerShell)
     {
         var script = WtEscaping.EscapeSemicolons(PowerShellScriptBuilder.Build(req));
         string[] arguments = [.. NewTab(req, req.HomeDir), powerShell.Path, .. PowerShellArguments(script)];
         return new TerminalLaunchPlan(TerminalPlanning.Process(wt.Path, arguments, workingDirectory: null), []);
     }
 
-    private static TerminalLaunchPlan WindowsTerminalCmd(ClaudeCodeLaunchRequest req, TerminalOption wt, TerminalOption cmd)
+    private static TerminalLaunchPlan WindowsTerminalCmd(CliLaunchRequest req, TerminalOption wt, TerminalOption cmd)
     {
         string[] arguments = [.. NewTab(req, req.LaunchDir), cmd.Path, .. CmdArguments(req)];
         return new TerminalLaunchPlan(TerminalPlanning.Process(wt.Path, arguments, workingDirectory: null), [BatchFile(req)]);
     }
 
-    private static string[] NewTab(ClaudeCodeLaunchRequest req, string directory) =>
+    private static string[] NewTab(CliLaunchRequest req, string directory) =>
     [
         "-w", "new", "new-tab",
         "--title", req.Title,
@@ -63,11 +63,11 @@ public static class WindowsTerminalPlanner
 
     private static string[] PowerShellArguments(string script) => ["-NoLogo", "-NoExit", "-Command", script];
 
-    private static string[] CmdArguments(ClaudeCodeLaunchRequest req) => ["/k", BatchFileName(req)];
+    private static string[] CmdArguments(CliLaunchRequest req) => ["/k", BatchFileName(req)];
 
-    private static string BatchFileName(ClaudeCodeLaunchRequest req) => $"{req.AccountId}.cmd";
+    private static string BatchFileName(CliLaunchRequest req) => $"{req.AccountId}.cmd";
 
-    private static LaunchFile BatchFile(ClaudeCodeLaunchRequest req) => new(
+    private static LaunchFile BatchFile(CliLaunchRequest req) => new(
         PathStyle.Windows.Join(req.LaunchDir, BatchFileName(req)),
         CmdBatchBuilder.Build(req),
         LineEnding.CrLf,

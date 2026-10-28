@@ -4,15 +4,19 @@ namespace Mcacc.Core.Stats;
 /// <param name="Version">Raised whenever the meaning of a field changes; an index of another version is rebuilt.</param>
 public sealed record StatsIndex(int Version, IReadOnlyList<IndexedLogFile> Files)
 {
-    public const int CurrentVersion = 1;
+    public const int CurrentVersion = 2;
 
     public static readonly StatsIndex Empty = new(CurrentVersion, []);
 }
 
 /// <summary>One log file as the last scan left it.</summary>
-/// <param name="Path">Relative to <c>&lt;claudeDir&gt;/projects</c>.</param>
+/// <param name="Path">Relative to the scanned root.</param>
 /// <param name="Offset">The byte right after the last complete line; the next scan of a grown file starts here.</param>
 /// <param name="Ids">The responses this file counted, so no other file counts them again.</param>
+/// <param name="Reader">
+/// What the reader knew when it stopped; a resumed scan starts from it. Null for a format that carries nothing
+/// between lines.
+/// </param>
 public sealed record IndexedLogFile(
     string Path,
     long Length,
@@ -20,6 +24,7 @@ public sealed record IndexedLogFile(
     long Offset,
     IReadOnlyList<TokenBucket> Buckets,
     IReadOnlyList<long> Ids,
-    int BrokenLines);
+    int BrokenLines,
+    LogReaderState? Reader = null);
 
 public sealed record LogScanResult(StatsIndex Index, bool Changed);

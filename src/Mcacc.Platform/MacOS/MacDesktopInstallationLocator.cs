@@ -1,6 +1,8 @@
+using System.Collections.Concurrent;
 using System.Runtime.Versioning;
 using Mcacc.Core.Abstractions;
 using Mcacc.Core.Desktop;
+using Mcacc.Core.Model;
 using Mcacc.Core.Paths;
 
 namespace Mcacc.Platform.MacOS;
@@ -8,22 +10,17 @@ namespace Mcacc.Platform.MacOS;
 [SupportedOSPlatform("macos")]
 public sealed class MacDesktopInstallationLocator(PlatformInfo info, IProcessRunner runner) : IDesktopInstallationLocator
 {
-    private const string BundleName = "Claude.app";
+    private readonly ConcurrentDictionary<ProviderKind, DesktopInstallation?> _found = new();
 
-    private DesktopInstallation? _installation;
-    private bool _searched;
-
-    /// <remarks>Searched once; installing Claude Desktop while MCACC runs is not picked up.</remarks>
-    public DesktopInstallation? Locate()
+    /// <remarks>Searched once per provider; installing the app while MCACC runs is not picked up.</remarks>
+    public DesktopInstallation? Locate(ProviderDescriptor provider) => _found.GetOrAdd(provider.Kind, _ =>
     {
-        if (_searched)
+        if (provider.Desktop is not { } desktop)
         {
-            return _installation;
+            return null;
         }
 
-        _searched = true;
-        var bundle = MacBundleLocator.Find(info, runner, BundleName, ClaudeDesktopConstants.MacBundleId);
-        _installation = bundle is null ? null : new DesktopInstallation(DesktopInstallKind.MacBundle, bundle);
-        return _installation;
-    }
+        var bundle = MacBundleLocator.Find(info, runner, desktop.MacBundleName, desktop.MacBundleId);
+        return bundle is null ? null : new DesktopInstallation(DesktopInstallKind.MacBundle, bundle);
+    });
 }

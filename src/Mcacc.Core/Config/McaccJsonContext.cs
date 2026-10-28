@@ -15,6 +15,8 @@ namespace Mcacc.Core.Config;
     [
         typeof(CamelCaseEnumConverter<WindowsTerminalShell>),
         typeof(CamelCaseEnumConverter<LaunchTarget>),
+        typeof(ProviderKindConverter),
+        typeof(CamelCaseEnumConverter<UsageSource>),
     ])]
 [JsonSerializable(typeof(AppConfig))]
 [JsonSerializable(typeof(Dictionary<string, UsageSnapshot>), TypeInfoPropertyName = "DictionaryStringUsageSnapshot")]

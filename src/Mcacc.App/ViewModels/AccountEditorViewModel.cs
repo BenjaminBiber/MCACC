@@ -25,9 +25,12 @@ public sealed partial class AccountEditorViewModel : DialogViewModel<Account>
         // The swatches exist before the property is set, because setting it marks the selected one.
         Swatches = [.. AccountPalette.Colors.Select(c => new ColorSwatchViewModel(c, c == color))];
         SelectedColor = color;
-        CopySources = edited is null
-            ? [null, .. services.Accounts.Config.Accounts]
-            : [];
+        // The choices exist before the property is set, because setting it marks the selected one.
+        Providers = [.. ProviderDescriptors.All.Select(p => new ProviderChoiceViewModel(p, isSelected: false))];
+        SelectedProvider = edited?.Provider ?? ProviderKind.Claude;
+
+        // Claude is the enum's zero value, so setting it changes nothing and the handler would not run.
+        ApplySelectedProvider();
     }
 
     public static AccountEditorViewModel ForCreate(AppServices services) => new(services, edited: null);
@@ -44,6 +47,8 @@ public sealed partial class AccountEditorViewModel : DialogViewModel<Account>
 
     public string ColorLabel => Texts.EditorColor;
 
+    public string ProviderLabel => Texts.EditorProvider;
+
     public string CopyFromLabel => Texts.EditorCopyFrom;
 
     public string RewritePathsText => Texts.EditorRewritePaths;
@@ -54,8 +59,14 @@ public sealed partial class AccountEditorViewModel : DialogViewModel<Account>
 
     public IReadOnlyList<ColorSwatchViewModel> Swatches { get; }
 
+    /// <summary>The two services; a created account keeps the one it was made with.</summary>
+    public IReadOnlyList<ProviderChoiceViewModel> Providers { get; }
+
+    /// <summary>The service cannot change afterwards: the profile directory is named after it.</summary>
+    public bool IsProviderFixed => !IsCreate;
+
     /// <summary>Null stands for "Nichts"; it is only ever offered while creating.</summary>
-    public IReadOnlyList<Account?> CopySources { get; }
+    public ObservableCollection<Account?> CopySources { get; } = [];
 
     public ObservableCollection<CopyItemViewModel> CopyItemsToShow { get; } = [];
 
@@ -69,6 +80,9 @@ public sealed partial class AccountEditorViewModel : DialogViewModel<Account>
     public partial Account? CopySource { get; set; }
 
     [ObservableProperty]
+    public partial ProviderKind SelectedProvider { get; set; }
+
+    [ObservableProperty]
     public partial bool RewriteSettingsPaths { get; set; } = true;
 
     [ObservableProperty]
@@ -78,6 +92,13 @@ public sealed partial class AccountEditorViewModel : DialogViewModel<Account>
     public partial string? SubmitError { get; private set; }
 
     public bool HasCopySource => CopySource is not null;
+
+    /// <summary>
+    /// Only shown where it decides anything. For Codex the one file with paths in it is rewritten either way, so a
+    /// checkbox there would promise a choice that does not exist.
+    /// </summary>
+    public bool HasOptionalRewrite =>
+        CopyItemsToShow.Any(item => CopyItems.Info(item.Item).Rewrite == PathRewrite.Optional);
 
     /// <summary>What the copy left out, so a silent partial copy cannot happen.</summary>
     public string? SkippedText { get; private set; }
@@ -110,7 +131,7 @@ public sealed partial class AccountEditorViewModel : DialogViewModel<Account>
                 return;
             }
 
-            var result = _services.Accounts.Create(Name, SelectedColor, CopyRequestOrNull());
+            var result = _services.Accounts.Create(Name, SelectedColor, CopyRequestOrNull(), SelectedProvider);
             SkippedText = SkippedTextFor(result);
             Complete(result.Account);
         }
@@ -137,20 +158,67 @@ public sealed partial class AccountEditorViewModel : DialogViewModel<Account>
         }
     }
 
+    [RelayCommand]
+    public void PickProvider(ProviderKind provider)
+    {
+        if (IsCreate)
+        {
+            SelectedProvider = provider;
+        }
+    }
+
+    partial void OnSelectedProviderChanged(ProviderKind value) => ApplySelectedProvider();
+
+    /// <summary>
+    /// Marks the chosen service and offers only accounts of that service as a copy source: copying across services
+    /// would write one provider's files into another's home.
+    /// </summary>
+    private void ApplySelectedProvider()
+    {
+        foreach (var choice in Providers)
+        {
+            choice.IsSelected = choice.Provider.Kind == SelectedProvider;
+        }
+
+        RefreshCopySources();
+    }
+
+    private void RefreshCopySources()
+    {
+        var previous = CopySource;
+        CopySources.Clear();
+        if (!IsCreate)
+        {
+            CopySource = null;
+            return;
+        }
+
+        CopySources.Add(null);
+        foreach (var account in _services.Accounts.Config.Accounts.Where(a => a.Provider == SelectedProvider))
+        {
+            CopySources.Add(account);
+        }
+
+        CopySource = CopySources.Contains(previous) ? previous : null;
+    }
+
     partial void OnCopySourceChanged(Account? value)
     {
         OnPropertyChanged(nameof(HasCopySource));
         CopyItemsToShow.Clear();
         if (value is null)
         {
+            OnPropertyChanged(nameof(HasOptionalRewrite));
             return;
         }
 
         var available = ConfigCopyPlanner.Available(_services.Resolver.Resolve(value));
-        foreach (var item in Enum.GetValues<CopyItem>())
+        foreach (var item in ProviderDescriptors.For(value).CopyItems)
         {
             CopyItemsToShow.Add(new CopyItemViewModel(item, available.Contains(item)));
         }
+
+        OnPropertyChanged(nameof(HasOptionalRewrite));
     }
 
     private CopyRequest? CopyRequestOrNull()
@@ -208,6 +276,10 @@ public sealed partial class CopyItemViewModel : ViewModelBase
         CopyItem.Commands => Texts.CopyCommands,
         CopyItem.Scripts => Texts.CopyScripts,
         CopyItem.DesktopMcpConfig => Texts.CopyDesktopMcp,
+        CopyItem.CodexConfigToml => Texts.CopyCodexConfigToml,
+        CopyItem.AgentsMd => Texts.CopyAgentsMd,
+        CopyItem.CodexSkills => Texts.CopyCodexSkills,
+        CopyItem.CodexPrompts => Texts.CopyCodexPrompts,
         _ => throw new ArgumentOutOfRangeException(nameof(item), item, null),
     };
 }
@@ -216,6 +288,19 @@ public sealed partial class CopyItemViewModel : ViewModelBase
 public sealed partial class ColorSwatchViewModel(string color, bool isSelected) : ViewModelBase
 {
     public string Color { get; } = color;
+
+    [ObservableProperty]
+    public partial bool IsSelected { get; set; } = isSelected;
+}
+
+/// <summary>One service to pick from while creating an account; the selected one carries a check mark.</summary>
+public sealed partial class ProviderChoiceViewModel(ProviderDescriptor provider, bool isSelected) : ViewModelBase
+{
+    public ProviderDescriptor Provider { get; } = provider;
+
+    public ProviderKind Kind => Provider.Kind;
+
+    public string Label => Texts.ProviderName(Provider.Kind);
 
     [ObservableProperty]
     public partial bool IsSelected { get; set; } = isSelected;

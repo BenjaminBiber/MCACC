@@ -1,3 +1,4 @@
+using Mcacc.Core.Providers;
 using Mcacc.App.Services;
 using Mcacc.App.ViewModels;
 using Mcacc.Core.Desktop;
@@ -78,7 +79,7 @@ internal sealed class TestServices : IDisposable
 
     public UsagePoller Poller { get; }
 
-    public FakeClaudeStatsProvider Stats { get; } = new();
+    public FakeStatsProvider Stats { get; } = new();
 
     public FakeCredentialSource Credentials { get; } = new();
 
@@ -110,8 +111,8 @@ internal sealed class TestServices : IDisposable
 
     /// <summary>Makes the account look logged in with that e-mail.</summary>
     public void SetLogin(Account account, string email) =>
-        Login.ByClaudeDir[Resolver.Resolve(account).EffectiveClaudeDir] =
-            new Core.ClaudeCode.ClaudeLoginInfo(email, null, null);
+        Login.ByClaudeDir[Resolver.Resolve(account).EffectiveConfigDir] =
+            new Core.Providers.AccountLoginInfo(email, null, null);
 
     /// <summary>A running instance that the matcher will attribute to that account.</summary>
     public DesktopInstance RunningInstance(Account account, int pid = 100) =>

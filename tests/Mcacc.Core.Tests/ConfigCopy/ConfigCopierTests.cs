@@ -1,3 +1,4 @@
+using Mcacc.Core.Model;
 using Mcacc.Core.ConfigCopy;
 using Mcacc.Core.Paths;
 using Mcacc.Core.Tests.TestSupport;
@@ -8,6 +9,8 @@ namespace Mcacc.Core.Tests.ConfigCopy;
 
 public sealed class ConfigCopierTests : IDisposable
 {
+    private static readonly CopyItem[] ClaudeItems = [.. ProviderDescriptors.Claude.CopyItems];
+
     private readonly TempDirectory _temp = new();
     private readonly string _sourceClaude;
     private readonly string _sourceDesktop;
@@ -23,10 +26,11 @@ public sealed class ConfigCopierTests : IDisposable
         _outside = Path.Join(_temp.Path, "outside");
         Directory.CreateDirectory(_outside);
         _source = new AccountPaths(
+            ProviderDescriptors.Claude,
             DesktopUserDataDir: null,
-            ClaudeConfigDir: null,
-            EffectiveClaudeDir: _sourceClaude,
-            ClaudeJsonFile: Path.Join(_temp.Path, "home", ".claude.json"),
+            ConfigDirOverride: null,
+            EffectiveConfigDir: _sourceClaude,
+            IdentityFile: Path.Join(_temp.Path, "home", ".claude.json"),
             CredentialsFile: Path.Join(_sourceClaude, ".credentials.json"),
             DesktopDataDirs: [_sourceDesktop]);
         _target = ProfilePaths("privat");
@@ -34,7 +38,7 @@ public sealed class ConfigCopierTests : IDisposable
 
     public void Dispose() => _temp.Dispose();
 
-    private string TargetClaude => _target.ClaudeConfigDir!;
+    private string TargetClaude => _target.ConfigDirOverride!;
 
     private string TargetDesktop => _target.DesktopUserDataDir!;
 
@@ -44,7 +48,7 @@ public sealed class ConfigCopierTests : IDisposable
         var claude = Path.Join(profile, "claude");
         var desktop = Path.Join(profile, "desktop");
         return new AccountPaths(
-            desktop, claude, claude, Path.Join(claude, ".claude.json"), Path.Join(claude, ".credentials.json"), [desktop]);
+            ProviderDescriptors.Claude, desktop, claude, claude, Path.Join(claude, ".claude.json"), Path.Join(claude, ".credentials.json"), [desktop]);
     }
 
     private static void WriteFile(string path, string content = "content")
@@ -80,9 +84,9 @@ public sealed class ConfigCopierTests : IDisposable
         WriteFile(Path.Join(_sourceClaude, "scripts", "statusline.sh"), "status");
         WriteFile(Path.Join(_sourceDesktop, "claude_desktop_config.json"), """{ "mcpServers": {} }""");
 
-        var report = Copy(Enum.GetValues<CopyItem>());
+        var report = Copy(ClaudeItems);
 
-        report.Copied.ShouldBe(Enum.GetValues<CopyItem>());
+        report.Copied.ShouldBe(ClaudeItems);
         report.Skipped.ShouldBeEmpty();
         File.ReadAllText(Path.Join(TargetClaude, "CLAUDE.md")).ShouldBe("# memory");
         File.ReadAllText(Path.Join(TargetClaude, "settings.json")).ShouldBe("""{ "model": "opus" }""");
@@ -112,7 +116,7 @@ public sealed class ConfigCopierTests : IDisposable
         WriteFile(Path.Join(_sourceDesktop, "config.json"));
         WriteFile(Path.Join(_sourceDesktop, "Local Storage", "leveldb", "000003.log"));
 
-        Copy(Enum.GetValues<CopyItem>());
+        Copy(ClaudeItems);
 
         Entries(TargetClaude).ShouldBe([
             "CLAUDE.md",
@@ -210,10 +214,10 @@ public sealed class ConfigCopierTests : IDisposable
     public void Settings_of_a_profile_keep_home_relative_references()
     {
         var source = ProfilePaths("firma");
-        var sourceSlashed = source.ClaudeConfigDir!.Replace('\\', '/');
+        var sourceSlashed = source.ConfigDirOverride!.Replace('\\', '/');
         var targetSlashed = TargetClaude.Replace('\\', '/');
         WriteFile(
-            Path.Join(source.ClaudeConfigDir!, "settings.json"),
+            Path.Join(source.ConfigDirOverride!, "settings.json"),
             $$"""{ "a": "bash ~/.claude/x.sh", "b": "{{sourceSlashed}}/y.sh" }""");
 
         Copy(source, rewrite: true, CopyItem.SettingsJson);

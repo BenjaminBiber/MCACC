@@ -93,7 +93,7 @@ public sealed class AccountPickerViewModelTests : IDisposable
 
         await picker.ActivateAsync(Ct);
 
-        picker.Tiles.Single(t => t.Id == "privat").UsageHint.ShouldBe(Texts.UsageExpired);
+        picker.Tiles.Single(t => t.Id == "privat").UsageHint.ShouldBe(Texts.UsageExpired(ProviderKind.Claude));
     }
 
     [Fact]
@@ -120,7 +120,7 @@ public sealed class AccountPickerViewModelTests : IDisposable
         await picker.ActivateAsync(Ct);
 
         var tile = picker.Tiles.Single(t => t.Id == "privat");
-        tile.UsageHint.ShouldBe(Texts.UsageWrongAccount("privat@example.com"));
+        tile.UsageHint.ShouldBe(Texts.UsageWrongAccount(ProviderKind.Claude, "privat@example.com"));
         tile.UsageHint.ShouldNotBeNull().ShouldContain("privat@example.com");
         tile.FiveHour.Value.ShouldBeNull();
         tile.SevenDay.Value.ShouldBeNull();
@@ -129,8 +129,8 @@ public sealed class AccountPickerViewModelTests : IDisposable
     [Fact]
     public void The_wrong_account_hint_reads_without_an_email()
     {
-        Texts.UsageWrongAccount(null).ShouldNotContain("{");
-        Texts.UsageWrongAccount(null).ShouldNotBe(Texts.UsageWrongAccount("privat@example.com"));
+        Texts.UsageWrongAccount(ProviderKind.Claude, null).ShouldNotContain("{");
+        Texts.UsageWrongAccount(ProviderKind.Claude, null).ShouldNotBe(Texts.UsageWrongAccount(ProviderKind.Claude, "privat@example.com"));
     }
 
     [Fact]
@@ -303,7 +303,7 @@ public sealed class AccountPickerViewModelTests : IDisposable
 
         picker.OpenFolderCommand.Execute(picker.Tiles.Single(t => t.Id == "standard"));
 
-        _services.Integration.Revealed.ShouldBe([_services.Resolver.Resolve(Standard).EffectiveClaudeDir]);
+        _services.Integration.Revealed.ShouldBe([_services.Resolver.Resolve(Standard).EffectiveConfigDir]);
     }
 
     [Fact]
@@ -351,7 +351,7 @@ public sealed class AccountPickerViewModelTests : IDisposable
         await picker.RemoveCommand.ExecuteAsync(picker.Tiles.Single(t => t.Id == "privat"));
 
         _services.Accounts.Removed.ShouldBeEmpty();
-        _services.Window.ErrorBanner.ShouldBe(Texts.ErrorRunningWithThisAccount);
+        _services.Window.ErrorBanner.ShouldBe(Texts.ErrorRunningWithThisAccount(ProviderKind.Claude));
     }
 
     [Fact]
@@ -508,5 +508,30 @@ public sealed class AccountPickerViewModelTests : IDisposable
 
         _services.Navigator.CurrentPage.ShouldBeOfType<AccountInfoViewModel>().Account.Id.ShouldBe("privat");
         _services.Navigator.CanGoBack.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// A Codex value out of the session files is only as current as the last session. It still fills the bars, but
+    /// the tile has to say when it was true instead of showing it as a fresh reading.
+    /// </summary>
+    [Fact]
+    public async Task A_local_Codex_value_fills_the_bars_and_says_how_old_it_is()
+    {
+        var fetchedAt = new DateTimeOffset(2026, 10, 1, 7, 15, 0, TimeSpan.Zero);
+        var snapshot = new UsageSnapshot(
+            new UsageWindow(42, null),
+            new UsageWindow(7, null),
+            fetchedAt,
+            Extra: null,
+            UsageSource.LocalFile);
+        _services.Usage.Fresh["privat"] = new AccountUsage(UsageState.Stale, snapshot);
+        var picker = Picker();
+
+        await picker.ActivateAsync(Ct);
+
+        var tile = picker.Tiles.Single(t => t.Id == "privat");
+        tile.FiveHour.Value.ShouldBe(42);
+        tile.SevenDay.Value.ShouldBe(7);
+        tile.UsageHint.ShouldBe(Texts.UsageAsOf(fetchedAt));
     }
 }

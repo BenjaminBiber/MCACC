@@ -11,8 +11,9 @@ public static partial class Texts
     public const string TrayOpen = "MCACC öffnen";
     public const string TraySettings = "Einstellungen …";
     public const string TrayQuit = "MCACC beenden";
-    public const string TrayLaunchDesktop = "Claude Desktop starten";
-    public const string TrayLaunchCode = "Claude Code starten";
+    public static string TrayLaunchDesktop(ProviderKind provider) => $"{TargetDesktop(provider)} starten";
+
+    public static string TrayLaunchCode(ProviderKind provider) => $"{TargetCode(provider)} starten";
     public const string TrayRunning = "läuft";
     public const string TrayNoUsage = "Keine Limits bekannt";
 

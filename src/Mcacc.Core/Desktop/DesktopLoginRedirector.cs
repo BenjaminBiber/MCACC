@@ -45,7 +45,7 @@ public sealed class DesktopLoginRedirector(
             return DesktopRedirectOutcome.NotNeeded;
         }
 
-        var installation = locator.Locate();
+        var installation = locator.Locate(paths.Provider);
         if (installation is null)
         {
             return DesktopRedirectOutcome.NotNeeded;
@@ -57,7 +57,7 @@ public sealed class DesktopLoginRedirector(
         while (_time.GetElapsedTime(started) < Window)
         {
             await Task.Delay(PollInterval, _time, ct).ConfigureAwait(false);
-            if (await DetectAsync(ct).ConfigureAwait(false) is not { } instances)
+            if (await DetectAsync(paths.Provider, ct).ConfigureAwait(false) is not { } instances)
             {
                 continue;
             }
@@ -81,11 +81,11 @@ public sealed class DesktopLoginRedirector(
     }
 
     /// <returns>Null when this snapshot could not be taken; the next one may work.</returns>
-    private async Task<IReadOnlyList<DesktopInstance>?> DetectAsync(CancellationToken ct)
+    private async Task<IReadOnlyList<DesktopInstance>?> DetectAsync(ProviderDescriptor provider, CancellationToken ct)
     {
         try
         {
-            return await detector.DetectAsync(ct).ConfigureAwait(false);
+            return await detector.DetectAsync(provider, ct).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {

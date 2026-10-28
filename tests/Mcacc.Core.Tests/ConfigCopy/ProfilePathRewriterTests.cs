@@ -1,10 +1,12 @@
 using Mcacc.Core.ConfigCopy;
+using Mcacc.Core.Model;
+using Mcacc.Core.Paths;
 using Shouldly;
 using Xunit;
 
 namespace Mcacc.Core.Tests.ConfigCopy;
 
-public class SettingsPathRewriterTests
+public class ProfilePathRewriterTests
 {
     private const string WinSource = @"C:\Users\x\.claude";
     private const string WinTarget = @"C:\Users\x\.mcacc\profiles\privat\claude";
@@ -12,7 +14,27 @@ public class SettingsPathRewriterTests
     private const string PosixTarget = "/Users/x/.mcacc/profiles/privat/claude";
 
     private static string RewriteWindows(string json, bool sourceIsDefault = true) =>
-        SettingsPathRewriter.Rewrite(json, WinSource, WinTarget, sourceIsDefault);
+        Rewrite(json, WinSource, WinTarget, sourceIsDefault);
+
+    private static string Rewrite(
+        string text,
+        string sourceDir,
+        string targetDir,
+        bool sourceIsDefault,
+        ProviderKind provider = ProviderKind.Claude) =>
+        ProfilePathRewriter.Rewrite(
+            text,
+            Paths(sourceDir, sourceIsDefault, provider),
+            Paths(targetDir, isDefault: false, provider));
+
+    private static AccountPaths Paths(string dir, bool isDefault, ProviderKind provider) => new(
+        ProviderDescriptors.For(provider),
+        DesktopUserDataDir: null,
+        ConfigDirOverride: isDefault ? null : dir,
+        EffectiveConfigDir: dir,
+        IdentityFile: "id",
+        CredentialsFile: "creds",
+        DesktopDataDirs: []);
 
     [Fact]
     public void Raw_windows_path_is_replaced_with_the_raw_target()
@@ -117,7 +139,7 @@ public class SettingsPathRewriterTests
               "other": "$HOME/.claude", "keep": "/Users/x/.claude.json" }
             """;
 
-        SettingsPathRewriter.Rewrite(json, PosixSource, PosixTarget, sourceIsDefault: true).ShouldBe("""
+        Rewrite(json, PosixSource, PosixTarget, sourceIsDefault: true).ShouldBe("""
             { "hooks": "/Users/x/.mcacc/profiles/privat/claude/hooks/a.sh", "status": "/Users/x/.mcacc/profiles/privat/claude/statusline.sh",
               "other": "/Users/x/.mcacc/profiles/privat/claude", "keep": "/Users/x/.claude.json" }
             """);
@@ -133,7 +155,7 @@ public class SettingsPathRewriterTests
               "c": "~/.claude/hooks" }
             """;
 
-        SettingsPathRewriter.Rewrite(json, source, WinTarget, sourceIsDefault: false).ShouldBe("""
+        Rewrite(json, source, WinTarget, sourceIsDefault: false).ShouldBe("""
             { "a": "C:\\Users\\x\\.mcacc\\profiles\\privat\\claude\\hooks",
               "b": "C:/Users/x/.mcacc/profiles/privat/claude/hooks",
               "c": "~/.claude/hooks" }
@@ -174,14 +196,14 @@ public class SettingsPathRewriterTests
         const string source = @"C:\Users\Max (Test)+1\.claude";
         const string target = @"C:\Users\a$1b\.mcacc\profiles\privat\claude";
 
-        SettingsPathRewriter.Rewrite("C:/Users/Max (Test)+1/.claude/x C:/Users/Max Test1/.claude/x", source, target, false)
+        Rewrite("C:/Users/Max (Test)+1/.claude/x C:/Users/Max Test1/.claude/x", source, target, false)
             .ShouldBe("C:/Users/a$1b/.mcacc/profiles/privat/claude/x C:/Users/Max Test1/.claude/x");
     }
 
     [Fact]
     public void Empty_source_is_refused_instead_of_matching_everywhere()
     {
-        Should.Throw<ArgumentException>(() => SettingsPathRewriter.Rewrite("\"a\" \"b\"", "", WinTarget, false));
+        Should.Throw<ArgumentException>(() => Rewrite("\"a\" \"b\"", "", WinTarget, false));
     }
 
     [Fact]
@@ -190,5 +212,97 @@ public class SettingsPathRewriterTests
         const string json = """{ "model": "opus", "theme": "dark" }""";
 
         RewriteWindows(json).ShouldBe(json);
+    }
+
+    private const string CodexSource = @"C:\Users\x\.codex";
+    private const string CodexTarget = @"C:\Users\x\.mcacc\profiles\codex-privat\codex";
+
+    private static string RewriteCodex(string toml, bool sourceIsDefault = true) =>
+        Rewrite(toml, CodexSource, CodexTarget, sourceIsDefault, ProviderKind.Codex);
+
+    /// <summary>
+    /// The one that matters: config.toml sets CODEX_HOME itself, so an unrewritten copy would point the new
+    /// profile straight back at the one it came from — isolated in name only.
+    /// </summary>
+    [Fact]
+    public void The_embedded_config_home_is_pointed_at_the_new_profile()
+    {
+        const string toml = """
+            [mcp_servers.node_repl.env]
+            CODEX_HOME = 'C:\Users\x\.codex'
+            NODE_REPL_TRUSTED_CODE_PATHS = 'C:\Users\x\.codex;C:\Users\x\.codex\bin'
+            """;
+
+        RewriteCodex(toml).ShouldBe("""
+            [mcp_servers.node_repl.env]
+            CODEX_HOME = 'C:\Users\x\.mcacc\profiles\codex-privat\codex'
+            NODE_REPL_TRUSTED_CODE_PATHS = 'C:\Users\x\.mcacc\profiles\codex-privat\codex;C:\Users\x\.mcacc\profiles\codex-privat\codex\bin'
+            """);
+    }
+
+    /// <summary>
+    /// A toml single-quoted literal does not escape anything, so doubling the backslashes would break every path
+    /// in the file. That is why the format decides the spellings.
+    /// </summary>
+    [Fact]
+    public void A_toml_literal_never_gets_doubled_backslashes()
+    {
+        var rewritten = RewriteCodex(@"source = 'C:\Users\x\.codex\.tmp'");
+
+        rewritten.ShouldBe(@"source = 'C:\Users\x\.mcacc\profiles\codex-privat\codex\.tmp'");
+        rewritten.ShouldNotContain(@"\\");
+    }
+
+    /// <summary>The long-path prefix is part of the path, not of the directory, so it has to survive.</summary>
+    [Fact]
+    public void The_long_path_prefix_survives()
+    {
+        RewriteCodex(@"source = '\?\C:\Users\x\.codex\.tmp\bundled-marketplaces\openai-bundled'")
+            .ShouldBe(@"source = '\?\C:\Users\x\.mcacc\profiles\codex-privat\codex\.tmp\bundled-marketplaces\openai-bundled'");
+    }
+
+    /// <summary>
+    /// A project table names a folder of the user's own, not of the profile, and carries a trust decision about it.
+    /// Rewriting it would move that decision to a path the user never approved.
+    /// </summary>
+    [Fact]
+    public void A_project_table_outside_the_config_home_is_left_alone()
+    {
+        const string toml = """
+            [projects.'c:\users\x']
+            trust_level = "trusted"
+
+            [projects.'C:\Repos\Spielwiese']
+            trust_level = "trusted"
+            """;
+
+        RewriteCodex(toml).ShouldBe(toml);
+    }
+
+    [Theory]
+    [InlineData("~/.codex/skills")]
+    [InlineData("$HOME/.codex/skills")]
+    public void Home_relative_forms_of_the_Codex_home_are_replaced_too(string toml)
+    {
+        RewriteCodex(toml).ShouldBe("C:/Users/x/.mcacc/profiles/codex-privat/codex/skills");
+    }
+
+    /// <summary>The Claude home is no reference for a Codex account, and the other way round.</summary>
+    [Fact]
+    public void Only_the_sources_own_home_is_a_reference()
+    {
+        RewriteCodex("a = '~/.claude/hooks'").ShouldBe("a = '~/.claude/hooks'");
+        RewriteWindows("a = '~/.codex/skills'").ShouldBe("a = '~/.codex/skills'");
+    }
+
+    [Fact]
+    public void A_toml_without_references_is_returned_unchanged()
+    {
+        const string toml = """
+            [desktop]
+            followUpQueueMode = "steer"
+            """;
+
+        RewriteCodex(toml).ShouldBe(toml);
     }
 }

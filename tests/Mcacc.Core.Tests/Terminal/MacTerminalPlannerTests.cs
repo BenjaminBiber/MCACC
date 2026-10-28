@@ -58,7 +58,7 @@ public class MacTerminalPlannerTests
         var plan = MacTerminalPlanner.Plan(request, ById(id));
 
         plan.Files.ShouldBe([new LaunchFile(CommandFile, PosixCommandFileBuilder.Build(request), LineEnding.Lf, Executable: true)]);
-        plan.Process.EnvUnset.ShouldBe(["CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SSE_PORT", "CLAUDE_CONFIG_DIR"]);
+        plan.Process.EnvUnset.ShouldBe(EnvironmentScrub.WithoutAnyConfigDir);
         plan.Process.EnvSet.ShouldBeEmpty();
         plan.Process.WorkingDirectory.ShouldBeNull();
     }

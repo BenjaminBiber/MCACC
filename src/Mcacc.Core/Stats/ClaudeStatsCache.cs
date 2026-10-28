@@ -4,7 +4,7 @@ using System.Text.Json;
 namespace Mcacc.Core.Stats;
 
 /// <param name="Tokens">In Claude's own count: input and output only, a response once per log line it spans.</param>
-public sealed record ClaudeDailyTokens(DateOnly Day, long Tokens);
+public sealed record DailyTokens(DateOnly Day, long Tokens);
 
 /// <summary>
 /// Reads the daily summary Claude Code keeps in <c>stats-cache.json</c> for its <c>/stats</c> view. It outlives the
@@ -15,7 +15,7 @@ public static class ClaudeStatsCache
     public const string FileName = "stats-cache.json";
 
     /// <returns>The days with tokens, oldest first; empty when the file is missing or unreadable.</returns>
-    public static IReadOnlyList<ClaudeDailyTokens> Read(string claudeDir)
+    public static IReadOnlyList<DailyTokens> Read(string claudeDir)
     {
         try
         {
@@ -29,7 +29,7 @@ public static class ClaudeStatsCache
         }
     }
 
-    private static IReadOnlyList<ClaudeDailyTokens> Parse(JsonElement root)
+    private static IReadOnlyList<DailyTokens> Parse(JsonElement root)
     {
         if (root.ValueKind != JsonValueKind.Object
             || !root.TryGetProperty("dailyModelTokens", out var days)
@@ -38,7 +38,7 @@ public static class ClaudeStatsCache
             return [];
         }
 
-        var result = new List<ClaudeDailyTokens>();
+        var result = new List<DailyTokens>();
         foreach (var entry in days.EnumerateArray())
         {
             if (entry.ValueKind != JsonValueKind.Object
@@ -56,7 +56,7 @@ public static class ClaudeStatsCache
                 .Sum(model => Math.Max(0, model.Value.GetInt64()));
             if (tokens > 0)
             {
-                result.Add(new ClaudeDailyTokens(day, tokens));
+                result.Add(new DailyTokens(day, tokens));
             }
         }
 

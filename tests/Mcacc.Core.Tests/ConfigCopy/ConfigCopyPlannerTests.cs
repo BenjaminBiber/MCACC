@@ -1,3 +1,4 @@
+using Mcacc.Core.Model;
 using Mcacc.Core.ConfigCopy;
 using Mcacc.Core.Paths;
 using Mcacc.Core.Tests.TestSupport;
@@ -8,6 +9,8 @@ namespace Mcacc.Core.Tests.ConfigCopy;
 
 public sealed class ConfigCopyPlannerTests : IDisposable
 {
+    private static readonly CopyItem[] ClaudeItems = [.. ProviderDescriptors.Claude.CopyItems];
+
     private readonly TempDirectory _temp = new();
     private readonly string _sourceClaude;
     private readonly string _msixDesktop;
@@ -21,10 +24,11 @@ public sealed class ConfigCopyPlannerTests : IDisposable
         _msixDesktop = Path.Join(_temp.Path, "msix", "Claude");
         _roamingDesktop = Path.Join(_temp.Path, "roaming", "Claude");
         _source = new AccountPaths(
+            ProviderDescriptors.Claude,
             DesktopUserDataDir: null,
-            ClaudeConfigDir: null,
-            EffectiveClaudeDir: _sourceClaude,
-            ClaudeJsonFile: Path.Join(_temp.Path, "home", ".claude.json"),
+            ConfigDirOverride: null,
+            EffectiveConfigDir: _sourceClaude,
+            IdentityFile: Path.Join(_temp.Path, "home", ".claude.json"),
             CredentialsFile: Path.Join(_sourceClaude, ".credentials.json"),
             DesktopDataDirs: [_msixDesktop, _roamingDesktop]);
         _target = ProfilePaths("privat");
@@ -38,7 +42,7 @@ public sealed class ConfigCopyPlannerTests : IDisposable
         var claude = Path.Join(profile, "claude");
         var desktop = Path.Join(profile, "desktop");
         return new AccountPaths(
-            desktop, claude, claude, Path.Join(claude, ".claude.json"), Path.Join(claude, ".credentials.json"), [desktop]);
+            ProviderDescriptors.Claude, desktop, claude, claude, Path.Join(claude, ".claude.json"), Path.Join(claude, ".credentials.json"), [desktop]);
     }
 
     private static void CreateFile(string path)
@@ -72,7 +76,7 @@ public sealed class ConfigCopyPlannerTests : IDisposable
         CreateAllClaudeItems();
         CreateFile(Path.Join(_roamingDesktop, "claude_desktop_config.json"));
 
-        ConfigCopyPlanner.Available(_source).ShouldBe(Enum.GetValues<CopyItem>(), ignoreOrder: true);
+        ConfigCopyPlanner.Available(_source).ShouldBe(ClaudeItems, ignoreOrder: true);
     }
 
     [Fact]
@@ -126,7 +130,7 @@ public sealed class ConfigCopyPlannerTests : IDisposable
     public void Plan_contains_requested_available_items_in_item_order()
     {
         CreateAllClaudeItems();
-        var targetClaude = _target.ClaudeConfigDir!;
+        var targetClaude = _target.ConfigDirOverride!;
 
         var plan = ConfigCopyPlanner.Plan(
             _source, _target, Request(false, CopyItem.Skills, CopyItem.ClaudeMd, CopyItem.DesktopMcpConfig));
@@ -176,14 +180,14 @@ public sealed class ConfigCopyPlannerTests : IDisposable
     public void Profile_source_is_planned_from_its_own_directories()
     {
         var source = ProfilePaths("firma");
-        CreateFile(Path.Join(source.ClaudeConfigDir!, "CLAUDE.md"));
+        CreateFile(Path.Join(source.ConfigDirOverride!, "CLAUDE.md"));
         CreateFile(Path.Join(source.DesktopUserDataDir!, "claude_desktop_config.json"));
 
         var plan = ConfigCopyPlanner.Plan(
             source, _target, Request(false, CopyItem.ClaudeMd, CopyItem.DesktopMcpConfig));
 
         plan.Operations.Select(op => op.SourcePath).ShouldBe([
-            Path.Join(source.ClaudeConfigDir!, "CLAUDE.md"),
+            Path.Join(source.ConfigDirOverride!, "CLAUDE.md"),
             Path.Join(source.DesktopUserDataDir!, "claude_desktop_config.json"),
         ]);
     }

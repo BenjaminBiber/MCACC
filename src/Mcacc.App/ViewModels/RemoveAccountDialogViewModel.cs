@@ -16,11 +16,15 @@ public sealed partial class RemoveAccountDialogViewModel : DialogViewModel<Remov
     public RemoveAccountDialogViewModel(AppServices services, Account account)
     {
         _account = account;
-        Folders =
-        [
-            services.Paths.DesktopDataDir(account.Id),
-            services.Paths.ClaudeConfigDir(account.Id),
-        ];
+        var provider = ProviderDescriptors.For(account);
+        List<string> folders = [];
+        if (provider.Desktop is not null)
+        {
+            folders.Add(services.Paths.DesktopDataDir(account.Id, provider));
+        }
+
+        folders.Add(services.Paths.ConfigDir(account.Id, provider));
+        Folders = folders;
     }
 
     public override string Title => Texts.RemoveDialogTitle(_account.Name);

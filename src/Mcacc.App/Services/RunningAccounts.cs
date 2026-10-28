@@ -1,6 +1,8 @@
+using Mcacc.Core.Model;
+
 namespace Mcacc.App.Services;
 
-/// <summary>Which accounts Claude Desktop runs with right now, for the tiles and the tray menu alike.</summary>
+/// <summary>Which accounts a desktop app runs with right now, for the tiles and the tray menu alike.</summary>
 public static class RunningAccounts
 {
     /// <summary>The ids of the accounts with a running instance; a failed detection counts as none.</summary>
@@ -8,12 +10,19 @@ public static class RunningAccounts
     {
         try
         {
-            var instances = await services.Detector.DetectAsync(ct).ConfigureAwait(true);
+            // One look per provider: a desktop app only ever shows the instances of its own package.
             var accounts = services.Accounts.Config.Accounts;
-            return instances
-                .Select(instance => services.Matcher.Match(instance, accounts)?.Id)
-                .OfType<string>()
-                .ToHashSet();
+            var running = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var provider in ProviderDescriptors.All.Where(p => p.Desktop is not null))
+            {
+                var instances = await services.Detector.DetectAsync(provider, ct).ConfigureAwait(true);
+                foreach (var id in instances.Select(i => services.Matcher.Match(i, accounts)?.Id).OfType<string>())
+                {
+                    running.Add(id);
+                }
+            }
+
+            return running;
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {

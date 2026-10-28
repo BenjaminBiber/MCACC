@@ -88,7 +88,7 @@ public class DesktopInstanceMatcherTests
     public void Default_windows_snapshot_belongs_to_the_default_account()
     {
         var instance = DesktopProcessClassifier
-            .Classify(WmiCsvFixture.Load("wmi-default.csv"), DesktopProcessRules.ForOs(OsKind.Windows))
+            .Classify(WmiCsvFixture.Load("wmi-default.csv"), DesktopProcessRules.For(OsKind.Windows, ProviderDescriptors.Claude))
             .ShouldHaveSingleItem();
 
         MatcherFor(Windows).Match(instance, Accounts).ShouldBe(Standard);
@@ -99,7 +99,7 @@ public class DesktopInstanceMatcherTests
     {
         var instances = DesktopProcessClassifier.Classify(
             PsOutputParser.Parse(FixtureFiles.ReadAllText("ps-profile.txt")),
-            DesktopProcessRules.ForOs(OsKind.MacOS));
+            DesktopProcessRules.For(OsKind.MacOS, ProviderDescriptors.Claude));
 
         var matcher = MatcherFor(Mac);
         instances.Select(i => matcher.Match(i, Accounts)).ShouldBe([Privat, null]);
