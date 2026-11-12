@@ -33,7 +33,8 @@ public class McaccJsonContextTests
             "closeAfterLaunch": false,
             "lastAccountId": "privat",
             "lastTarget": "desktop",
-            "launchAtLogin": false
+            "launchAtLogin": false,
+            "allowParallelDesktop": true
           }
         }
         """;
@@ -47,7 +48,8 @@ public class McaccJsonContextTests
             CloseAfterLaunch: false,
             LastAccountId: "privat",
             LastTarget: LaunchTarget.Desktop,
-            LaunchAtLogin: false));
+            LaunchAtLogin: false,
+            AllowParallelDesktop: true));
 
     private static string Serialize(AppConfig config) =>
         JsonSerializer.Serialize(config, McaccJsonContext.Default.AppConfig);
@@ -79,7 +81,8 @@ public class McaccJsonContextTests
               "settings": {
                 "windowsTerminalShell": "auto",
                 "closeAfterLaunch": true,
-                "launchAtLogin": true
+                "launchAtLogin": true,
+                "allowParallelDesktop": false
               }
             }
             """);
@@ -129,6 +132,13 @@ public class McaccJsonContextTests
             .Settings.LaunchAtLogin.ShouldBeTrue();
     }
 
+    [Fact]
+    public void A_config_without_parallel_desktop_keeps_one_account_at_a_time()
+    {
+        Deserialize("""{ "version": 1, "accounts": [], "settings": { "closeAfterLaunch": false } }""")
+            .Settings.AllowParallelDesktop.ShouldBeFalse();
+    }
+
     /// <summary>A config written before providers existed names none; every account in it belongs to Claude.</summary>
     [Fact]
     public void An_account_without_a_provider_belongs_to_Claude()
@@ -168,7 +178,8 @@ public class McaccJsonContextTests
               "settings": {
                 "windowsTerminalShell": "auto",
                 "closeAfterLaunch": true,
-                "launchAtLogin": true
+                "launchAtLogin": true,
+                "allowParallelDesktop": false
               },
               "future": {
                 "x": [
