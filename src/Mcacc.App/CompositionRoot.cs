@@ -83,7 +83,8 @@ public static class CompositionRoot
                 platform.Runner,
                 resolver,
                 new DesktopInstanceMatcher(resolver, platform.Info.PathStyle),
-                platform.Info),
+                platform.Info,
+                allowParallel: () => accounts.Config.Settings.AllowParallelDesktop),
             new DesktopLoginRedirector(
                 platform.InstallationLocator,
                 platform.CreateDetector(),
