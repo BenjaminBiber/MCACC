@@ -133,6 +133,11 @@ public sealed partial class AccountEditorViewModel : DialogViewModel<Account>
 
             var result = _services.Accounts.Create(Name, SelectedColor, CopyRequestOrNull(), SelectedProvider);
             SkippedText = SkippedTextFor(result);
+            if (_services.Accounts.Config.Settings.RecordClaudeLimits)
+            {
+                _services.StatusLine.Apply(record: true, [result.Account]);
+            }
+
             Complete(result.Account);
         }
         catch (AccountValidationException e)

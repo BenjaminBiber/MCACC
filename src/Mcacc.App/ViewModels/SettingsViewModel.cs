@@ -42,6 +42,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         CloseAfterLaunch = settings.CloseAfterLaunch;
         LaunchAtLogin = settings.LaunchAtLogin;
         AllowParallelDesktop = settings.AllowParallelDesktop;
+        RecordClaudeLimits = settings.RecordClaudeLimits;
         _isLoading = false;
     }
 
@@ -64,6 +65,10 @@ public sealed partial class SettingsViewModel : PageViewModel
     public string ParallelDesktopText => Texts.SettingsParallelDesktop;
 
     public string ParallelDesktopHint => Texts.SettingsParallelDesktopHint;
+
+    public string RecordClaudeLimitsText => Texts.SettingsRecordClaudeLimits;
+
+    public string RecordClaudeLimitsHint => Texts.SettingsRecordClaudeLimitsHint;
 
     public string DataFolderLabel => Texts.SettingsDataFolder;
 
@@ -95,6 +100,13 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     [ObservableProperty]
     public partial bool AllowParallelDesktop { get; set; }
+
+    [ObservableProperty]
+    public partial bool RecordClaudeLimits { get; set; }
+
+    /// <summary>The Claude accounts whose own status line kept MCACC's out at the last switch; null when none did.</summary>
+    [ObservableProperty]
+    public partial string? StatusLineForeign { get; private set; }
 
     public string ProjectsLabel => Texts.SettingsProjects;
 
@@ -190,6 +202,17 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     partial void OnAllowParallelDesktopChanged(bool value) =>
         Save(settings => settings with { AllowParallelDesktop = value });
+
+    partial void OnRecordClaudeLimitsChanged(bool value)
+    {
+        if (!Save(settings => settings with { RecordClaudeLimits = value }))
+        {
+            return;
+        }
+
+        var foreign = _services.StatusLine.Apply(value, _services.Accounts.Config.Accounts);
+        StatusLineForeign = foreign.Count > 0 ? Texts.SettingsStatusLineForeign(foreign.Select(account => account.Name)) : null;
+    }
 
     /// <summary>
     /// Reads the logs of every account through the stats index, like the info page, and does not cancel the scan

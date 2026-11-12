@@ -1,5 +1,6 @@
 using Avalonia;
 using Mcacc.App.Theme;
+using Mcacc.Core.ClaudeCode;
 using Mcacc.Core.Config;
 using Mcacc.Core.Paths;
 using Mcacc.Platform;
@@ -14,6 +15,11 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        if (args.Contains(StatusLineSettings.Switch, StringComparer.Ordinal))
+        {
+            return StatusLine.Run();
+        }
+
         if (args.Contains(DiagnoseSwitch, StringComparer.OrdinalIgnoreCase))
         {
             return Diagnose();

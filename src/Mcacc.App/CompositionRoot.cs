@@ -74,6 +74,13 @@ public static class CompositionRoot
         var loginItems = LoginItemSync.ForProcess(platform.LoginItem, log);
         loginItems.Apply(accounts.Config.Settings.LaunchAtLogin);
 
+        var statusLine = StatusLineSync.ForProcess(resolver, log);
+        if (accounts.Config.Settings.RecordClaudeLimits)
+        {
+            // Corrects the path in every entry after MCACC moved, and adds the entry to accounts made elsewhere.
+            statusLine.Apply(record: true, accounts.Config.Accounts);
+        }
+
         var services = new AppServices(
             accounts,
             new DesktopLaunchService(
@@ -115,6 +122,7 @@ public static class CompositionRoot
             platform.Shell,
             lifetime,
             loginItems,
+            statusLine,
             log,
             navigator,
             dialogs,

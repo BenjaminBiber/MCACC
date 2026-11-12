@@ -11,7 +11,8 @@ namespace Mcacc.Core.Usage;
 
 /// <summary>
 /// Reads the usage limits of an account with its Claude Code token. The token is never refreshed and never stored;
-/// an expired one simply leaves the last cached value standing. A token of another account than the one
+/// an expired one leaves the last cached value standing, unless MCACC's status line recorded newer limits in the
+/// account's config folder (see <see cref="ClaudeLimitsFile"/>). A token of another account than the one
 /// <c>.claude.json</c> names shows no limits at all, so a tile never carries someone else's numbers.
 /// Every fresh value also goes into the history, and a verified profile into the profile cache.
 /// </summary>
@@ -121,14 +122,14 @@ public sealed class UsageService(
         var read = await credentials.ReadAsync(account, paths, ct).ConfigureAwait(false);
         if (read is not { Status: CredentialReadStatus.Found, Credentials: { } found })
         {
-            return new AccountUsage(
-                read.Status == CredentialReadStatus.NotLoggedIn ? UsageState.NotLoggedIn : UsageState.Error,
-                cached);
+            return read.Status == CredentialReadStatus.NotLoggedIn
+                ? new AccountUsage(UsageState.NotLoggedIn, cached)
+                : FromStatusLine(account.Id, generation, paths, UsageState.Error, cached);
         }
 
         if (found.ExpiresAt is { } expiresAt && expiresAt <= now)
         {
-            return new AccountUsage(UsageState.Expired, cached);
+            return FromStatusLine(account.Id, generation, paths, UsageState.Expired, cached);
         }
 
         // Without a login in .claude.json there is nothing to compare with, and the tile says so anyway.
@@ -137,7 +138,7 @@ public sealed class UsageService(
             var check = await ProfileAsync(account.Id, generation, found.AccessToken, ct).ConfigureAwait(false);
             if (check.Profile is not { } profile)
             {
-                return new AccountUsage(check.State, cached);
+                return FromStatusLine(account.Id, generation, paths, check.State, cached);
             }
 
             var owner = profile.ToOwner();
@@ -154,16 +155,42 @@ public sealed class UsageService(
         var (state, body) = await GetAsync(() => http.GetUsageAsync(found.AccessToken, ct), ct).ConfigureAwait(false);
         if (state != UsageState.Ok)
         {
-            return new AccountUsage(state, cached);
+            return FromStatusLine(account.Id, generation, paths, state, cached);
         }
 
         if (body is null || UsageResponseParser.Parse(body, now) is not { } snapshot)
         {
-            return new AccountUsage(UsageState.Error, cached);
+            return FromStatusLine(account.Id, generation, paths, UsageState.Error, cached);
         }
 
         Store(account.Id, generation, snapshot);
         return new AccountUsage(UsageState.Ok, snapshot);
+    }
+
+    /// <summary>
+    /// The fallback when the endpoint gives nothing: the limits Claude Code last handed to MCACC's status line in
+    /// this account's config folder. They count with the moment they were recorded, so a newer value from the
+    /// endpoint wins, and a file already taken over is not stored a second time.
+    /// </summary>
+    private AccountUsage FromStatusLine(
+        string id,
+        int generation,
+        AccountPaths paths,
+        UsageState failure,
+        UsageSnapshot? cached)
+    {
+        if (ClaudeLimitsFile.Read(paths.EffectiveConfigDir) is not { } local)
+        {
+            return new AccountUsage(failure, cached);
+        }
+
+        if (cached is not null && cached.FetchedAt >= local.FetchedAt)
+        {
+            return new AccountUsage(cached.Source == UsageSource.LocalFile ? UsageState.Stale : failure, cached);
+        }
+
+        Store(id, generation, local);
+        return new AccountUsage(UsageState.Stale, local);
     }
 
     /// <summary>Asks the profile endpoint once per token; only an answer that names the owner is remembered.</summary>

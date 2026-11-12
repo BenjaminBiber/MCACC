@@ -65,6 +65,18 @@
         <TextBlock Classes="caption muted" Text="{Binding ParallelDesktopHint}" TextWrapping="Wrap" />
       </StackPanel>
 
+      <StackPanel Spacing="2">
+        <ToggleSwitch IsChecked="{Binding RecordClaudeLimits}"
+                      OnContent="{Binding RecordClaudeLimitsText}"
+                      OffContent="{Binding RecordClaudeLimitsText}" />
+        <TextBlock Classes="caption muted" Text="{Binding RecordClaudeLimitsHint}" TextWrapping="Wrap" />
+        <TextBlock Classes="caption"
+                   Foreground="{DynamicResource Mcacc.Danger}"
+                   Text="{Binding StatusLineForeign}"
+                   TextWrapping="Wrap"
+                   IsVisible="{Binding StatusLineForeign, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+      </StackPanel>
+
       <StackPanel Spacing="6" MaxWidth="640" HorizontalAlignment="Left">
         <TextBlock Classes="body" Text="{Binding ProjectsLabel}" />
         <TextBlock Classes="caption muted" Text="{Binding ProjectsHint}" TextWrapping="Wrap" />

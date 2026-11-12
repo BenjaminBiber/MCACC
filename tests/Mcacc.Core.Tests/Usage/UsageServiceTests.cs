@@ -629,6 +629,115 @@ public sealed class UsageServiceTests : IDisposable
     /// <summary>A directory where the temp file of a json write goes makes that write fail on every platform.</summary>
     private static void BlockWrites(string file) => Directory.CreateDirectory(file + ".tmp");
 
+    private string PrivatConfigDir => new AccountPathResolver(Paths, Platform).Resolve(Privat).EffectiveConfigDir;
+
+    private static readonly DateTimeOffset Recorded = Now - TimeSpan.FromMinutes(20);
+
+    private static readonly UsageSnapshot FromStatusLine = new(
+        new UsageWindow(64, DateTimeOffset.FromUnixTimeSeconds(1790172000)),
+        new UsageWindow(18, DateTimeOffset.FromUnixTimeSeconds(1790600000)),
+        Recorded,
+        Source: UsageSource.LocalFile);
+
+    private void RecordStatusLine(DateTimeOffset at) => ClaudeLimitsFile.Record(
+        PrivatConfigDir,
+        """
+        { "rate_limits": {
+            "five_hour": { "used_percentage": 64, "resets_at": 1790172000 },
+            "seven_day": { "used_percentage": 18, "resets_at": 1790600000 } } }
+        """,
+        at).ShouldBeTrue();
+
+    [Fact]
+    public async Task An_expired_token_falls_back_to_the_status_line_limits()
+    {
+        SeedCache("privat");
+        RecordStatusLine(Recorded);
+        _credentials.Result = new CredentialReadResult(CredentialReadStatus.Found, new OAuthCredentials(Token, Now));
+
+        var usage = await Service().RefreshAsync(Privat, Ct);
+
+        usage.ShouldBe(new AccountUsage(UsageState.Stale, FromStatusLine));
+        Cache.Load()["privat"].ShouldBe(FromStatusLine);
+        History.Read("privat", DateTimeOffset.MinValue).ShouldBe([UsageHistoryPoint.From(FromStatusLine)]);
+    }
+
+    [Theory]
+    [InlineData(401)]
+    [InlineData(429)]
+    [InlineData(500)]
+    public async Task A_failed_request_falls_back_to_the_status_line_limits(int status)
+    {
+        RecordStatusLine(Recorded);
+        _http.Response = new UsageHttpResponse(status, null);
+
+        (await Service().RefreshAsync(Privat, Ct)).ShouldBe(new AccountUsage(UsageState.Stale, FromStatusLine));
+    }
+
+    [Fact]
+    public async Task A_failed_profile_check_falls_back_to_the_status_line_limits()
+    {
+        RecordStatusLine(Recorded);
+        _login.Info = OwnLogin;
+        _http.ProfileResponse = new UsageHttpResponse(503, null);
+
+        (await Service().RefreshAsync(Privat, Ct)).ShouldBe(new AccountUsage(UsageState.Stale, FromStatusLine));
+    }
+
+    [Fact]
+    public async Task Without_a_status_line_file_the_failure_stays_as_it_was()
+    {
+        SeedCache("privat");
+        _http.Response = new UsageHttpResponse(429, null);
+
+        (await Service().RefreshAsync(Privat, Ct)).ShouldBe(new AccountUsage(UsageState.RateLimited, Old));
+    }
+
+    [Fact]
+    public async Task A_newer_value_from_the_endpoint_wins_over_an_older_file()
+    {
+        var service = Service();
+        await service.RefreshAsync(Privat, Ct);
+        RecordStatusLine(Now - TimeSpan.FromHours(1));
+        _time.Advance(TimeSpan.FromMinutes(5));
+        _http.Response = new UsageHttpResponse(500, null);
+
+        (await service.RefreshAsync(Privat, Ct)).ShouldBe(new AccountUsage(UsageState.Error, Fresh(Now)));
+    }
+
+    [Fact]
+    public async Task The_same_file_is_stored_only_once()
+    {
+        RecordStatusLine(Recorded);
+        _http.Response = new UsageHttpResponse(500, null);
+        var service = Service();
+        await service.RefreshAsync(Privat, Ct);
+        _time.Advance(TimeSpan.FromMinutes(5));
+
+        (await service.RefreshAsync(Privat, Ct)).ShouldBe(new AccountUsage(UsageState.Stale, FromStatusLine));
+
+        History.Read("privat", DateTimeOffset.MinValue).ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public async Task A_token_of_another_account_does_not_fall_back()
+    {
+        RecordStatusLine(Recorded);
+        _login.Info = OwnLogin;
+        _http.ProfileResponse = new UsageHttpResponse(200, OtherProfile);
+
+        (await Service().RefreshAsync(Privat, Ct)).State.ShouldBe(UsageState.WrongAccount);
+    }
+
+    [Fact]
+    public async Task A_missing_login_does_not_fall_back()
+    {
+        RecordStatusLine(Recorded);
+        _credentials.Result = new CredentialReadResult(CredentialReadStatus.NotLoggedIn, null);
+
+        (await Service().RefreshAsync(Privat, Ct)).ShouldBe(new AccountUsage(UsageState.NotLoggedIn, null));
+    }
+
     private sealed class FakeCredentialSource : ICredentialSource
     {
         public CredentialReadResult Result { get; set; } = new(CredentialReadStatus.NotLoggedIn, null);

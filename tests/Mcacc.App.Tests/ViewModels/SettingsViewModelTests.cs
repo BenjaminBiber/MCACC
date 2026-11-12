@@ -227,6 +227,42 @@ public sealed class SettingsViewModelTests : IDisposable
         page.ParallelDesktopHint.ShouldContain("eigenen Fenster");
     }
 
+    private string DefaultSettingsFile =>
+        Path.Join(_services.Resolver.Resolve(Account.CreateDefault()).EffectiveConfigDir, "settings.json");
+
+    [Fact]
+    public void Recording_the_claude_limits_is_off_by_default() => Page().RecordClaudeLimits.ShouldBeFalse();
+
+    [Fact]
+    public void Switching_on_saves_it_and_puts_the_status_line_into_the_claude_accounts()
+    {
+        var page = Page();
+
+        page.RecordClaudeLimits = true;
+
+        _services.Accounts.Config.Settings.RecordClaudeLimits.ShouldBeTrue();
+        File.ReadAllText(DefaultSettingsFile).ShouldContain("C:/Tools/MCACC.exe --mcacc-statusline");
+        page.StatusLineForeign.ShouldBeNull();
+
+        page.RecordClaudeLimits = false;
+
+        _services.Accounts.Config.Settings.RecordClaudeLimits.ShouldBeFalse();
+        File.ReadAllText(DefaultSettingsFile).ShouldNotContain("statusLine");
+    }
+
+    [Fact]
+    public void An_account_with_its_own_status_line_is_named()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(DefaultSettingsFile)!);
+        File.WriteAllText(DefaultSettingsFile, """{ "statusLine": { "type": "command", "command": "ccstatusline" } }""");
+        var page = Page();
+
+        page.RecordClaudeLimits = true;
+
+        page.StatusLineForeign.ShouldBe(Texts.SettingsStatusLineForeign([Account.CreateDefault().Name]));
+        File.ReadAllText(DefaultSettingsFile).ShouldContain("ccstatusline");
+    }
+
     [Fact]
     public void The_data_folder_is_the_mcacc_root()
     {

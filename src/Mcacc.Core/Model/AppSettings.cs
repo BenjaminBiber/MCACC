@@ -9,6 +9,10 @@ namespace Mcacc.Core.Model;
 /// A desktop app may run with several accounts side by side. Off, a start quits the instance of another account
 /// after asking; that stays the default, because the apps are built to run once.
 /// </param>
+/// <param name="RecordClaudeLimits">
+/// MCACC is the status line of every Claude account and writes down the limits Claude Code hands it, as the fallback
+/// when the usage endpoint gives nothing. Off by default, because it edits the accounts' <c>settings.json</c>.
+/// </param>
 public sealed record AppSettings(
     string? Terminal = null,
     WindowsTerminalShell WindowsTerminalShell = WindowsTerminalShell.Auto,
@@ -17,4 +21,5 @@ public sealed record AppSettings(
     LaunchTarget? LastTarget = null,
     IReadOnlyList<string>? ExcludedProjects = null,
     bool LaunchAtLogin = true,
-    bool AllowParallelDesktop = false);
+    bool AllowParallelDesktop = false,
+    bool RecordClaudeLimits = false);

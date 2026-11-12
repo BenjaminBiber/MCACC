@@ -53,6 +53,7 @@ internal sealed class TestServices : IDisposable
             Integration,
             Lifetime,
             new LoginItemSync(LoginItem, ExecutablePath, isActive: true, NullLog.Instance),
+            new StatusLineSync(resolver, ExecutablePath, NullLog.Instance),
             NullLog.Instance,
             Navigator,
             Dialogs,

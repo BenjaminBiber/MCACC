@@ -34,7 +34,8 @@ public class McaccJsonContextTests
             "lastAccountId": "privat",
             "lastTarget": "desktop",
             "launchAtLogin": false,
-            "allowParallelDesktop": true
+            "allowParallelDesktop": true,
+            "recordClaudeLimits": true
           }
         }
         """;
@@ -49,7 +50,8 @@ public class McaccJsonContextTests
             LastAccountId: "privat",
             LastTarget: LaunchTarget.Desktop,
             LaunchAtLogin: false,
-            AllowParallelDesktop: true));
+            AllowParallelDesktop: true,
+            RecordClaudeLimits: true));
 
     private static string Serialize(AppConfig config) =>
         JsonSerializer.Serialize(config, McaccJsonContext.Default.AppConfig);
@@ -82,7 +84,8 @@ public class McaccJsonContextTests
                 "windowsTerminalShell": "auto",
                 "closeAfterLaunch": true,
                 "launchAtLogin": true,
-                "allowParallelDesktop": false
+                "allowParallelDesktop": false,
+                "recordClaudeLimits": false
               }
             }
             """);
@@ -179,7 +182,8 @@ public class McaccJsonContextTests
                 "windowsTerminalShell": "auto",
                 "closeAfterLaunch": true,
                 "launchAtLogin": true,
-                "allowParallelDesktop": false
+                "allowParallelDesktop": false,
+                "recordClaudeLimits": false
               },
               "future": {
                 "x": [
