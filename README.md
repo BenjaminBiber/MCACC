@@ -1,54 +1,138 @@
-# MCACC — Claude Account Switcher
+<div align="center">
 
-MCACC startet **Claude Desktop** und **Claude Code** mit dem Account, den du auswählst — ohne
-dich jedes Mal ab- und wieder anzumelden.
+<img src="assets/icon/mcacc-256.png" alt="MCACC-Logo" width="112" height="112">
 
-Jeder Account bekommt ein eigenes Profil: Claude Desktop startet mit `--user-data-dir`, Claude
-Code mit `CLAUDE_CONFIG_DIR`. Beides zeigt auf einen Ordner unter `~/.mcacc/`. Dein heutiges
-Setup bleibt unangetastet und heißt in MCACC **„Standard“**.
+# MCACC
 
-![MCACC – Account-Auswahl](docs/screenshots/account-picker.png)
+**Mehrere Claude- und Codex-Accounts auf einem Rechner – ein Klick statt ab- und wieder anmelden.**
 
-![MCACC – Zielauswahl](docs/screenshots/target-picker.png)
+[![Release](https://img.shields.io/github/v/release/BenjaminBiber/MCACC?sort=semver&color=d97757)](https://github.com/BenjaminBiber/MCACC/releases/latest)
+[![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-6a9bcc)](LICENSE)
+![Plattformen](https://img.shields.io/badge/Windows%2011%20%7C%20macOS%2014%2B-lightgrey)
+![.NET 10](https://img.shields.io/badge/.NET-10-512bd4)
+![Avalonia](https://img.shields.io/badge/UI-Avalonia-8b44ac)
+
+[Download](https://github.com/BenjaminBiber/MCACC/releases/latest) ·
+[Schnellstart](#schnellstart) ·
+[Bedienung](#bedienung) ·
+[Entwicklung](#entwicklung)
+
+<img src="docs/screenshots/account-picker.png" alt="MCACC – Account-Auswahl mit Nutzungslimits" width="760">
+
+</div>
+
+MCACC startet **Claude Desktop** und **Claude Code** – und ebenso die **ChatGPT-/Codex-App** und die
+**Codex-CLI** – mit dem Account, den du auswählst. Jeder Account bekommt ein eigenes, sauber getrenntes
+Profil; Abmelden, Anmelden und Konfigurationen hin- und herkopieren entfallen.
+
+Technisch startet MCACC Claude Desktop mit `--user-data-dir` und Claude Code mit `CLAUDE_CONFIG_DIR`
+(bei Codex: `CODEX_HOME`). Alles zeigt auf einen Ordner unter `~/.mcacc/`. Dein heutiges Setup bleibt
+unangetastet und heißt in MCACC **„Standard“**.
+
+## Inhalt
+
+- [Funktionen](#funktionen)
+- [Screenshots](#screenshots)
+- [Voraussetzungen](#voraussetzungen)
+- [Installation](#installation)
+- [Schnellstart](#schnellstart)
+- [Bedienung](#bedienung)
+  - [Infobereich und Menüleiste](#infobereich-und-menüleiste)
+  - [Anmelden](#anmelden)
+  - [Mehrere Accounts gleichzeitig](#mehrere-accounts-gleichzeitig)
+  - [Tastatur](#tastatur)
+  - [Accounts anlegen](#accounts-anlegen)
+  - [Accounts entfernen](#accounts-entfernen)
+  - [Info & Statistik](#info--statistik)
+  - [Einstellungen](#einstellungen)
+- [Codex-Accounts](#codex-accounts)
+- [Datenablage](#datenablage)
+- [Bekannte Einschränkungen](#bekannte-einschränkungen)
+- [Entwicklung](#entwicklung)
+- [Release erstellen](#release-erstellen)
+- [Lizenz](#lizenz)
+
+## Funktionen
+
+- **Ein Profil pro Account** für Claude Desktop, Claude Code, die ChatGPT-/Codex-App und die Codex-CLI.
+- **Nutzungslimits auf einen Blick:** 5-Stunden- und Wochenfenster je Account, mit Verlauf über 24 Stunden
+  oder 7 Tage.
+- **Info & Statistik:** Tokens, Sessions, Modelle, Projekte und geschätzte API-Kosten aus den lokalen
+  Claude-Code-Logs.
+- **Anmeldung landet im richtigen Profil:** MCACC fängt den `claude://`-Rücksprung aus dem Browser ab und
+  reicht ihn an den gewählten Account weiter.
+- **Mehrere Accounts gleichzeitig** (optional): jede Desktop-Instanz in einem eigenen Fenster.
+- **Infobereich bzw. Menüleiste:** Accounts und Limits direkt aus dem Tray-Menü starten.
+- **Einstellungen übernehmen:** `CLAUDE.md`, `settings.json`, Agents, Skills, Commands und MCP-Server aus
+  einem vorhandenen Account kopieren – nie Zugangsdaten.
+- **Tastaturbedienung:** zweimal Enter startet den zuletzt genutzten Account im zuletzt genutzten Ziel.
+- Helles und dunkles Design, Windows 11 und macOS 14+.
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/target-picker.png" alt="Zielauswahl: Claude Desktop oder Claude Code"><br><sub><b>Ziel wählen</b> – Desktop-App oder Terminal mit Claude Code</sub></td>
+    <td width="50%"><img src="docs/screenshots/account-picker-dark.png" alt="Account-Auswahl im dunklen Design"><br><sub><b>Dunkles Design</b> – folgt der Systemeinstellung</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/add-account.png" alt="Dialog Account hinzufügen"><br><sub><b>Account anlegen</b> – Dienst, Farbe und übernommene Einstellungen</sub></td>
+    <td width="50%"><img src="docs/screenshots/info.png" alt="Info und Statistik eines Accounts"><br><sub><b>Info & Statistik</b> – Konto, Limits und Claude-Code-Nutzung</sub></td>
+  </tr>
+</table>
 
 ## Voraussetzungen
 
 - Windows 11 oder macOS 14 (Sonoma) und neuer
-- Claude Desktop, falls du es starten willst
-- Claude Code (`claude` im PATH), falls du es starten willst
+- Claude Desktop bzw. die ChatGPT-/Codex-App, falls du sie starten willst
+- Claude Code (`claude` im PATH) bzw. die Codex-CLI (`codex`), falls du sie starten willst
 - Zum Selberbauen: .NET SDK 10.0.301 oder neuer
 
 ## Installation
 
+Fertige Builds liegen unter [**Releases**](https://github.com/BenjaminBiber/MCACC/releases/latest).
+
+| System | Datei | Hinweis |
+| --- | --- | --- |
+| Windows 11 | `MCACC-<version>-win-x64-setup.exe` | Empfohlen. Installiert ohne Adminrechte nach `%LOCALAPPDATA%\Programs\MCACC`. |
+| Windows 11 | `MCACC-<version>-win-x64.zip` | Portabel: entpacken, `MCACC.exe` starten. |
+| macOS 14+ | `MCACC-<version>-macos-universal.dmg` | Apple Silicon und Intel. `MCACC.app` nach *Programme* ziehen. |
+
 ### Windows
 
-1. `MCACC-<version>-win-x64.zip` entpacken.
-2. `MCACC.exe` starten.
+Installer ausführen oder das Zip entpacken und `MCACC.exe` starten. Beim ersten Start meldet sich
+**SmartScreen**, weil die Datei nicht signiert ist: *Weitere Informationen* → *Trotzdem ausführen*.
 
-Beim ersten Start meldet sich **SmartScreen**, weil die Datei nicht signiert ist:
-*Weitere Informationen* → *Trotzdem ausführen*.
-
-Selber bauen:
-
-```powershell
-.\scripts\publish-windows.ps1 -Version 0.1.0
-```
+Der Installer legt einen Startmenü-Eintrag an und entfernt beim Deinstallieren auch den Autostart-Eintrag.
 
 ### macOS
 
-Auf dem Mac bauen:
+DMG öffnen und `MCACC.app` in den Ordner *Programme* ziehen. Die App ist nur **ad-hoc signiert**, deshalb
+beim ersten Start entweder Rechtsklick → *Öffnen*, oder einmalig:
 
 ```bash
-./scripts/build-macos.sh --arch arm64 --version 0.1.0
-# oder: --arch universal   (arm64 + x64 in einem Bundle)
+xattr -dr com.apple.quarantine /Applications/MCACC.app
 ```
 
-Das Ergebnis liegt in `artifacts/MCACC.app`. Es ist nur **ad-hoc signiert**, deshalb beim
-ersten Start entweder Rechtsklick → *Öffnen*, oder einmalig:
+### Selbst bauen
+
+```powershell
+# Windows: Zip, mit -Installer zusätzlich setup.exe (braucht Inno Setup 6)
+.\scripts\publish-windows.ps1 -Version 0.1.0 -Installer
+```
 
 ```bash
-xattr -dr com.apple.quarantine MCACC.app
+# macOS: MCACC.app, Zip und DMG unter artifacts/
+./scripts/build-macos.sh --arch universal --version 0.1.0   # oder --arch arm64 / x64
 ```
+
+## Schnellstart
+
+1. MCACC starten. Dein bisheriges Setup erscheint als Account **„Standard“**.
+2. **Account hinzufügen** → Namen vergeben, Dienst (Claude oder Codex) und Farbe wählen, optional
+   Einstellungen aus „Standard“ übernehmen.
+3. Den neuen Account wählen, dann **Claude Desktop** oder **Claude Code**.
+4. Im neuen Profil einmal anmelden. Ab dann reicht ein Klick – oder zweimal Enter.
 
 ## Bedienung
 
@@ -167,19 +251,36 @@ Die Kosten sind eine **Schätzung** zu API-Listenpreisen („≈“). Mit einem 
 
 ### Einstellungen
 
-- **Terminal für Claude Code** — nur tatsächlich installierte werden angeboten.
+- **Terminal für die Kommandozeile** — nur tatsächlich installierte werden angeboten.
 - **Shell im Windows Terminal** — PowerShell 7, Windows PowerShell oder Eingabeaufforderung.
 - **Nach dem Start ausblenden** — MCACC bleibt im Infobereich bzw. in der Menüleiste.
 - **Bei der Anmeldung starten** — legt den Autostart-Eintrag an bzw. entfernt ihn (siehe
   *Infobereich und Menüleiste*).
 - **Mehrere Accounts gleichzeitig öffnen** — die Desktop-App bleibt beim Start eines anderen
   Accounts offen, statt nach Rückfrage neu zu starten (siehe *Mehrere Accounts gleichzeitig*).
+- **Claude-Limits über die Statusline mitschreiben** — MCACC trägt sich als Statusline in die
+  `settings.json` der Claude-Accounts ein und merkt sich die Limits, die Claude Code nach jeder Antwort
+  meldet. Kann MCACC die Limits nicht abrufen, zeigt die Kachel diesen Stand. Accounts mit eigener
+  Statusline bleiben unangetastet.
 - **Projekte in der Statistik** — alle Projekte aus den Claude-Code-Logs aller Accounts, nach
   Tokens sortiert. Ein Projekt ohne Häkchen zählt auf der Info-Seite nirgends mit: nicht in Tokens,
   Kosten, Sessions, Tagesbalken, Modellen, Top-Projekten und Kalender. Geschätzte Kalendertage
   werden anteilig gekürzt, weil Claudes Zusammenfassung keine Projekte kennt. Die Info-Seite nennt,
   wie viele Projekte des Accounts ausgeschlossen sind.
 - **Datenordner** mit Knopf zum Öffnen im Explorer bzw. Finder.
+
+## Codex-Accounts
+
+Beim Anlegen lässt sich als Dienst **Codex** statt Claude wählen. Die Kachel trägt dann das Abzeichen
+„Codex“, und die Zielseite bietet **ChatGPT** (die Desktop-App aus dem Paket `OpenAI.Codex` bzw.
+`ChatGPT.app`) und **Codex** (die CLI im Terminal) an.
+
+- Die CLI startet mit eigenem `CODEX_HOME` unter `profiles/<id>/codex/`, die Desktop-App mit eigenem
+  Datenordner unter `profiles/<id>/codex-desktop/`.
+- Übernehmen lassen sich `config.toml` (Pfade werden auf das neue Profil umgeschrieben, damit es nicht
+  doch wieder im Standardordner landet), `AGENTS.md`, Skills und Prompts. Plugins, Pakete und Caches
+  werden nie kopiert.
+- Die Limits kommen aus dem Endpunkt, den auch die Codex-CLI nutzt, und aus ihren lokalen Rollout-Logs.
 
 ## Datenablage
 
@@ -192,6 +293,8 @@ Die Kosten sind eine **Schätzung** zu API-Listenpreisen („≈“). Mit einem 
   stats/<id>.json                Index der gelesenen Claude-Code-Logs
   profiles/<id>/desktop/         --user-data-dir von Claude Desktop
   profiles/<id>/claude/          CLAUDE_CONFIG_DIR von Claude Code
+  profiles/<id>/codex/           CODEX_HOME der Codex-CLI (Codex-Accounts)
+  profiles/<id>/codex-desktop/   Datenordner der ChatGPT-/Codex-App (Codex-Accounts)
   launch/<id>.cmd | .command     bei jedem Start neu erzeugt
   logs/mcacc-YYYYMMDD.log        7 Tage; Kommandos und Variablennamen, nie Tokens
 ```
@@ -249,10 +352,29 @@ dotnet test MCACC.slnx
 - Ein Release-Build, der aus Rider oder `bin/Release` startet, biegt den Autostart-Eintrag auf sich
   um, bis die installierte Kopie wieder startet; zum Ausprobieren `MCACC_HOME` setzen.
 
-## Lizenzen der mitgelieferten Schriften
+## Release erstellen
+
+Releases entstehen über den Workflow [**Release**](.github/workflows/release.yml):
+
+1. Auf GitHub unter **Actions** → **Release** → **Run workflow**.
+2. Im Dropdown die Erhöhung wählen: `patch` (1.2.3 → 1.2.4), `minor` (→ 1.3.0) oder `major` (→ 2.0.0).
+   Grundlage ist der höchste Tag `v*`; ohne Tag beginnt die Zählung bei 0.0.0.
+3. Optional **Pre-Release** ankreuzen oder mit **dry run** nur bauen, ohne Tag und Release.
+
+Der Workflow testet und baut auf Windows (Zip und Installer) und macOS (Universal-App als Zip und DMG),
+legt den Tag `v<version>` an und hängt alle Dateien mit automatisch erzeugten Release-Notes an.
+
+## Lizenz
+
+MCACC steht unter der [MIT-Lizenz](LICENSE).
+
+Mitgelieferte Schriften:
 
 - **Source Serif 4** (Adobe) — SIL Open Font License 1.1, siehe
   `src/Mcacc.App/Assets/Fonts/OFL.txt`
 - **Material Icons Round** (Google) — Apache License 2.0, siehe
   `src/Mcacc.App/Assets/Fonts/LICENSE-material-icons.txt`
 - **Inter** — über das Paket `Avalonia.Fonts.Inter`, SIL Open Font License 1.1
+
+MCACC ist ein unabhängiges Projekt und steht in keiner Verbindung zu Anthropic oder OpenAI. „Claude“,
+„ChatGPT“ und „Codex“ sind Marken ihrer jeweiligen Inhaber.
