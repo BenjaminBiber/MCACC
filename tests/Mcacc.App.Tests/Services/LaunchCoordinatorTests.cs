@@ -101,6 +101,41 @@ public sealed class LaunchCoordinatorTests : IDisposable
     }
 
     [Fact]
+    public async Task A_default_start_ends_a_watch_that_still_runs_and_takes_its_hint_down()
+    {
+        _services.Redirect.WasWatching = true;
+        _services.Window.ShowError(Texts.HintLoginWatch);
+
+        await Launcher.LaunchDesktopAsync(Standard);
+
+        _services.Redirect.Stopped.ShouldBe([ProviderKind.Claude]);
+        _services.Redirect.Watched.ShouldBeEmpty();
+        _services.Window.ErrorBanner.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task A_default_start_without_a_running_watch_leaves_the_banner_alone()
+    {
+        _services.Window.ShowError(Texts.ErrorConfigReadOnly);
+
+        await Launcher.LaunchDesktopAsync(Standard);
+
+        _services.Redirect.Stopped.ShouldBe([ProviderKind.Claude]);
+        _services.Window.ErrorBanner.ShouldBe(Texts.ErrorConfigReadOnly);
+    }
+
+    [Fact]
+    public async Task A_superseded_watch_leaves_the_hint_and_the_window_to_the_newer_start()
+    {
+        _services.Redirect.Outcome = DesktopRedirectOutcome.Superseded;
+
+        await Launcher.LaunchDesktopAsync(Privat);
+
+        _services.Window.ErrorBanner.ShouldBe(Texts.HintLoginWatch);
+        _services.Lifetime.Hides.ShouldBe(0);
+    }
+
+    [Fact]
     public async Task The_login_watch_runs_without_bringing_the_window_up()
     {
         await Launcher.LaunchDesktopAsync(Privat);

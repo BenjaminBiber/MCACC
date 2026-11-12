@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Mcacc.Core.Abstractions;
 using Mcacc.Core.Logging;
 using Mcacc.Core.Model;
@@ -36,8 +37,29 @@ public sealed class DesktopLoginRedirector(
 
     private readonly TimeProvider _time = time ?? TimeProvider.System;
 
+    /// <summary>The running watch of each provider. A newer one replaces it here, and the older one sees that at its next look.</summary>
+    private readonly ConcurrentDictionary<ProviderKind, object> _watches = new();
+
     /// <exception cref="PlatformNotSupportedException">Claude Desktop is installed on neither Windows nor macOS.</exception>
     public async Task<DesktopRedirectOutcome> WatchAsync(Account target, CancellationToken ct)
+    {
+        // A login coming back names no account, so it can only go to the start made last: this watch ends the one
+        // before it, even when it turns out to need none itself.
+        var watch = new object();
+        _watches[target.Provider] = watch;
+        try
+        {
+            return await RunWatchAsync(target, watch, ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            _watches.TryRemove(KeyValuePair.Create(target.Provider, watch));
+        }
+    }
+
+    public bool StopWatching(ProviderKind provider) => _watches.TryRemove(provider, out _);
+
+    private async Task<DesktopRedirectOutcome> RunWatchAsync(Account target, object watch, CancellationToken ct)
     {
         var paths = resolver.Resolve(target);
         if (paths.DesktopUserDataDir is not { } targetDir)
@@ -57,7 +79,15 @@ public sealed class DesktopLoginRedirector(
         while (_time.GetElapsedTime(started) < Window)
         {
             await Task.Delay(PollInterval, _time, ct).ConfigureAwait(false);
-            if (await DetectAsync(paths.Provider, ct).ConfigureAwait(false) is not { } instances)
+            var instances = await DetectAsync(paths.Provider, ct).ConfigureAwait(false);
+
+            // Asked after the look, not before it: a snapshot taken while a newer watch began is not this one's to act on.
+            if (!IsCurrent(target.Provider, watch))
+            {
+                return DesktopRedirectOutcome.Superseded;
+            }
+
+            if (instances is null)
             {
                 continue;
             }
@@ -79,6 +109,9 @@ public sealed class DesktopLoginRedirector(
 
         return DesktopRedirectOutcome.NotSeen;
     }
+
+    private bool IsCurrent(ProviderKind provider, object watch) =>
+        _watches.TryGetValue(provider, out var current) && ReferenceEquals(current, watch);
 
     /// <returns>Null when this snapshot could not be taken; the next one may work.</returns>
     private async Task<IReadOnlyList<DesktopInstance>?> DetectAsync(ProviderDescriptor provider, CancellationToken ct)

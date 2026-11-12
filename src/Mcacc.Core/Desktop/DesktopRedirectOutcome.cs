@@ -13,4 +13,7 @@ public enum DesktopRedirectOutcome
 
     /// <summary>A login was caught, but handing it over failed; nobody is signed in by it.</summary>
     Failed,
+
+    /// <summary>A newer start took the watch over, or it was stopped; this one handed nothing over.</summary>
+    Superseded,
 }

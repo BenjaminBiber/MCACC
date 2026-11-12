@@ -116,6 +116,17 @@ internal sealed class FakeLoginRedirector : IDesktopLoginRedirector
     /// <summary>Set it to hold the watch open, the way the real one holds the window open.</summary>
     public TaskCompletionSource? Gate { get; set; }
 
+    public List<ProviderKind> Stopped { get; } = [];
+
+    /// <summary>What <see cref="StopWatching"/> answers: whether a watch was still running.</summary>
+    public bool WasWatching { get; set; }
+
+    public bool StopWatching(ProviderKind provider)
+    {
+        Stopped.Add(provider);
+        return WasWatching;
+    }
+
     public async Task<DesktopRedirectOutcome> WatchAsync(Account target, CancellationToken ct)
     {
         Watched.Add(target);
