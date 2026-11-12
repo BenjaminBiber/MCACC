@@ -61,7 +61,16 @@ if [ "$ARCH" = "universal" ]; then
     arm="$ARTIFACTS/publish/osx-arm64/$relative"
     intel="$ARTIFACTS/publish/osx-x64/$relative"
     [ -f "$intel" ] || continue
-    if file "$arm" | grep -q 'Mach-O'; then
+    file "$arm" | grep -q 'Mach-O' || continue
+    # Some NuGet natives (HarfBuzzSharp, SkiaSharp) already ship as universal
+    # binaries; lipo refuses to merge those again, so keep them as they are.
+    arm_archs=" $(lipo -archs "$arm") "
+    intel_archs=" $(lipo -archs "$intel") "
+    if [[ "$arm_archs" == *" x86_64 "* && "$arm_archs" == *" arm64 "* ]]; then
+      continue
+    elif [[ "$intel_archs" == *" x86_64 "* && "$intel_archs" == *" arm64 "* ]]; then
+      cp "$intel" "$APP/Contents/MacOS/$relative"
+    else
       lipo -create "$arm" "$intel" -output "$APP/Contents/MacOS/$relative"
     fi
   done
