@@ -37,6 +37,7 @@ public class DesktopLaunchServiceTests
     private readonly FakeTerminator _terminator = new();
     private readonly FakeProcessRunner _runner = new();
     private DateTimeOffset? _startedAt;
+    private bool _allowParallel;
 
     public DesktopLaunchServiceTests()
     {
@@ -64,7 +65,8 @@ public class DesktopLaunchServiceTests
             resolver,
             new DesktopInstanceMatcher(resolver, platform.PathStyle),
             platform,
-            _time);
+            _time,
+            () => _allowParallel);
     }
 
     private TimeSpan Elapsed => _time.GetUtcNow() - Start;
@@ -305,6 +307,66 @@ public class DesktopLaunchServiceTests
 
         _terminator.Quits.ShouldBeEmpty();
         _runner.Started.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Side_by_side_prepare_is_ready_although_other_accounts_run()
+    {
+        _allowParallel = true;
+        _detector.Script([StandardInstance, UnknownInstance]);
+
+        (await Service().PrepareAsync(Privat, Accounts, Ct)).ShouldBe(new DesktopLaunchCheck.Ready());
+    }
+
+    [Fact]
+    public async Task Side_by_side_prepare_still_reports_the_same_account_running()
+    {
+        _allowParallel = true;
+        _detector.Script([StandardInstance, PrivatInstance]);
+
+        (await Service().PrepareAsync(Privat, Accounts, Ct)).ShouldBe(new DesktopLaunchCheck.RunningSameAccount());
+    }
+
+    [Fact]
+    public async Task Side_by_side_launch_starts_next_to_another_account_and_quits_nothing()
+    {
+        _allowParallel = true;
+        _detector.Script([StandardInstance]);
+
+        var outcome = await Service().LaunchAsync(Privat, Accounts, quitConflicts: false, Ct);
+
+        outcome.ShouldBe(DesktopLaunchOutcome.Launched);
+        _terminator.Quits.ShouldBeEmpty();
+        _runner.Started.ShouldHaveSingleItem().ShouldBeEquivalentTo(
+            DesktopLaunchPlanner.PlanWindows(Msix, ResolverFor(Windows).Resolve(Privat), Windows.HomeDir));
+        (_startedAt - Start).ShouldBe(TimeSpan.FromMilliseconds(500));
+    }
+
+    [Fact]
+    public async Task Side_by_side_launch_quits_nothing_even_with_permission_and_does_not_wait_on_a_detection()
+    {
+        _allowParallel = true;
+        _detector.Script([StandardInstance]);
+
+        var outcome = await Service().LaunchAsync(Privat, Accounts, quitConflicts: true, Ct);
+
+        outcome.ShouldBe(DesktopLaunchOutcome.Launched);
+        _terminator.Quits.ShouldBeEmpty();
+        _detector.Calls.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task The_switch_is_asked_at_every_start()
+    {
+        _detector.Script([StandardInstance]);
+        var service = Service();
+
+        (await service.LaunchAsync(Privat, Accounts, quitConflicts: false, Ct))
+            .ShouldBe(DesktopLaunchOutcome.ConflictNotResolved);
+
+        _allowParallel = true;
+
+        (await service.LaunchAsync(Privat, Accounts, quitConflicts: false, Ct)).ShouldBe(DesktopLaunchOutcome.Launched);
     }
 
     private sealed class FakeLocator(DesktopInstallation? installation) : IDesktopInstallationLocator

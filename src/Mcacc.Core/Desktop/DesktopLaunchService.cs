@@ -5,6 +5,10 @@ using Mcacc.Core.Processes;
 
 namespace Mcacc.Core.Desktop;
 
+/// <param name="allowParallel">
+/// Asked at every check and start: whether instances of other accounts stay open next to the one being started.
+/// Null keeps one account at a time.
+/// </param>
 public sealed class DesktopLaunchService(
     IDesktopInstallationLocator locator,
     IDesktopInstanceDetector detector,
@@ -13,7 +17,8 @@ public sealed class DesktopLaunchService(
     AccountPathResolver resolver,
     DesktopInstanceMatcher matcher,
     PlatformInfo platform,
-    TimeProvider? time = null) : IDesktopLauncher
+    TimeProvider? time = null,
+    Func<bool>? allowParallel = null) : IDesktopLauncher
 {
     private static readonly TimeSpan WindowsQuitGrace = TimeSpan.FromSeconds(4);
     private static readonly TimeSpan MacQuitGrace = TimeSpan.FromSeconds(8);
@@ -23,6 +28,9 @@ public sealed class DesktopLaunchService(
 
     private readonly TimeProvider _time = time ?? TimeProvider.System;
 
+    /// <summary>Side by side, an instance of another account is no conflict: every profile holds its own lock.</summary>
+    private bool AllowParallel => allowParallel?.Invoke() ?? false;
+
     public async Task<DesktopLaunchCheck> PrepareAsync(Account target, IReadOnlyList<Account> accounts, CancellationToken ct)
     {
         if (locator.Locate(ProviderDescriptors.For(target)) is null)
@@ -31,7 +39,7 @@ public sealed class DesktopLaunchService(
         }
 
         var (conflicts, targetRunning) = await DetectAsync(target, accounts, ct).ConfigureAwait(false);
-        if (conflicts.Count > 0)
+        if (conflicts.Count > 0 && !AllowParallel)
         {
             return new DesktopLaunchCheck.Conflict(conflicts);
         }
@@ -39,7 +47,10 @@ public sealed class DesktopLaunchService(
         return targetRunning ? new DesktopLaunchCheck.RunningSameAccount() : new DesktopLaunchCheck.Ready();
     }
 
-    /// <param name="quitConflicts">Whether instances of other accounts may be quit; they are detected again first.</param>
+    /// <param name="quitConflicts">
+    /// Whether instances of other accounts may be quit; they are detected again first. Side by side nothing is quit,
+    /// whatever this says.
+    /// </param>
     /// <exception cref="PlatformNotSupportedException">Claude Desktop is installed on neither Windows nor macOS.</exception>
     public async Task<DesktopLaunchOutcome> LaunchAsync(Account target, IReadOnlyList<Account> accounts, bool quitConflicts, CancellationToken ct)
     {
@@ -50,24 +61,29 @@ public sealed class DesktopLaunchService(
         }
 
         var plan = Plan(installation, resolver.Resolve(target));
-        var (conflicts, _) = await DetectAsync(target, accounts, ct).ConfigureAwait(false);
-        if (conflicts.Count > 0)
+
+        // Side by side there is nothing to look for: whoever runs stays, so the start does not wait on a detection.
+        if (!AllowParallel)
         {
-            if (!quitConflicts)
+            var (conflicts, _) = await DetectAsync(target, accounts, ct).ConfigureAwait(false);
+            if (conflicts.Count > 0)
             {
-                return DesktopLaunchOutcome.ConflictNotResolved;
-            }
+                if (!quitConflicts)
+                {
+                    return DesktopLaunchOutcome.ConflictNotResolved;
+                }
 
-            var grace = platform.Os == OsKind.MacOS ? MacQuitGrace : WindowsQuitGrace;
-            foreach (var conflict in conflicts)
-            {
-                // Detection decides below whether the instance is gone, whatever the terminator reports.
-                await terminator.QuitAsync(conflict.Instance, grace, ct).ConfigureAwait(false);
-            }
+                var grace = platform.Os == OsKind.MacOS ? MacQuitGrace : WindowsQuitGrace;
+                foreach (var conflict in conflicts)
+                {
+                    // Detection decides below whether the instance is gone, whatever the terminator reports.
+                    await terminator.QuitAsync(conflict.Instance, grace, ct).ConfigureAwait(false);
+                }
 
-            if (!await WaitUntilNoConflictAsync(target, accounts, ct).ConfigureAwait(false))
-            {
-                return DesktopLaunchOutcome.QuitFailed;
+                if (!await WaitUntilNoConflictAsync(target, accounts, ct).ConfigureAwait(false))
+                {
+                    return DesktopLaunchOutcome.QuitFailed;
+                }
             }
         }
 
