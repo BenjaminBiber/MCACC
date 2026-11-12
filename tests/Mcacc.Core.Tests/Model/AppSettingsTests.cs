@@ -17,4 +17,10 @@ public class AppSettingsTests
         settings.LastAccountId.ShouldBeNull();
         settings.LastTarget.ShouldBeNull();
     }
+
+    [Fact]
+    public void Several_accounts_side_by_side_are_off_by_default()
+    {
+        new AppSettings().AllowParallelDesktop.ShouldBeFalse();
+    }
 }
