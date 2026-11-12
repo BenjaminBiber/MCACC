@@ -56,7 +56,9 @@ xattr -dr com.apple.quarantine MCACC.app
    (5 Stunden und Woche). Läuft Claude Desktop gerade mit diesem Account, steht dort „Läuft“.
 2. **Ziel wählen.**
    - **Claude Desktop** startet die App mit dem Profil des Accounts. Läuft sie schon mit einem
-     anderen Account, fragt MCACC nach und startet sie neu.
+     anderen Account, fragt MCACC nach und startet sie neu. Mit der Einstellung **Mehrere Accounts
+     gleichzeitig öffnen** bleibt sie stattdessen offen, und der gewählte Account bekommt ein
+     eigenes Fenster (siehe *Mehrere Accounts gleichzeitig*).
    - **Claude Code** öffnet ein Terminal im Home-Ordner mit gesetztem `CLAUDE_CONFIG_DIR` und
      ruft `claude` auf. Nach `/exit` bleibt die Shell offen, die Variable bleibt gesetzt.
 
@@ -103,6 +105,21 @@ Darum bleibt MCACC nach dem Start eines Profil-Accounts bis zu drei Minuten offe
 auch. Taucht in dieser Zeit so ein Start auf, beendet MCACC ihn, bevor er den einmaligen Code
 einlösen kann, und übergibt die Adresse an das Profil des gewählten Accounts. Danach schließt
 sich MCACC aus. Wer nicht warten will, schließt das Fenster einfach selbst.
+Startest du in dieser Zeit einen weiteren Account, gilt die Überwachung nur noch für ihn.
+
+### Mehrere Accounts gleichzeitig
+
+Standardmäßig läuft die Desktop-App mit einem Account zur Zeit. Mit **Mehrere Accounts gleichzeitig
+öffnen** (Einstellungen, standardmäßig aus) beendet MCACC beim Start nichts mehr: Jeder Account
+läuft als eigene Instanz in einem eigenen Fenster, und „Läuft“ steht dann bei mehreren Accounts.
+Startest du einen Account, der schon läuft, kommt nur sein Fenster nach vorne. Der Schalter wirkt
+ab dem nächsten Start; laufende Instanzen bleiben, wie sie sind.
+
+Für die Anmeldung über den Browser gilt dabei eine Regel: **Die Anmeldung geht an den Account, der
+zuletzt gestartet wurde.** Die zurückkommende `claude://`-Adresse nennt keinen Account, deshalb
+überwacht MCACC je App immer nur den letzten Start. Also erst einen Account starten und anmelden,
+dann den nächsten starten. Ein Start des Standard-Accounts beendet die Überwachung; eine Anmeldung
+landet danach im Standardprofil.
 
 ### Tastatur
 
@@ -155,6 +172,8 @@ Die Kosten sind eine **Schätzung** zu API-Listenpreisen („≈“). Mit einem 
 - **Nach dem Start ausblenden** — MCACC bleibt im Infobereich bzw. in der Menüleiste.
 - **Bei der Anmeldung starten** — legt den Autostart-Eintrag an bzw. entfernt ihn (siehe
   *Infobereich und Menüleiste*).
+- **Mehrere Accounts gleichzeitig öffnen** — die Desktop-App bleibt beim Start eines anderen
+  Accounts offen, statt nach Rückfrage neu zu starten (siehe *Mehrere Accounts gleichzeitig*).
 - **Projekte in der Statistik** — alle Projekte aus den Claude-Code-Logs aller Accounts, nach
   Tokens sortiert. Ein Projekt ohne Häkchen zählt auf der Info-Seite nirgends mit: nicht in Tokens,
   Kosten, Sessions, Tagesbalken, Modellen, Top-Projekten und Kalender. Geschätzte Kalendertage
@@ -186,6 +205,12 @@ Ausprobieren, ohne das echte Setup anzufassen.
   `claude://`-Deeplink ist systemweit auf Claude Desktop *ohne* Profil-Flag registriert. Wenn
   der Login im falschen Profil landet: in der App per E-Mail anmelden, oder anmelden, solange
   keine andere Instanz läuft.
+- **Mehrere Accounts gleichzeitig ist eine Zugabe, für die die Apps nicht gebaut sind.** Die
+  Anmeldung über den Browser geht an den zuletzt gestarteten Account; läuft dabei der
+  Standard-Account, kann sie in dessen Profil landen. Globale Tastenkürzel, das Icon der App im
+  Infobereich und Updates gehören der App und nicht dem Profil und können sich bei mehreren
+  Instanzen in die Quere kommen. Jede Instanz braucht eigenen Arbeitsspeicher. Mit ChatGPT ist es
+  ungeprüft.
 - **Die Nutzungslimits kommen von einem inoffiziellen Endpunkt** (`/api/oauth/usage`), den auch
   Claude Code benutzt. Er ist ratenbegrenzt und kann sich jederzeit ändern. MCACC liest das
   Token nur, erneuert es nie und zeigt bei einem Fehler den letzten bekannten Wert mit
