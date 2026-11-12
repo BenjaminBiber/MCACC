@@ -82,6 +82,31 @@ public sealed class TargetPickerViewModelTests : IDisposable
     }
 
     [Fact]
+    public void One_account_at_a_time_the_subtitle_announces_the_restart()
+    {
+        Page().Subtitle.ShouldBe(Texts.TargetPickerSubtitle(ProviderKind.Claude));
+    }
+
+    [Fact]
+    public void Side_by_side_the_subtitle_announces_a_second_window()
+    {
+        _services.Accounts.UpdateSettings(settings => settings with { AllowParallelDesktop = true });
+
+        Page().Subtitle.ShouldBe(
+            "Läuft Claude Desktop schon mit einem anderen Account, öffnet sich ein weiteres Fenster daneben.");
+    }
+
+    [Fact]
+    public void Side_by_side_the_subtitle_names_the_app_of_the_provider()
+    {
+        _services.Accounts.UpdateSettings(settings => settings with { AllowParallelDesktop = true });
+        var codex = new Account("codex", "Codex", "#5E8C8A", IsDefault: false, ProviderKind.Codex);
+
+        Page(codex).Subtitle.ShouldBe(Texts.TargetPickerSubtitleParallel(ProviderKind.Codex));
+        Page(codex).Subtitle.ShouldStartWith("Läuft ChatGPT schon");
+    }
+
+    [Fact]
     public void The_code_tile_names_the_selected_terminal()
     {
         Page().CodeSubtitle.ShouldBe(Texts.CodeInTerminal("Windows Terminal"));

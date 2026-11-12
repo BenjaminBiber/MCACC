@@ -29,7 +29,10 @@ public sealed partial class TargetPickerViewModel : PageViewModel
 
     public string Title => Texts.TargetPickerTitle;
 
-    public string Subtitle => Texts.TargetPickerSubtitle(Account.Provider);
+    /// <summary>Says what a start does to a running app of another account: a second window, or a restart.</summary>
+    public string Subtitle => _services.Accounts.Config.Settings.AllowParallelDesktop
+        ? Texts.TargetPickerSubtitleParallel(Account.Provider)
+        : Texts.TargetPickerSubtitle(Account.Provider);
 
     public string AccountName => Account.Name;
 

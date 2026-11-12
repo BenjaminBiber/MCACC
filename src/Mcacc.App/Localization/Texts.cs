@@ -40,6 +40,9 @@ public static partial class Texts
     public const string TargetPickerTitle = "Was möchtest du öffnen?";
     public static string TargetPickerSubtitle(ProviderKind provider) =>
         $"Läuft {TargetDesktop(provider)} mit einem anderen Account, wird es nach Rückfrage neu gestartet.";
+
+    public static string TargetPickerSubtitleParallel(ProviderKind provider) =>
+        $"Läuft {TargetDesktop(provider)} schon mit einem anderen Account, öffnet sich ein weiteres Fenster daneben.";
     public const string Back = "Zurück";
     public const string TargetCodex = "Codex";
     public const string TargetCodexDesktop = "ChatGPT";
