@@ -29,8 +29,9 @@
         </Button>
       </Grid>
 
-      <!-- The add tile is the last entry, so it takes the next free cell and the size of an account tile. -->
-      <ItemsControl x:Name="TileList" ItemsSource="{Binding Entries}">
+      <!-- The add tile is the last entry, so it takes the next free cell and the size of an account tile.
+           ItemsControl clips by default, which would cut off the border of a tile lifted on hover. -->
+      <ItemsControl x:Name="TileList" ItemsSource="{Binding Entries}" ClipToBounds="False">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
             <controls:TileGrid MinColumnWidth="300" Spacing="12" XYFocus.NavigationModes="Enabled" />
