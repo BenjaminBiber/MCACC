@@ -58,6 +58,13 @@
         <TextBlock Classes="caption muted" Text="{Binding LaunchAtLoginHint}" TextWrapping="Wrap" />
       </StackPanel>
 
+      <StackPanel Spacing="2">
+        <ToggleSwitch IsChecked="{Binding AllowParallelDesktop}"
+                      OnContent="{Binding ParallelDesktopText}"
+                      OffContent="{Binding ParallelDesktopText}" />
+        <TextBlock Classes="caption muted" Text="{Binding ParallelDesktopHint}" TextWrapping="Wrap" />
+      </StackPanel>
+
       <StackPanel Spacing="6" MaxWidth="640" HorizontalAlignment="Left">
         <TextBlock Classes="body" Text="{Binding ProjectsLabel}" />
         <TextBlock Classes="caption muted" Text="{Binding ProjectsHint}" TextWrapping="Wrap" />
