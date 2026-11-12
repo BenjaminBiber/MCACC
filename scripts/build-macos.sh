@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds MCACC.app for macOS, signs it ad-hoc and zips it.
+# Builds MCACC.app for macOS, signs it ad-hoc, zips it and packs a DMG.
 #
 #   ./scripts/build-macos.sh --arch universal --version 0.1.0
 #
@@ -99,5 +99,15 @@ ZIP="$ARTIFACTS/MCACC-$VERSION-macos-$ARCH.zip"
 rm -f "$ZIP"
 ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
 
-printf '\n%s\n%s\n' "$APP" "$ZIP"
-du -sh "$APP" "$ZIP"
+say "DMG"
+DMG="$ARTIFACTS/MCACC-$VERSION-macos-$ARCH.dmg"
+STAGE="$ARTIFACTS/dmg-stage"
+rm -rf "$STAGE" "$DMG"
+mkdir -p "$STAGE"
+ditto "$APP" "$STAGE/MCACC.app"
+ln -s /Applications "$STAGE/Applications"
+hdiutil create -volname "MCACC $VERSION" -srcfolder "$STAGE" -fs HFS+ -format UDZO -ov "$DMG" >/dev/null
+rm -rf "$STAGE"
+
+printf '\n%s\n%s\n%s\n' "$APP" "$ZIP" "$DMG"
+du -sh "$APP" "$ZIP" "$DMG"

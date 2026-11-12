@@ -1,14 +1,19 @@
 <#
 .SYNOPSIS
   Builds MCACC for Windows as a single self-contained exe and zips it.
+  With -Installer it also builds a per-user setup.exe with Inno Setup 6 (iscc).
 
 .EXAMPLE
   .\scripts\publish-windows.ps1 -Version 0.1.0
+
+.EXAMPLE
+  .\scripts\publish-windows.ps1 -Version 0.1.0 -Installer
 #>
 [CmdletBinding()]
 param(
     [string]$Version = '0.1.0',
-    [switch]$SkipTests
+    [switch]$SkipTests,
+    [switch]$Installer
 )
 
 $ErrorActionPreference = 'Stop'
@@ -62,6 +67,20 @@ try {
 
     Write-Host '==> Zip' -ForegroundColor Cyan
     Compress-Archive -Path (Join-Path $publishDir '*') -DestinationPath $zipPath
+
+    if ($Installer) {
+        $iscc = (Get-Command iscc -ErrorAction SilentlyContinue).Source
+        if (-not $iscc) {
+            $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+        }
+        if (-not (Test-Path $iscc)) {
+            throw 'Inno Setup 6 (iscc) not found. Install it, e.g. winget install JRSoftware.InnoSetup.'
+        }
+        Invoke-Checked 'Installer' {
+            & $iscc /Q "/DAppVersion=$Version" "/DPublishDir=$publishDir" "/DOutputDir=$artifactsDir" `
+                (Join-Path $repoRoot 'build\windows\mcacc.iss')
+        }
+    }
 
     $exe = Join-Path $publishDir 'MCACC.exe'
     $exeSize = [math]::Round((Get-Item $exe).Length / 1MB, 1)
