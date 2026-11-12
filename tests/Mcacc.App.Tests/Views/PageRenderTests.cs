@@ -72,7 +72,7 @@ public sealed class PageRenderTests : IDisposable
         var window = Show(new SettingsViewModel(_services.Services));
 
         window.GetVisualDescendants().OfType<ComboBox>().ShouldNotBeEmpty();
-        window.GetVisualDescendants().OfType<ToggleSwitch>().Count().ShouldBe(2);
+        window.GetVisualDescendants().OfType<ToggleSwitch>().Count().ShouldBe(3);
     }
 
     [AvaloniaFact]

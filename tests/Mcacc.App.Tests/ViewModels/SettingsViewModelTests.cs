@@ -196,6 +196,38 @@ public sealed class SettingsViewModelTests : IDisposable
     }
 
     [Fact]
+    public void Several_accounts_side_by_side_start_from_the_saved_setting()
+    {
+        Page().AllowParallelDesktop.ShouldBeFalse();
+
+        _services.Accounts.UpdateSettings(settings => settings with { AllowParallelDesktop = true });
+
+        Page().AllowParallelDesktop.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Switching_several_accounts_side_by_side_saves_it()
+    {
+        var page = Page();
+
+        page.AllowParallelDesktop = true;
+        _services.Accounts.Config.Settings.AllowParallelDesktop.ShouldBeTrue();
+
+        page.AllowParallelDesktop = false;
+        _services.Accounts.Config.Settings.AllowParallelDesktop.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void The_switch_for_several_accounts_carries_its_german_label_and_hint()
+    {
+        var page = Page();
+
+        page.ParallelDesktopText.ShouldBe("Mehrere Accounts gleichzeitig öffnen");
+        page.ParallelDesktopHint.ShouldBe(Texts.SettingsParallelDesktopHint);
+        page.ParallelDesktopHint.ShouldContain("eigenen Fenster");
+    }
+
+    [Fact]
     public void The_data_folder_is_the_mcacc_root()
     {
         Page().DataFolder.ShouldBe(_services.Paths.Root);

@@ -41,6 +41,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         SelectedShell = Shells.FirstOrDefault(choice => choice.Shell == settings.WindowsTerminalShell) ?? Shells[0];
         CloseAfterLaunch = settings.CloseAfterLaunch;
         LaunchAtLogin = settings.LaunchAtLogin;
+        AllowParallelDesktop = settings.AllowParallelDesktop;
         _isLoading = false;
     }
 
@@ -59,6 +60,10 @@ public sealed partial class SettingsViewModel : PageViewModel
     public string LaunchAtLoginText => Texts.SettingsLaunchAtLogin;
 
     public string LaunchAtLoginHint => Texts.SettingsLaunchAtLoginHint(_services.Platform.Os);
+
+    public string ParallelDesktopText => Texts.SettingsParallelDesktop;
+
+    public string ParallelDesktopHint => Texts.SettingsParallelDesktopHint;
 
     public string DataFolderLabel => Texts.SettingsDataFolder;
 
@@ -87,6 +92,9 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     [ObservableProperty]
     public partial bool LaunchAtLogin { get; set; }
+
+    [ObservableProperty]
+    public partial bool AllowParallelDesktop { get; set; }
 
     public string ProjectsLabel => Texts.SettingsProjects;
 
@@ -179,6 +187,9 @@ public sealed partial class SettingsViewModel : PageViewModel
             _services.LoginItems.Apply(value);
         }
     }
+
+    partial void OnAllowParallelDesktopChanged(bool value) =>
+        Save(settings => settings with { AllowParallelDesktop = value });
 
     /// <summary>
     /// Reads the logs of every account through the stats index, like the info page, and does not cancel the scan
