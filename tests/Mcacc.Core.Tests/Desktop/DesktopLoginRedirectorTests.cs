@@ -17,6 +17,7 @@ public class DesktopLoginRedirectorTests
 
     private static readonly Account Standard = Account.CreateDefault();
     private static readonly Account Privat = new("privat", "Privat", "#6A9BCC", IsDefault: false);
+    private static readonly Account Arbeit = new("arbeit", "Arbeit", "#788C5D", IsDefault: false);
 
     private static readonly PlatformInfo Windows =
         new(OsKind.Windows, @"C:\Users\USER", @"C:\Users\USER\AppData\Roaming", @"C:\Users\USER\AppData\Local");
@@ -235,6 +236,93 @@ public class DesktopLoginRedirectorTests
         _runner.Started.ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task A_newer_watch_takes_over_and_the_older_one_hands_nothing_over()
+    {
+        var redirector = Redirector();
+        Task<DesktopRedirectOutcome>? newer = null;
+        _detector.Script([TargetInstance, StrayLogin]);
+        _detector.OnDetect = call =>
+        {
+            if (call == 1)
+            {
+                newer = redirector.WatchAsync(Arbeit, Ct);
+            }
+        };
+
+        var older = await redirector.WatchAsync(Privat, Ct);
+
+        older.ShouldBe(DesktopRedirectOutcome.Superseded);
+        (await newer.ShouldNotBeNull()).ShouldBe(DesktopRedirectOutcome.Redirected);
+        _terminator.Quits.ShouldBe([(StrayLogin, TimeSpan.Zero)]);
+        _runner.Started.ShouldHaveSingleItem().ShouldBeEquivalentTo(
+            DesktopLaunchPlanner.PlanWindows(Msix, ResolverFor(Windows).Resolve(Arbeit), Windows.HomeDir, LoginUrl));
+    }
+
+    [Fact]
+    public async Task A_start_that_needs_no_watch_still_ends_the_one_before_it()
+    {
+        var redirector = Redirector();
+        Task<DesktopRedirectOutcome>? newer = null;
+        _detector.Script([TargetInstance, StrayLogin]);
+        _detector.OnDetect = call =>
+        {
+            if (call == 1)
+            {
+                newer = redirector.WatchAsync(Standard, Ct);
+            }
+        };
+
+        (await redirector.WatchAsync(Privat, Ct)).ShouldBe(DesktopRedirectOutcome.Superseded);
+        (await newer.ShouldNotBeNull()).ShouldBe(DesktopRedirectOutcome.NotNeeded);
+        _terminator.Quits.ShouldBeEmpty();
+        _runner.Started.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Stopping_ends_a_running_watch_before_it_hands_anything_over()
+    {
+        var redirector = Redirector();
+        var stopped = false;
+        _detector.Script([TargetInstance, StrayLogin]);
+        _detector.OnDetect = call =>
+        {
+            if (call == 1)
+            {
+                stopped = redirector.StopWatching(ProviderKind.Claude);
+            }
+        };
+
+        var outcome = await redirector.WatchAsync(Privat, Ct);
+
+        outcome.ShouldBe(DesktopRedirectOutcome.Superseded);
+        stopped.ShouldBeTrue();
+        _terminator.Quits.ShouldBeEmpty();
+        _runner.Started.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Stopping_another_provider_leaves_the_watch_alone()
+    {
+        var redirector = Redirector();
+        _detector.Script([TargetInstance, StrayLogin]);
+        _detector.OnDetect = _ => redirector.StopWatching(ProviderKind.Codex);
+
+        (await redirector.WatchAsync(Privat, Ct)).ShouldBe(DesktopRedirectOutcome.Redirected);
+    }
+
+    [Fact]
+    public async Task Without_a_running_watch_there_is_nothing_to_stop()
+    {
+        var redirector = Redirector();
+        redirector.StopWatching(ProviderKind.Claude).ShouldBeFalse();
+        _detector.Script([TargetInstance, StrayLogin]);
+
+        await redirector.WatchAsync(Privat, Ct);
+
+        redirector.StopWatching(ProviderKind.Claude).ShouldBeFalse();
+    }
+
     private sealed class FakeLocator(DesktopInstallation? installation) : IDesktopInstallationLocator
     {
         public DesktopInstallation? Locate(ProviderDescriptor provider) => installation;
@@ -251,6 +339,9 @@ public class DesktopLoginRedirectorTests
         /// <summary>How many of the next detections throw the way a WMI timeout does.</summary>
         public int FailNext { get; set; }
 
+        /// <summary>Runs inside every detection with its number, to start or stop something while a watch looks.</summary>
+        public Action<int>? OnDetect { get; set; }
+
         public void Script(params IReadOnlyList<DesktopInstance>[] snapshots)
         {
             foreach (var snapshot in snapshots)
@@ -261,19 +352,24 @@ public class DesktopLoginRedirectorTests
 
         public Task<IReadOnlyList<DesktopInstance>> DetectAsync(ProviderDescriptor provider, CancellationToken ct)
         {
-            Calls++;
-            if (FailNext > 0)
+            // Two watches look from different threads once one of them was started from OnDetect.
+            lock (_snapshots)
             {
-                FailNext--;
-                throw new TimeoutException("WMI did not answer within three seconds.");
-            }
+                Calls++;
+                OnDetect?.Invoke(Calls);
+                if (FailNext > 0)
+                {
+                    FailNext--;
+                    throw new TimeoutException("WMI did not answer within three seconds.");
+                }
 
-            if (_snapshots.TryDequeue(out var next))
-            {
-                _current = next;
-            }
+                if (_snapshots.TryDequeue(out var next))
+                {
+                    _current = next;
+                }
 
-            return Task.FromResult(_current);
+                return Task.FromResult(_current);
+            }
         }
     }
 

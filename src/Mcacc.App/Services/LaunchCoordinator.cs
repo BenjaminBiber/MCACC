@@ -78,6 +78,13 @@ public sealed class LaunchCoordinator(AppServices services)
                 services.Log.Info($"Claude Desktop started for '{account.Id}'.");
                 if (account.IsDefault)
                 {
+                    // A login coming back now lands in the default profile by itself. A watch still running for
+                    // another account would take it away, so it ends here, and its hint goes with it.
+                    if (services.Redirect.StopWatching(account.Provider))
+                    {
+                        services.Shell.ClearError();
+                    }
+
                     await FinishAsync(account, LaunchTarget.Desktop, autoClose: true).ConfigureAwait(true);
                     return;
                 }
@@ -171,6 +178,12 @@ public sealed class LaunchCoordinator(AppServices services)
         if (outcome == DesktopRedirectOutcome.Failed)
         {
             ShowError(Texts.ErrorLoginRedirectFailed(account.Provider));
+            return;
+        }
+
+        if (outcome == DesktopRedirectOutcome.Superseded)
+        {
+            // A newer start took the watch over; the hint and the window are its to handle now.
             return;
         }
 
